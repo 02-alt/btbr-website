@@ -355,14 +355,9 @@ body {
   border-radius: 12px;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.22));
   cursor: zoom-in;
-  /* Only fade opacity on hover. Animating the drop-shadow (or transforming
-     the image) makes Safari re-rasterise the filter every frame, which
-     flashes; opacity is composited separately, so it stays smooth. */
-  transition: opacity 0.2s ease;
-}
-
-.stage img:hover {
-  opacity: 0.9;
+  /* No hover animation at all: in Safari, animating anything on a
+     drop-shadow'd element re-rasterises the filter and flashes. The
+     zoom-in cursor is the affordance. */
 }
 
 /* device renders already have their own frame -> no extra rounding */
