@@ -118,6 +118,21 @@ body {
   }
 }
 
+/* hovering the signature desaturates the rest of the page to black & white,
+   while the signature itself keeps its liquid gradient (so we can't just
+   grayscale the whole frame — that would gray the gradient too) */
+.hero,
+.foot .cta,
+.foot .disclaimer {
+  transition: filter 0.45s ease;
+}
+
+.frame:has(.sig:hover) .hero,
+.frame:has(.sig:hover) .cta,
+.frame:has(.sig:hover) .disclaimer {
+  filter: grayscale(1);
+}
+
 /* hero, vertically centered */
 .hero {
   flex: 1;
