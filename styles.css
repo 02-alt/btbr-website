@@ -353,16 +353,17 @@ body {
   max-width: 100%;
   height: auto;
   border-radius: 12px;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.22));
+  /* box-shadow, not filter: drop-shadow. Safari re-rasterises a drop-shadow
+     on every repaint, which flickers behind the image; box-shadow is
+     composited and cached, so it stays rock-steady. */
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
   cursor: zoom-in;
-  /* No hover animation at all: in Safari, animating anything on a
-     drop-shadow'd element re-rasterises the filter and flashes. The
-     zoom-in cursor is the affordance. */
 }
 
-/* device renders already have their own frame -> no extra rounding */
+/* device renders are rounded PNGs on transparent bg — round the box a touch
+   so the box-shadow hugs their shape instead of boxing the corners */
 .stage.device img {
-  border-radius: 0;
+  border-radius: 14px;
 }
 
 .project-foot {
