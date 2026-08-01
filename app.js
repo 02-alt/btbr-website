@@ -12,6 +12,27 @@
   }
   var audio = window.__btbrAudio;
 
+  // ---- shared click-to-enlarge lightbox: created once, survives soft nav ----
+  if (!window.__btbrLightbox) {
+    var box = document.createElement("div");
+    box.className = "lightbox";
+    box.id = "lightbox";
+    box.appendChild(document.createElement("img"));
+    document.body.appendChild(box);
+    box.addEventListener("click", function () {
+      box.classList.remove("open");
+    });
+    window.__btbrLightbox = box;
+  }
+  var lightbox = window.__btbrLightbox;
+
+  function openLightbox(src, alt) {
+    var img = lightbox.querySelector("img");
+    img.src = src;
+    img.alt = alt || "";
+    lightbox.classList.add("open");
+  }
+
   function reflect() {
     var p = document.getElementById("play");
     if (p) p.textContent = audio.paused ? "Play song" : "Pause";
@@ -80,13 +101,22 @@
         else audio.pause();
       };
     }
-    var photo = document.querySelector(".about-photo");
-    var lb = document.getElementById("lightbox");
-    if (photo && lb) {
-      photo.onclick = function () { lb.classList.add("open"); };
-      lb.onclick = function () { lb.classList.remove("open"); };
-    }
     wireFaq();
+    wireImages();
+  }
+
+  // make every screenshot (and the about photo) open in the shared lightbox
+  function wireImages() {
+    var imgs = document.querySelectorAll(".stage img, .about-photo");
+    for (var i = 0; i < imgs.length; i++) {
+      var im = imgs[i];
+      if (im.__zoom) continue;
+      im.__zoom = true;
+      im.style.cursor = "zoom-in";
+      im.addEventListener("click", function () {
+        openLightbox(this.currentSrc || this.src, this.alt);
+      });
+    }
   }
 
   document.addEventListener("keydown", function (e) {

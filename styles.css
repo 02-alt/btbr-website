@@ -354,6 +354,12 @@ body {
   height: auto;
   border-radius: 12px;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.22));
+  cursor: zoom-in;
+  transition: transform 0.25s ease;
+}
+
+.stage img:hover {
+  transform: translateY(-3px) scale(1.01);
 }
 
 /* device renders already have their own frame -> no extra rounding */
@@ -533,21 +539,25 @@ body {
   cursor: zoom-in;
 }
 
-/* click-to-enlarge lightbox */
+/* click-to-enlarge lightbox (shared by every screenshot) */
 .lightbox {
   position: fixed;
   inset: 0;
-  z-index: 50;
-  display: none;
+  z-index: 60;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 4vh 4vw;
   background: rgba(0, 0, 0, 0.88);
   cursor: zoom-out;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .lightbox.open {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
 }
 
 .lightbox img {
@@ -555,6 +565,13 @@ body {
   max-height: 92vh;
   width: auto;
   height: auto;
+  border-radius: 8px;
+  transform: scale(0.97);
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.lightbox.open img {
+  transform: scale(1);
 }
 
 @media (max-width: 760px) {
