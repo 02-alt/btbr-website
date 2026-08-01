@@ -17,6 +17,22 @@ body {
   min-height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* honour people who ask the OS for less motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background: var(--page);
   color: var(--fg);
@@ -35,7 +51,13 @@ body {
   padding: 40px 32px 48px;
   display: flex;
   flex-direction: column;
-  transition: filter 0.45s ease;
+  transition: filter 0.45s ease, opacity 0.28s ease, transform 0.28s ease;
+}
+
+/* soft fade+lift when a page is swapped in via soft navigation */
+.frame.frame-enter {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 /* hovering the bottom signature desaturates the whole page */
@@ -375,8 +397,16 @@ body {
 .faq-body {
   width: 100%;
   max-width: 620px;
-  margin-top: 26px;
+  padding-top: 26px;
   text-align: left;
+  overflow: hidden;
+}
+
+/* JS drives the exact height; CSS makes the change smooth */
+.faq-body,
+.faq-item > p {
+  transition: height 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.26s ease;
 }
 
 .faq-item { border-top: 1px solid #ececec; }
@@ -415,6 +445,15 @@ body {
   font-size: 14.5px;
   line-height: 1.62;
   color: #3d3d3d;
+  overflow: hidden;
+}
+
+/* smooth the +/- marker rotation on open/close */
+.faq-item > summary::after {
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.faq-item[open] > summary::after {
+  transform: rotate(180deg);
 }
 .faq-item p a { color: var(--fg); }
 

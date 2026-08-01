@@ -17,6 +17,59 @@
     if (p) p.textContent = audio.paused ? "Play song" : "Pause";
   }
 
+  // ---- smooth open/close for <details> accordions (FAQ) ----
+  // Native <details> snaps open; we animate the content height instead so it
+  // glides. Works in every browser and degrades to an instant toggle if JS
+  // is off.
+  function wireDetails(details) {
+    if (details.__smooth) return;
+    details.__smooth = true;
+    var summary = details.querySelector(":scope > summary");
+    var body = details.querySelector(":scope > *:not(summary)");
+    if (!summary || !body) return;
+
+    function settle(keepOpen) {
+      return function te(ev) {
+        if (ev.propertyName !== "height") return;
+        body.removeEventListener("transitionend", te);
+        details.open = keepOpen;
+        body.style.height = "";
+        body.style.opacity = "";
+        details.__busy = false;
+      };
+    }
+
+    summary.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (details.__busy) return;
+      details.__busy = true;
+
+      if (details.open) {
+        // closing: current height -> 0, then drop the open attribute
+        body.style.height = body.offsetHeight + "px";
+        body.getBoundingClientRect(); // force reflow so the start height sticks
+        body.style.height = "0px";
+        body.style.opacity = "0";
+        body.addEventListener("transitionend", settle(false));
+      } else {
+        // opening: 0 -> natural height, then release to auto
+        details.open = true;
+        var target = body.scrollHeight;
+        body.style.height = "0px";
+        body.style.opacity = "0";
+        body.getBoundingClientRect(); // reflow before animating up
+        body.style.height = target + "px";
+        body.style.opacity = "1";
+        body.addEventListener("transitionend", settle(true));
+      }
+    });
+  }
+
+  function wireFaq() {
+    var list = document.querySelectorAll("details.faq, details.faq-item");
+    for (var i = 0; i < list.length; i++) wireDetails(list[i]);
+  }
+
   // ---- (re)bind page-specific controls after each navigation ----
   function bindPage() {
     var play = document.getElementById("play");
@@ -33,6 +86,7 @@
       photo.onclick = function () { lb.classList.add("open"); };
       lb.onclick = function () { lb.classList.remove("open"); };
     }
+    wireFaq();
   }
 
   document.addEventListener("keydown", function (e) {
@@ -48,10 +102,18 @@
     var next = doc.querySelector(".frame");
     var cur = document.querySelector(".frame");
     if (!next || !cur) return false;
-    cur.replaceWith(document.importNode(next, true));
+    var incoming = document.importNode(next, true);
+    incoming.classList.add("frame-enter"); // start faded/lifted
+    cur.replaceWith(incoming);
     document.title = doc.title;
     window.scrollTo(0, 0);
     bindPage();
+    // next frame: drop the class so it eases into place
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        incoming.classList.remove("frame-enter");
+      });
+    });
     return true;
   }
 
