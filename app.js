@@ -18,7 +18,14 @@
     box.className = "lightbox";
     box.id = "lightbox";
     box.appendChild(document.createElement("img"));
+    var close = document.createElement("button");
+    close.className = "lightbox-close";
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    close.innerHTML = "&times;";
+    box.appendChild(close);
     document.body.appendChild(box);
+    // tap anywhere (backdrop, image or the × button) closes
     box.addEventListener("click", function () {
       box.classList.remove("open");
     });
