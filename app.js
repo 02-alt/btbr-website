@@ -132,7 +132,9 @@
     if (!isInternal(link)) return;
     var href = link.getAttribute("href");
     e.preventDefault();
-    fetch(href)
+    // no-cache: revalidate with the server so a fresh deploy is picked up
+    // instead of a stale copy from the browser's 10-min HTML cache.
+    fetch(href, { cache: "no-cache" })
       .then(function (r) { return r.text(); })
       .then(function (html) {
         if (swap(html)) history.pushState(null, "", href);
@@ -142,7 +144,7 @@
   });
 
   window.addEventListener("popstate", function () {
-    fetch(location.href)
+    fetch(location.href, { cache: "no-cache" })
       .then(function (r) { return r.text(); })
       .then(function (html) { swap(html); });
   });
