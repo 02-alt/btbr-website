@@ -375,10 +375,12 @@ body {
   cursor: zoom-in;
 }
 
-/* device renders are rounded PNGs on transparent bg — round the box a touch
-   so the box-shadow hugs their shape instead of boxing the corners */
+/* device renders are transparent PNGs that already carry their own baked
+   shadow. A CSS box-shadow would shadow the rectangular canvas and turn the
+   transparent margin into a visible "white card", so give them none. */
 .stage.device img {
-  border-radius: 14px;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .project-foot {
