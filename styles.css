@@ -355,13 +355,14 @@ body {
   border-radius: 12px;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.22));
   cursor: zoom-in;
-  /* animate the shadow only — transforming a drop-shadow'd image makes
-     Safari re-rasterise and leaves a faint rectangular halo */
-  transition: filter 0.28s ease;
+  /* Only fade opacity on hover. Animating the drop-shadow (or transforming
+     the image) makes Safari re-rasterise the filter every frame, which
+     flashes; opacity is composited separately, so it stays smooth. */
+  transition: opacity 0.2s ease;
 }
 
 .stage img:hover {
-  filter: drop-shadow(0 26px 54px rgba(0, 0, 0, 0.3));
+  opacity: 0.9;
 }
 
 /* device renders already have their own frame -> no extra rounding */
