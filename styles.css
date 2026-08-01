@@ -545,16 +545,6 @@ body {
   color: var(--muted);
 }
 
-/* the name in the btbr teal -> dark gradient (same sweep as the favicon) */
-.about-message .grad-name {
-  font-weight: 700;
-  background: linear-gradient(90deg, rgb(132, 165, 165), rgb(17, 15, 18));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
 /* play button */
 .song-btn {
   padding: 12px 26px;
