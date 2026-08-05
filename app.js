@@ -162,21 +162,34 @@
   });
 
   // ---- soft navigation so the audio never tears down ----
-  function swap(html) {
+  function swap(html, opts) {
+    opts = opts || {};
     var doc = new DOMParser().parseFromString(html, "text/html");
     var next = doc.querySelector(".frame");
     var cur = document.querySelector(".frame");
     if (!next || !cur) return false;
     var incoming = document.importNode(next, true);
     // the about page carries its own "develop-in" entrance; other pages get the
-    // quick fade+lift
+    // quick fade+lift — unless a View Transition is driving the swap, which owns
+    // the motion itself.
     var themed = incoming.classList.contains("about-frame");
-    if (!themed) incoming.classList.add("frame-enter"); // start faded/lifted
+    var enter = !themed && !opts.noEnter;
+    if (enter) incoming.classList.add("frame-enter"); // start faded/lifted
     cur.replaceWith(incoming);
     document.title = doc.title;
     window.scrollTo(0, 0);
+    // shared-element morph: tag the destination's first screenshot so it pairs
+    // with the clicked home card during the View Transition
+    if (opts.heroName) {
+      var hero = incoming.querySelector(".shots .shot img") ||
+                 incoming.querySelector(".project-icon");
+      if (hero) {
+        hero.style.viewTransitionName = opts.heroName;
+        window.__btbrHero = hero;
+      }
+    }
     bindPage();
-    if (!themed) {
+    if (enter) {
       // next frame: drop the class so it eases into place
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
@@ -185,6 +198,15 @@
       });
     }
     return true;
+  }
+
+  // after a shared-element transition, release the destination's morph name so
+  // it doesn't linger and interfere with later transitions
+  function clearHero() {
+    if (window.__btbrHero) {
+      window.__btbrHero.style.viewTransitionName = "";
+      window.__btbrHero = null;
+    }
   }
 
   function isInternal(link) {
@@ -213,7 +235,28 @@
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var cur = document.querySelector(".frame");
     var fromAbout = !!cur && cur.classList.contains("about-frame");
-    if (toAbout && cur && !reduce) {
+    var tile = link.classList.contains("tile")
+      ? link
+      : (link.closest ? link.closest(".tile") : null);
+    if (tile && document.startViewTransition && !reduce) {
+      // clicked a home app card: morph the card into the app page's first
+      // screenshot with a shared-element View Transition
+      var media = tile.querySelector(".tile-img");
+      page.then(function (html) {
+        if (media) media.style.viewTransitionName = "app-hero";
+        try {
+          var vt = document.startViewTransition(function () {
+            if (swap(html, { noEnter: true, heroName: "app-hero" })) {
+              history.pushState(null, "", href);
+            }
+          });
+          vt.finished.then(clearHero, clearHero);
+        } catch (err) {
+          if (media) media.style.viewTransitionName = "";
+          go(html);
+        }
+      }).catch(function () { window.location.href = href; });
+    } else if (toAbout && cur && !reduce) {
       // "fade to memory": desaturate + dim the current page, then let the about
       // page develop in
       cur.classList.add("to-memory");

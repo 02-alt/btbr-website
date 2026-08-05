@@ -924,3 +924,22 @@ a.feedbar-brand:hover { opacity: 0.55; }
   transition: opacity 0.6s ease, transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
+/* --- clicking a home app card morphs it into the app page's first screenshot
+   (View Transitions API; these pseudo-elements exist only mid-transition, and
+   only when JS starts one — never under reduced motion) --- */
+::view-transition-group(app-hero) {
+  animation-duration: 0.52s;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+::view-transition-old(app-hero),
+::view-transition-new(app-hero) {
+  /* the card art and the real screenshot differ, so cross-fade the two
+     snapshots while the box morphs, instead of hard-swapping them */
+  mix-blend-mode: normal;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.42s;
+  animation-timing-function: ease;
+}
+
