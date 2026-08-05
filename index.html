@@ -3,49 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>builtoberemembered</title>
+  <title>builtoberemembered — free, minimal macOS apps</title>
+  <meta name="description" content="Free, minimal macOS apps made to be used every day — Reed, a clean RSS reader; Token Fuel, a Claude token-usage gauge; and a TIDAL mini player." />
+  <link rel="canonical" href="https://buildtoberemembered.com/" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="builtoberemembered" />
+  <meta property="og:title" content="builtoberemembered — free, minimal macOS apps" />
+  <meta property="og:description" content="Free, minimal macOS apps made to be used every day." />
+  <meta property="og:url" content="https://buildtoberemembered.com/" />
+  <meta property="og:image" content="https://buildtoberemembered.com/assets/apple-touch-icon.png?v=2" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="builtoberemembered — free, minimal macOS apps" />
+  <meta name="twitter:description" content="Free, minimal macOS apps made to be used every day." />
+  <meta name="twitter:image" content="https://buildtoberemembered.com/assets/apple-touch-icon.png?v=2" />
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png?v=2" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=2" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=2" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2" />
   <link rel="stylesheet" href="/styles.css" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebSite","name":"builtoberemembered","url":"https://buildtoberemembered.com/","description":"Free, minimal macOS apps made to be used every day."}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"ItemList","itemListElement":[{"@type":"ListItem","position":1,"name":"Reed","url":"https://buildtoberemembered.com/reed/"},{"@type":"ListItem","position":2,"name":"Token Fuel","url":"https://buildtoberemembered.com/token-fuel/"},{"@type":"ListItem","position":3,"name":"Tidal Mini Player","url":"https://buildtoberemembered.com/tidal/"}]}
+  </script>
 </head>
 <body>
-  <div class="frame">
-    <!-- hero -->
-    <main class="hero">
-      <h1 class="headline">
-        Free <span class="dim">apps</span>
-      </h1>
+  <div class="frame feed-home">
+    <header class="feedbar">
+      <div class="feedbar-brand"><strong>builtoberemembered</strong> <span>Free macOS apps</span></div>
+      <nav class="feedbar-nav">
+        <a href="mailto:isaaaaaaaac@pm.me">Email</a>
+        <a href="https://discord.gg/RGNBhXMWCf" target="_blank" rel="noopener">Discord</a>
+      </nav>
+    </header>
 
-      <section class="cards">
-        <a class="card" href="/reed/">
-          <span class="card-media"><img src="/assets/rssreader.png" alt="Reed icon" /></span>
-          <span class="card-title">Reed</span>
-          <span class="card-desc">A native macOS RSS reader.</span>
-        </a>
+    <main class="feed">
+      <a class="tile" href="/reed/">
+        <span class="tile-img"><img src="/assets/work/reed-1.jpg" alt="Reed on macOS" style="object-position: 32% center" /></span>
+        <span class="tile-cap">Reed · RSS Reader</span>
+      </a>
 
-        <a class="card" href="/token-fuel/">
-          <span class="card-media"><img src="/assets/claude-fuel.png" alt="Token Fuel icon" /></span>
-          <span class="card-title">Token Fuel</span>
-          <span class="card-desc">A menu-bar token-usage gauge.</span>
-        </a>
+      <a class="tile" href="/token-fuel/">
+        <span class="tile-img"><img src="/assets/work/fuel-desktop.jpg" alt="Token Fuel on macOS" style="object-position: right center" /></span>
+        <span class="tile-cap">Token Fuel · Usage Meter</span>
+      </a>
 
-        <a class="card" href="/tidal/">
-          <span class="card-media"><img src="/assets/tidal.png" alt="Tidal Mini Player icon" /></span>
-          <span class="card-title">Tidal Mini Player</span>
-          <span class="card-desc">A menu-bar mini player for TIDAL.</span>
-        </a>
-      </section>
+      <a class="tile" href="/tidal/">
+        <span class="tile-img"><img src="/assets/work/tidal-desktop.png" alt="Tidal Mini Player on macOS" style="object-position: right center" /></span>
+        <span class="tile-cap">Tidal Mini Player · Music Player</span>
+      </a>
     </main>
 
-    <!-- footer -->
-    <footer class="foot">
-      <div class="cta">
-        <a class="pill primary" href="mailto:isaaaaaaaac@pm.me">Email</a>
-        <a class="pill" href="https://discord.gg/RGNBhXMWCf" target="_blank" rel="noopener">Discord</a>
-      </div>
-      <p class="disclaimer">*Small apps, made to be used every day.</p>
+    <footer class="feedfoot">
       <a class="sig" href="/about/" data-text="build to be remembered">build to be remembered</a>
     </footer>
   </div>

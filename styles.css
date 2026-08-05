@@ -123,13 +123,17 @@ body {
    grayscale the whole frame — that would gray the gradient too) */
 .hero,
 .foot .cta,
-.foot .disclaimer {
+.foot .disclaimer,
+.feedbar,
+.feed {
   transition: filter 0.45s ease;
 }
 
 .frame:has(.sig:hover) .hero,
 .frame:has(.sig:hover) .cta,
-.frame:has(.sig:hover) .disclaimer {
+.frame:has(.sig:hover) .disclaimer,
+.frame:has(.sig:hover) .feedbar,
+.frame:has(.sig:hover) .feed {
   filter: grayscale(1);
 }
 
@@ -685,5 +689,105 @@ body {
 @media (max-width: 760px) {
   .about-photo {
     width: 100%;
+  }
+}
+
+/* ============ home feed (Special Projects style) ============ */
+.feed-home {
+  padding: 22px 22px 20px;
+}
+
+.feedbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.feedbar-brand strong {
+  font-weight: 700;
+}
+
+.feedbar-brand span {
+  color: var(--muted);
+  margin-left: 5px;
+}
+
+.feedbar-nav {
+  display: flex;
+  gap: 18px;
+}
+
+.feedbar-nav a {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.feedbar-nav a:hover {
+  opacity: 0.5;
+}
+
+.feed {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tile {
+  flex: 1 1 0;
+  min-width: 0;
+  display: block;
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.tile-img {
+  display: block;
+  width: 100%;
+  height: 48vh;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.tile-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.tile:hover .tile-img img {
+  transform: scale(1.03);
+}
+
+.tile-cap {
+  display: block;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.feedfoot {
+  display: flex;
+  justify-content: center;
+  padding-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .feed {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .tile-img {
+    height: auto;
+    aspect-ratio: 16 / 10;
   }
 }
