@@ -184,11 +184,19 @@
     var toAbout = /(^|\/)about\/?$/.test(href.split("#")[0]);
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var cur = document.querySelector(".frame");
+    var fromAbout = !!cur && cur.classList.contains("about-frame");
     if (toAbout && cur && !reduce) {
       // "fade to memory": desaturate + dim the current page, then let the about
       // page develop in
       cur.classList.add("to-memory");
       Promise.all([page, new Promise(function (res) { setTimeout(res, 520); })])
+        .then(function (arr) { go(arr[0]); })
+        .catch(function () { window.location.href = href; });
+    } else if (fromAbout && !reduce) {
+      // leaving the memory: the about panel desaturates and lifts away, then the
+      // page returns in colour
+      cur.classList.add("leaving-memory");
+      Promise.all([page, new Promise(function (res) { setTimeout(res, 440); })])
         .then(function (arr) { go(arr[0]); })
         .catch(function () { window.location.href = href; });
     } else {

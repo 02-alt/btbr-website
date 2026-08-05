@@ -841,6 +841,15 @@ a.feedbar-brand:hover { opacity: 0.55; }
   pointer-events: none;
 }
 
+/* leaving the about page: the memory desaturates and lifts away */
+.frame.leaving-memory {
+  opacity: 0;
+  filter: grayscale(0.85) blur(1.5px);
+  transform: translateY(-8px) scale(0.995);
+  transition: opacity 0.42s ease, filter 0.42s ease, transform 0.42s ease;
+  pointer-events: none;
+}
+
 /* arriving: the about panel fades up, then its pieces rise and bloom to colour */
 .about-frame {
   animation: mem-frame 0.65s ease both;
