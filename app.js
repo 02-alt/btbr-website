@@ -140,17 +140,22 @@
     var cur = document.querySelector(".frame");
     if (!next || !cur) return false;
     var incoming = document.importNode(next, true);
-    incoming.classList.add("frame-enter"); // start faded/lifted
+    // the about page carries its own "develop-in" entrance; other pages get the
+    // quick fade+lift
+    var themed = incoming.classList.contains("about-frame");
+    if (!themed) incoming.classList.add("frame-enter"); // start faded/lifted
     cur.replaceWith(incoming);
     document.title = doc.title;
     window.scrollTo(0, 0);
     bindPage();
-    // next frame: drop the class so it eases into place
-    requestAnimationFrame(function () {
+    if (!themed) {
+      // next frame: drop the class so it eases into place
       requestAnimationFrame(function () {
-        incoming.classList.remove("frame-enter");
+        requestAnimationFrame(function () {
+          incoming.classList.remove("frame-enter");
+        });
       });
-    });
+    }
     return true;
   }
 
@@ -171,13 +176,24 @@
     e.preventDefault();
     // no-cache: revalidate with the server so a fresh deploy is picked up
     // instead of a stale copy from the browser's 10-min HTML cache.
-    fetch(href, { cache: "no-cache" })
-      .then(function (r) { return r.text(); })
-      .then(function (html) {
-        if (swap(html)) history.pushState(null, "", href);
-        else window.location.href = href;
-      })
-      .catch(function () { window.location.href = href; });
+    var page = fetch(href, { cache: "no-cache" }).then(function (r) { return r.text(); });
+    function go(html) {
+      if (swap(html)) history.pushState(null, "", href);
+      else window.location.href = href;
+    }
+    var toAbout = /(^|\/)about\/?$/.test(href.split("#")[0]);
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var cur = document.querySelector(".frame");
+    if (toAbout && cur && !reduce) {
+      // "fade to memory": desaturate + dim the current page, then let the about
+      // page develop in
+      cur.classList.add("to-memory");
+      Promise.all([page, new Promise(function (res) { setTimeout(res, 520); })])
+        .then(function (arr) { go(arr[0]); })
+        .catch(function () { window.location.href = href; });
+    } else {
+      page.then(go).catch(function () { window.location.href = href; });
+    }
   });
 
   window.addEventListener("popstate", function () {

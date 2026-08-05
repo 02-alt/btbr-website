@@ -846,3 +846,38 @@ a.feedbar-brand:hover { opacity: 0.55; }
     aspect-ratio: 16 / 10;
   }
 }
+
+/* ============ "fade to memory" transition into /about/ ============ */
+/* leaving page: the current view desaturates, dims and softly blurs away */
+.frame.to-memory {
+  filter: grayscale(1) brightness(0.72) blur(2px);
+  opacity: 0;
+  transform: scale(0.995);
+  transition: filter 0.5s ease, opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+/* arriving: the about panel fades up, then its pieces rise and bloom to colour */
+.about-frame {
+  animation: mem-frame 0.65s ease both;
+}
+
+.about-frame .about-photo {
+  animation: mem-rise 0.9s 0.12s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.about-frame .about-message {
+  animation: mem-rise 0.9s 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.about-frame .player {
+  animation: mem-rise 0.9s 0.44s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes mem-frame {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mem-rise {
+  from { opacity: 0; transform: translateY(16px); filter: saturate(0.35); }
+  to { opacity: 1; transform: none; filter: saturate(1); }
+}
