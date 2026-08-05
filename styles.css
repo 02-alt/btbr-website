@@ -306,12 +306,6 @@ a.feedbar-brand {
 }
 a.feedbar-brand:hover { opacity: 0.55; }
 
-/* dim the app you're already viewing in the top nav */
-.feedbar-nav a[aria-current="page"] {
-  color: var(--muted);
-  pointer-events: none;
-}
-
 .project {
   flex: 1;
   padding: 44px 0 4px;
@@ -406,6 +400,22 @@ a.feedbar-brand:hover { opacity: 0.55; }
 }
 
 .shot { margin: 0; }
+
+/* a lead shot is contained and centred rather than full-bleed, so the page
+   opens at a calmer size instead of a big banner */
+.shot.lead {
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+/* a compact gallery for secondary detail shots — smaller than the lead
+   image, so a page can follow with a tidy row */
+.shot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: clamp(16px, 2.2vw, 26px);
+  align-items: start;
+}
 
 .shot img {
   display: block;
