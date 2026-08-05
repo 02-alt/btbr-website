@@ -114,7 +114,7 @@
 
   // make every screenshot (and the about photo) open in the shared lightbox
   function wireImages() {
-    var imgs = document.querySelectorAll(".stage img, .about-photo");
+    var imgs = document.querySelectorAll(".shot img, .about-photo");
     for (var i = 0; i < imgs.length; i++) {
       var im = imgs[i];
       if (im.__zoom) continue;

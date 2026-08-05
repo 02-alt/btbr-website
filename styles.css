@@ -127,7 +127,7 @@ body {
 .feedbar,
 .feed,
 .project {
-  transition: filter 0.45s ease;
+  transition: filter 0.7s ease;
 }
 
 .frame:has(.sig:hover) .hero,
@@ -136,7 +136,7 @@ body {
 .frame:has(.sig:hover) .feedbar,
 .frame:has(.sig:hover) .feed,
 .frame:has(.sig:hover) .project {
-  filter: grayscale(1);
+  filter: grayscale(0.5);
 }
 
 /* hero, vertically centered */
@@ -278,13 +278,6 @@ body {
     width: 100%;
     max-width: 340px;
   }
-  /* snugger, slightly smaller floating back arrow on phones */
-  .topnav .back {
-    top: 14px;
-    left: 14px;
-    width: 38px;
-    height: 38px;
-  }
   /* keep the Email/Discord row from crowding the last app card */
   .foot {
     margin-top: 44px;
@@ -394,42 +387,51 @@ a.feedbar-brand:hover { opacity: 0.55; }
   align-items: center;
 }
 
-/* screenshots on soft stages */
+/* stacked full-width screenshots — sharp corners, the same square-cornered
+   language as the home feed tiles */
 .shots {
-  margin-top: 64px;
   width: 100%;
-  max-width: 1000px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: clamp(30px, 4vw, 48px);
 }
 
-.stage {
-  background: var(--stage, #f4f4f4);
-  border-radius: 28px;
-  padding: clamp(24px, 5vw, 64px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+.shot { margin: 0; }
 
-.stage img {
-  max-width: 100%;
+.shot img {
+  display: block;
+  width: 100%;
   height: auto;
-  border-radius: 12px;
-  /* box-shadow, not filter: drop-shadow. Safari re-rasterises a drop-shadow
-     on every repaint, which flickers behind the image; box-shadow is
-     composited and cached, so it stays rock-steady. */
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
   cursor: zoom-in;
 }
 
-/* device renders are transparent PNGs that already carry their own baked
-   shadow. A CSS box-shadow would shadow the rectangular canvas and turn the
-   transparent margin into a visible "white card", so give them none. */
-.stage.device img {
-  border-radius: 0;
-  box-shadow: none;
+/* a photographic desktop shot defines its own edge on white; a hairline keeps
+   the rare light-edged frame from dissolving into the panel */
+.shot:not(.device) img {
+  outline: 1px solid rgba(0, 0, 0, 0.05);
+  outline-offset: -1px;
+}
+
+/* transparent device renders can't sit on white — give them a soft stage.
+   Sharp corners keep them in the same language as everything else; the
+   caption still flows below the stage, left-aligned like the others. */
+.shot-stage {
+  display: flex;
+  justify-content: center;
+  background: #f2f2f2;
+  padding: clamp(28px, 6vw, 84px);
+}
+.shot.device img {
+  width: auto;
+  max-width: min(460px, 100%);
+}
+
+.shot figcaption {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--muted);
 }
 
 .project-foot {
@@ -454,13 +456,23 @@ a.feedbar-brand:hover { opacity: 0.55; }
   opacity: 0.6;
 }
 
+@media (max-width: 760px) {
+  .project-intro {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    align-items: start;
+  }
+  .project-side {
+    padding-bottom: 0;
+  }
+  .project-desc {
+    max-width: none;
+  }
+}
+
 @media (max-width: 560px) {
   .project {
-    padding: 36px 0 28px;
-  }
-  .shots {
-    margin-top: 40px;
-    gap: 20px;
+    padding: 30px 0 4px;
   }
 }
 

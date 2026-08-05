@@ -33,32 +33,38 @@
 </head>
 <body>
   <div class="frame">
-    <header class="topnav">
-      <a class="back" href="/" aria-label="Back to apps">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-      </a>
-      <span></span>
-      <span></span>
+    <header class="feedbar">
+      <a class="feedbar-brand" href="/"><strong>builtoberemembered</strong> <span>Free macOS apps</span></a>
+      <nav class="feedbar-nav">
+        <a href="/reed/">Reed</a>
+        <a href="/token-fuel/">Token Fuel</a>
+        <a href="/tidal/" aria-current="page">Tidal</a>
+        <a href="/about/">About</a>
+      </nav>
     </header>
 
     <main class="project">
-      <div class="project-head">
-        <img class="project-icon" src="/assets/tidal.png" alt="Tidal Mini Player icon" />
-        <h1 class="project-title">Tidal Mini Player</h1>
-        <p class="project-meta">2025 · macOS · SwiftUI</p>
-        <p class="project-desc">
-          A menu-bar mini player for TIDAL. Shows the current track and pops a compact
-          player with album art, progress and controls.
-        </p>
-        <div class="project-cta">
-          <a class="pill primary" href="/downloads/TidalMiniPlayer-1.0.dmg" download>Download</a>
-          <a class="pill coffee" href="https://buymeacoffee.com/builttoberemembered" target="_blank" rel="noopener">Buy me a coffee</a>
+      <div class="project-intro">
+        <div class="project-lede">
+          <img class="project-icon" src="/assets/tidal.png" alt="Tidal Mini Player icon" />
+          <p class="project-meta">Music Player · 2025 · macOS</p>
+          <h1 class="project-title">Tidal Mini Player</h1>
+        </div>
+        <div class="project-side">
+          <p class="project-desc">
+            A menu-bar mini player for TIDAL. Shows the current track and pops a compact
+            player with album art, progress and controls.
+          </p>
+          <div class="project-cta">
+            <a class="pill primary" href="/downloads/TidalMiniPlayer-1.0.dmg" download>Download</a>
+            <a class="pill coffee" href="https://buymeacoffee.com/builttoberemembered" target="_blank" rel="noopener">Buy me a coffee</a>
+          </div>
         </div>
       </div>
 
       <div class="shots">
-        <figure class="stage device"><img src="/assets/work/tidal-kozelek.png" alt="Tidal mini player" /></figure>
-        <figure class="stage"><img src="/assets/work/tidal-desktop.png" alt="Tidal mini player floating on the desktop beside the full TIDAL app" /></figure>
+        <figure class="shot device"><img src="/assets/work/tidal-kozelek.png" alt="Tidal mini player" /><figcaption>A compact player with album art and controls</figcaption></figure>
+        <figure class="shot"><img src="/assets/work/tidal-desktop.png" alt="Tidal mini player floating on the desktop beside the full TIDAL app" /><figcaption>Floating beside the full TIDAL app</figcaption></figure>
       </div>
     </main>
 
