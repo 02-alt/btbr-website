@@ -125,16 +125,17 @@ body {
 .foot .cta,
 .foot .disclaimer,
 .feedbar,
-.feed,
 .project {
   transition: filter 0.7s ease;
 }
 
+/* on the home feed, hovering the signature desaturates only the Tahoe
+   background layer — the apps keep their colour */
 .frame:has(.sig:hover) .hero,
 .frame:has(.sig:hover) .cta,
 .frame:has(.sig:hover) .disclaimer,
 .frame:has(.sig:hover) .feedbar,
-.frame:has(.sig:hover) .feed,
+.frame:has(.sig:hover) .tile-bg,
 .frame:has(.sig:hover) .project {
   filter: grayscale(0.5);
 }
@@ -321,8 +322,14 @@ a.feedbar-brand:hover { opacity: 0.55; }
 }
 
 /* editorial masthead: meta + oversized title on the left,
-   blurb + download actions on the right */
+   blurb + download actions on the right.
+   The content column is capped to the width of the narrowest screenshot
+   (~1080px) and centred, so no image is ever scaled past its native
+   resolution and turned pixelated on wide displays. */
 .project-intro {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 36px 56px;
@@ -391,6 +398,8 @@ a.feedbar-brand:hover { opacity: 0.55; }
    language as the home feed tiles */
 .shots {
   width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: clamp(30px, 4vw, 48px);
@@ -421,9 +430,11 @@ a.feedbar-brand:hover { opacity: 0.55; }
   background: #f2f2f2;
   padding: clamp(28px, 6vw, 84px);
 }
+/* these are small menu-bar widget captures (~310–420px wide), so cap them
+   near their native size rather than blowing them up to fill the stage */
 .shot.device img {
   width: auto;
-  max-width: min(460px, 100%);
+  max-width: min(340px, 100%);
 }
 
 .shot figcaption {
@@ -783,7 +794,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
 /* Ken Burns: the Tahoe photo slowly drifts/zooms while hovered */
 .tile-bg {
   transform: scale(1.02);
-  transition: transform 8s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 8s cubic-bezier(0.22, 0.61, 0.36, 1), filter 0.7s ease;
   will-change: transform;
 }
 
