@@ -441,7 +441,11 @@ a.feedbar-brand:hover { opacity: 0.55; }
 
 .project-foot {
   border-top: 1px solid #eee;
-  padding-top: 26px;
+  /* the caption of the last screenshot sat almost on the rule; give the
+     divider real breathing room above so it reads as a section break, not a
+     crowded underline */
+  margin-top: clamp(52px, 8vw, 88px);
+  padding-top: clamp(52px, 8vw, 88px);
 }
 
 .next {
@@ -710,8 +714,8 @@ a.feedbar-brand:hover { opacity: 0.55; }
   font-size: 13px;
 }
 
-/* on phones the four project-nav links can't share the brand's line, so
-   stack them underneath and let them wrap among themselves */
+/* on phones, stack the brand over the Email/Discord links so the long brand
+   name and the links never collide or clip off the edge */
 @media (max-width: 620px) {
   .feedbar {
     flex-direction: column;
@@ -821,9 +825,17 @@ a.feedbar-brand:hover { opacity: 0.55; }
 }
 
 @media (max-width: 720px) {
+  /* stack the tiles full-width and uniform, instead of letting the flex row
+     shrink each one to its image width and stretch the gaps */
   .feed {
     flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     gap: 20px;
+  }
+  .tile {
+    flex: none;
+    width: 100%;
   }
   .tile-img {
     height: auto;
@@ -874,3 +886,4 @@ a.feedbar-brand:hover { opacity: 0.55; }
   from { opacity: 0; transform: translateY(16px); filter: saturate(0.35); }
   to { opacity: 1; transform: none; filter: saturate(1); }
 }
+
