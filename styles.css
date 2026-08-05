@@ -401,22 +401,6 @@ a.feedbar-brand:hover { opacity: 0.55; }
 
 .shot { margin: 0; }
 
-/* a lead shot is contained and centred rather than full-bleed, so the page
-   opens at a calmer size instead of a big banner */
-.shot.lead {
-  max-width: 720px;
-  margin-inline: auto;
-}
-
-/* a compact gallery for secondary detail shots — smaller than the lead
-   image, so a page can follow with a tidy row */
-.shot-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: clamp(16px, 2.2vw, 26px);
-  align-items: start;
-}
-
 .shot img {
   display: block;
   width: 100%;
