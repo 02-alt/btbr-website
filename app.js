@@ -110,6 +110,34 @@
     }
     wireFaq();
     wireImages();
+    wireReveal();
+  }
+
+  // ---- subtle scroll reveal: screenshots + the FAQ block fade/rise into view.
+  // Progressive enhancement — if there's no IntersectionObserver or the user
+  // asked for reduced motion, we never hide anything, so content stays visible.
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function wireReveal() {
+    if (reduceMotion || !("IntersectionObserver" in window)) return;
+    var targets = document.querySelectorAll(".shots .shot, .project-foot");
+    if (!targets.length) return;
+    if (!window.__btbrRevealObs) {
+      window.__btbrRevealObs = new IntersectionObserver(function (entries, obs) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) {
+            entries[i].target.classList.add("reveal-in");
+            obs.unobserve(entries[i].target);
+          }
+        }
+      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+    }
+    for (var j = 0; j < targets.length; j++) {
+      var t = targets[j];
+      if (t.__reveal) continue;
+      t.__reveal = true;
+      t.classList.add("reveal-init");
+      window.__btbrRevealObs.observe(t);
+    }
   }
 
   // make every screenshot (and the about photo) open in the shared lightbox
