@@ -574,6 +574,17 @@ a.feedbar-brand:hover { opacity: 0.55; }
 }
 .faq-item p a { color: var(--fg); }
 
+/* inline terminal commands inside an answer — a subtle chip, wraps rather
+   than overflowing the narrow answer column */
+.faq-item code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: #f1f1f1;
+  padding: 2px 7px;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
 /* ============ about page ============ */
 .about-page {
   flex: 1;
