@@ -388,17 +388,6 @@ a.feedbar-brand:hover { opacity: 0.55; }
   align-items: center;
 }
 
-/* quiet price tag that sits beside the download button — reads as metadata,
-   not a banner */
-.free-note {
-  align-self: center;
-  margin-left: -4px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--muted);
-  letter-spacing: 0.01em;
-}
-
 /* stacked full-width screenshots — sharp corners, the same square-cornered
    language as the home feed tiles */
 .shots {
