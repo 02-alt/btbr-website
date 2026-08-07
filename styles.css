@@ -554,11 +554,13 @@ a.feedbar-brand:hover { opacity: 0.55; }
   overflow: hidden;
 }
 
-/* JS drives the exact height; CSS makes the change smooth */
+/* JS drives the exact height; CSS makes it glide — a soft ease-out with a
+   whisper of rise + fade so the answer settles in instead of wiping open */
 .faq-body,
 .faq-item > p {
-  transition: height 0.34s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.26s ease;
+  transition: height 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.3s ease,
+    transform 0.42s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .faq-item { border-top: 1px solid #ececec; }

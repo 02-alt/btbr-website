@@ -63,6 +63,7 @@
         details.open = keepOpen;
         body.style.height = "";
         body.style.opacity = "";
+        body.style.transform = "";
         details.__busy = false;
       };
     }
@@ -73,21 +74,24 @@
       details.__busy = true;
 
       if (details.open) {
-        // closing: current height -> 0, then drop the open attribute
+        // closing: current height -> 0, with a whisper of downward drift + fade
         body.style.height = body.offsetHeight + "px";
         body.getBoundingClientRect(); // force reflow so the start height sticks
         body.style.height = "0px";
         body.style.opacity = "0";
+        body.style.transform = "translateY(6px)";
         body.addEventListener("transitionend", settle(false));
       } else {
-        // opening: 0 -> natural height, then release to auto
+        // opening: 0 -> natural height, the content gently rising + fading in
         details.open = true;
         var target = body.scrollHeight;
         body.style.height = "0px";
         body.style.opacity = "0";
+        body.style.transform = "translateY(6px)";
         body.getBoundingClientRect(); // reflow before animating up
         body.style.height = target + "px";
         body.style.opacity = "1";
+        body.style.transform = "translateY(0)";
         body.addEventListener("transitionend", settle(true));
       }
     });
