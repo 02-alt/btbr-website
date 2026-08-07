@@ -46,9 +46,10 @@
   }
 
   // ---- smooth open/close for <details> accordions (FAQ) ----
-  // Native <details> snaps open; we animate the content height instead so it
-  // glides. Works in every browser and degrades to an instant toggle if JS
-  // is off.
+  // Native <details> snaps open. We wrap the answer in a grid "reveal" row and
+  // ease grid-template-rows 0fr -> 1fr (with a matching opacity fade), which is
+  // buttery and needs no height measuring. Degrades to an instant toggle if JS
+  // is off, and collapses under prefers-reduced-motion.
   function wireDetails(details) {
     if (details.__smooth) return;
     details.__smooth = true;
@@ -56,17 +57,28 @@
     var body = details.querySelector(":scope > *:not(summary)");
     if (!summary || !body) return;
 
-    function settle(keepOpen) {
-      return function te(ev) {
-        if (ev.propertyName !== "height") return;
-        body.removeEventListener("transitionend", te);
-        details.open = keepOpen;
-        body.style.height = "";
-        body.style.opacity = "";
-        body.style.transform = "";
-        body.style.transition = "";
-        details.__busy = false;
-      };
+    // wrap the answer so we have a grid row to animate
+    var reveal = document.createElement("div");
+    reveal.className = "faq-reveal";
+    details.insertBefore(reveal, body);
+    reveal.appendChild(body);
+
+    // run fn once the row transition ends (with a timeout fallback so state
+    // never gets stuck if transitionend doesn't fire)
+    function onRowEnd(fn, ms) {
+      var called = false;
+      function once() {
+        if (called) return;
+        called = true;
+        reveal.removeEventListener("transitionend", handler);
+        clearTimeout(timer);
+        fn();
+      }
+      function handler(ev) {
+        if (ev.target === reveal && ev.propertyName === "grid-template-rows") once();
+      }
+      reveal.addEventListener("transitionend", handler);
+      var timer = setTimeout(once, ms);
     }
 
     summary.addEventListener("click", function (e) {
@@ -75,27 +87,20 @@
       details.__busy = true;
 
       if (details.open) {
-        // closing: fade the text out quickly, then collapse cleanly on a gentle
-        // curve — no drift, so nothing slides as it clips away
-        body.style.transition =
-          "height 0.32s cubic-bezier(0.4, 0, 0.5, 1), opacity 0.15s ease";
-        body.style.height = body.offsetHeight + "px";
-        body.getBoundingClientRect(); // force reflow so the start height sticks
-        body.style.height = "0px";
-        body.style.opacity = "0";
-        body.addEventListener("transitionend", settle(false));
+        // closing: ease the row back to 0fr, then drop the open attribute
+        details.classList.remove("is-open");
+        onRowEnd(function () {
+          details.open = false;
+          details.__busy = false;
+        }, 500);
       } else {
-        // opening: 0 -> natural height, the content gently rising + fading in
+        // opening: show the content collapsed (0fr), then flip to 1fr
         details.open = true;
-        var target = body.scrollHeight;
-        body.style.height = "0px";
-        body.style.opacity = "0";
-        body.style.transform = "translateY(6px)";
-        body.getBoundingClientRect(); // reflow before animating up
-        body.style.height = target + "px";
-        body.style.opacity = "1";
-        body.style.transform = "translateY(0)";
-        body.addEventListener("transitionend", settle(true));
+        reveal.getBoundingClientRect(); // lock in the 0fr start state
+        details.classList.add("is-open");
+        onRowEnd(function () {
+          details.__busy = false;
+        }, 650);
       }
     });
   }

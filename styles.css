@@ -547,13 +547,29 @@ a.feedbar-brand:hover { opacity: 0.55; }
   overflow: hidden;
 }
 
-/* JS drives the exact height; CSS makes it glide — a soft ease-out with a
-   whisper of rise + fade so the answer settles in instead of wiping open */
-.faq-body,
-.faq-item > p {
-  transition: height 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
-    opacity 0.3s ease,
-    transform 0.42s cubic-bezier(0.22, 0.61, 0.36, 1);
+/* Smooth accordion: JS wraps each answer in a .faq-reveal grid row and toggles
+   .is-open. Easing grid-template-rows 0fr -> 1fr is buttery — no height
+   measuring, no end-snap, no clip-slide. The base (collapsed) transition is the
+   CLOSING one; the .is-open block supplies the OPENING one, so each direction is
+   tuned separately. */
+.faq-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  /* closing: fade the text out fast, collapse the row on a gentle curve */
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.4, 1),
+    opacity 0.16s ease;
+}
+.faq-reveal > * {
+  min-height: 0; /* let the grid row actually collapse to nothing */
+  overflow: hidden;
+}
+.faq-item.is-open > .faq-reveal {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  /* opening: soft ease-out expand + gentle fade in */
+  transition: grid-template-rows 0.44s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.34s ease;
 }
 
 .faq-item { border-top: 1px solid #ececec; }
