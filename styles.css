@@ -306,6 +306,26 @@ a.feedbar-brand {
 }
 a.feedbar-brand:hover { opacity: 0.55; }
 
+/* pin the brand bar to the top of the panel while reading a long app page, so
+   the way back to all apps is always one click away. Stretch it to the panel's
+   edges (then restore the inset padding) so the pinned bar spans the full width
+   and hides content scrolling underneath. */
+.frame:has(.project) .feedbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: -40px -32px 0;
+  padding: 40px 32px 14px;
+  background: var(--panel);
+  border-radius: 26px 26px 0 0;
+}
+@media (max-width: 560px) {
+  .frame:has(.project) .feedbar {
+    margin: -32px -18px 0;
+    padding: 32px 18px 12px;
+  }
+}
+
 .project {
   flex: 1;
   padding: 44px 0 4px;
@@ -386,6 +406,21 @@ a.feedbar-brand:hover { opacity: 0.55; }
   height: 46px;
   display: inline-flex;
   align-items: center;
+}
+
+/* quiet neutral pill at the foot of each app page that returns to the app menu
+   — reads as a way back, not a second call to action */
+.back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.01em;
+}
+.back-home .arrow {
+  transition: transform 0.15s ease;
+}
+.back-home:hover .arrow {
+  transform: translateX(-3px);
 }
 
 /* stacked full-width screenshots — sharp corners, the same square-cornered
