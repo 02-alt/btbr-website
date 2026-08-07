@@ -528,23 +528,16 @@ a.feedbar-brand:hover { opacity: 0.55; }
   align-items: center;
 }
 
-.faq > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 12px 24px;
-  border-radius: 999px;
-  background: #ededed;
-  color: var(--fg);
+/* the FAQ header is just a quiet section label now — no longer a button that
+   collapses the whole block */
+.faq-title {
+  margin: 0;
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.02em;
-  transition: transform 0.15s ease, background 0.15s ease;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
-
-.faq > summary::-webkit-details-marker { display: none; }
-.faq > summary::marker { content: ""; }
-.faq > summary:hover { transform: translateY(-2px); }
-.faq[open] > summary { background: #e3e3e3; }
 
 .faq-body {
   width: 100%;
