@@ -939,18 +939,33 @@ a.feedbar-brand:hover { opacity: 0.55; }
    (View Transitions API; these pseudo-elements exist only mid-transition, and
    only when JS starts one — never under reduced motion) --- */
 ::view-transition-group(app-hero) {
-  animation-duration: 0.52s;
+  animation-duration: 0.44s;
   animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
+/* keep both snapshots undistorted while the box morphs from the tall card to
+   the wide screenshot — cover-crop, never squish */
 ::view-transition-old(app-hero),
 ::view-transition-new(app-hero) {
-  /* the card art and the real screenshot differ, so cross-fade the two
-     snapshots while the box morphs, instead of hard-swapping them */
-  mix-blend-mode: normal;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.42s;
-  animation-timing-function: ease;
-}
+/* fade the card art out early so it doesn't ghost against the real screenshot */
+::view-transition-old(app-hero) { animation: cf-hero-out 0.22s ease both; }
+::view-transition-new(app-hero) { animation: cf-hero-in 0.44s ease both; }
+@keyframes cf-hero-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cf-hero-in { from { opacity: 0; } 50% { opacity: 1; } to { opacity: 1; } }
+
+/* the incoming page materialises OVER the old one (which stays opaque
+   underneath) — a clean dissolve with no mid-transition fade-to-white flash */
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) { animation: cf-root-in 0.34s ease both; }
+@keyframes cf-root-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* during a card-driven morph, skip the destination's own entrance/reveal so the
+   captured snapshot is fully painted (no empty-masthead pop, no hidden hero) */
+.cf-instant .project-lede,
+.cf-instant .project-side { animation: none; }
+.cf-instant .reveal-init { opacity: 1; transform: none; }
 

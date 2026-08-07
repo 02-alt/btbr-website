@@ -175,6 +175,9 @@
     var themed = incoming.classList.contains("about-frame");
     var enter = !themed && !opts.noEnter;
     if (enter) incoming.classList.add("frame-enter"); // start faded/lifted
+    // a card morph captures a snapshot of the incoming page — suppress its own
+    // entrance/reveal so that snapshot is fully painted (clean morph, no pop)
+    if (opts.heroName) incoming.classList.add("cf-instant");
     cur.replaceWith(incoming);
     document.title = doc.title;
     window.scrollTo(0, 0);
