@@ -64,6 +64,7 @@
         body.style.height = "";
         body.style.opacity = "";
         body.style.transform = "";
+        body.style.transition = "";
         details.__busy = false;
       };
     }
@@ -74,12 +75,14 @@
       details.__busy = true;
 
       if (details.open) {
-        // closing: current height -> 0, with a whisper of downward drift + fade
+        // closing: fade the text out quickly, then collapse cleanly on a gentle
+        // curve — no drift, so nothing slides as it clips away
+        body.style.transition =
+          "height 0.32s cubic-bezier(0.4, 0, 0.5, 1), opacity 0.15s ease";
         body.style.height = body.offsetHeight + "px";
         body.getBoundingClientRect(); // force reflow so the start height sticks
         body.style.height = "0px";
         body.style.opacity = "0";
-        body.style.transform = "translateY(6px)";
         body.addEventListener("transitionend", settle(false));
       } else {
         // opening: 0 -> natural height, the content gently rising + fading in
