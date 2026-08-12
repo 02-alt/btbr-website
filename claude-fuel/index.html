@@ -118,6 +118,11 @@
             You only have to do this once — afterwards it opens normally.</p>
           </details>
           <details class="faq-item">
+            <summary>Sign-in fails with “rate limited” or “HTTP 429” — what now?</summary>
+            <p>Nothing's broken. Anthropic's login endpoint limits how often sign-in can be tried from one network, and a quick burst of repeated attempts is usually enough to trip it. It's temporary.<br /><br />
+            <strong>Stop retrying and wait ~15–30 minutes</strong> — each retry while limited can extend the cooldown, so waiting is the fix. Then hit <strong>Sign in</strong> once. A VPN or shared/corporate network can make this more likely (many people on one IP), but isn't required to hit it — so no need to disable anything.</p>
+          </details>
+          <details class="faq-item">
             <summary>What version is this?</summary>
             <p><strong>1.26.08</strong> — the August 2026 build. Versions are dated <strong>1.YY.MM</strong> (year then month), so you can always tell at a glance how recent your copy is.</p>
           </details>
