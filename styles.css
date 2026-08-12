@@ -466,6 +466,23 @@ a.feedbar-brand:hover { opacity: 0.55; }
   max-width: min(340px, 100%);
 }
 
+/* two screenshots side by side; stacks on narrow screens. both here are bare,
+   transparent window captures, so drop the hairline the opaque shots use. */
+.shot-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(30px, 4vw, 48px);
+  align-items: flex-start;
+}
+.shot-pair .shot {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.shot-pair .shot img { outline: none; }
+/* the floating window can't sit on white — give it the same soft stage as the
+   device renders (the panel next to it defines its own edges). */
+.shot-pair .shot-stage img { width: 100%; }
+
 .shot figcaption {
   margin-top: 14px;
   font-size: 13px;
