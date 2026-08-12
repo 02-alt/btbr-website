@@ -476,7 +476,9 @@ a.feedbar-brand:hover { opacity: 0.55; }
   overflow: hidden;
   cursor: zoom-in;
 }
-.deskshot img {
+/* these windows are transparent PNGs, so suppress the hairline the opaque
+   photo shots use — it would otherwise trace a faint box around each one */
+.shot .deskshot img {
   position: absolute;
   height: auto;
   outline: none;
