@@ -466,22 +466,23 @@ a.feedbar-brand:hover { opacity: 0.55; }
   max-width: min(340px, 100%);
 }
 
-/* two screenshots side by side; stacks on narrow screens. both here are bare,
-   transparent window captures, so drop the hairline the opaque shots use. */
-.shot-pair {
-  display: flex;
-  flex-wrap: wrap;
-  gap: clamp(30px, 4vw, 48px);
-  align-items: flex-start;
+/* a desktop composite: both windows sitting on the macOS wallpaper in one card —
+   the control panel, with the floating picture-in-picture window above it */
+.deskshot {
+  position: relative;
+  display: block;
+  aspect-ratio: 2000 / 1125;
+  background: #23303f url(/assets/work/tahoe-bg.jpg) center / cover no-repeat;
+  overflow: hidden;
+  cursor: zoom-in;
 }
-.shot-pair .shot {
-  flex: 1 1 300px;
-  min-width: 0;
+.deskshot img {
+  position: absolute;
+  height: auto;
+  outline: none;
 }
-.shot-pair .shot img { outline: none; }
-/* the floating window can't sit on white — give it the same soft stage as the
-   device renders (the panel next to it defines its own edges). */
-.shot-pair .shot-stage img { width: 100%; }
+.shot .deskshot-panel { width: 32%; left: 8%; top: 20%; }
+.shot .deskshot-float { width: 46%; right: 6%; top: 12%; }
 
 .shot figcaption {
   margin-top: 14px;
