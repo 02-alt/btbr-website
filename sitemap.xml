@@ -3,8 +3,17 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://buildtoberemembered.com/</loc>
-    <lastmod>2026-08-05</lastmod>
+    <lastmod>2026-08-18</lastmod>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://buildtoberemembered.com/encore/</loc>
+    <lastmod>2026-08-18</lastmod>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://buildtoberemembered.com/assets/og/encore.jpg</image:loc>
+      <image:title>Encore — play Game Boy Advance games on your Mac</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://buildtoberemembered.com/reed/</loc>
