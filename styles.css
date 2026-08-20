@@ -256,6 +256,12 @@ body {
   color: #000;
 }
 
+/* TestFlight has no official badge — this matches the site's pills, in its blue */
+.pill.beta {
+  background: #0a84ff;
+  color: #fff;
+}
+
 .pill:hover {
   transform: translateY(-2px);
 }
