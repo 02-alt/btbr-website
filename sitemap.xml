@@ -3,21 +3,21 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://buildtoberemembered.com/</loc>
-    <lastmod>2026-08-18</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://buildtoberemembered.com/encore/</loc>
-    <lastmod>2026-08-18</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/encore.jpg</image:loc>
-      <image:title>Encore — play Game Boy Advance games on your Mac</image:title>
+      <image:title>Encore — a Game Boy and Game Boy Advance emulator for Mac</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://buildtoberemembered.com/reed/</loc>
-    <lastmod>2026-08-05</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/reed.jpg</image:loc>
@@ -26,7 +26,7 @@
   </url>
   <url>
     <loc>https://buildtoberemembered.com/claude-fuel/</loc>
-    <lastmod>2026-08-05</lastmod>
+    <lastmod>2026-08-12</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/claude-fuel.jpg</image:loc>
@@ -35,7 +35,7 @@
   </url>
   <url>
     <loc>https://buildtoberemembered.com/tidal/</loc>
-    <lastmod>2026-08-05</lastmod>
+    <lastmod>2026-08-12</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/tidal.jpg</image:loc>
@@ -44,11 +44,16 @@
   </url>
   <url>
     <loc>https://buildtoberemembered.com/pik/</loc>
-    <lastmod>2026-08-05</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/pik.jpg</image:loc>
       <image:title>Pik — pop a Discord stream into a floating window</image:title>
     </image:image>
+  </url>
+  <url>
+    <loc>https://buildtoberemembered.com/about/</loc>
+    <lastmod>2026-08-21</lastmod>
+    <priority>0.5</priority>
   </url>
 </urlset>
