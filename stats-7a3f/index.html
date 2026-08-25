@@ -4,110 +4,133 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex, nofollow, noarchive" />
+<meta name="theme-color" content="#ffffff" />
 <title>stats</title>
+<link rel="icon" type="image/png" href="/assets/favicon.png?v=3" />
+<link rel="stylesheet" href="/styles.css" />
 <style>
-  :root{
-    --bg:#0b0b0e; --panel:#141419; --line:rgba(255,255,255,.08);
-    --ink:#f5f5f7; --dim:#9a9aa2; --accent:#2997ff; --good:#30d158;
-    font-family:-apple-system,"SF Pro Display","Helvetica Neue",Helvetica,Arial,sans-serif;
+  /* page-specific, built on the site's design tokens */
+  .stats { width: 100%; max-width: 1080px; margin-inline: auto; }
+  .stats-head { display: flex; align-items: baseline; justify-content: space-between;
+                flex-wrap: wrap; gap: 10px; }
+  .stats-asof { font-size: 13px; color: var(--muted); }
+
+  .stats-total {
+    margin-top: 26px; padding: 30px 32px; border-radius: 20px;
+    background: var(--fg); color: #fff;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
   }
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;letter-spacing:-0.01em;min-height:100vh}
+  .stats-total .n { font-size: 60px; font-weight: 700; letter-spacing: -0.04em; line-height: 0.9; }
+  .stats-total .l { margin-top: 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+                    text-transform: uppercase; color: rgba(255,255,255,0.55); }
+  .stats-total .badge { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);
+                    border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 7px 14px; white-space: nowrap; }
 
-  /* ---- gate ---- */
-  #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-        background:radial-gradient(120% 120% at 50% 30%,#16181d,#000 65%);z-index:10}
-  #gate .box{width:320px;text-align:center}
-  #gate h1{font-size:20px;font-weight:600;margin-bottom:6px}
-  #gate p{font-size:13px;color:var(--dim);margin-bottom:22px}
-  #gate input{width:100%;padding:13px 16px;border-radius:12px;border:1px solid var(--line);
-        background:#0f0f13;color:var(--ink);font-size:16px;text-align:center;outline:none}
-  #gate input:focus{border-color:var(--accent)}
-  #gate .err{color:#ff453a;font-size:12px;height:16px;margin-top:12px}
+  .stats-apps { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .scard { background: #f7f7f8; border: 1px solid rgba(0,0,0,0.06); border-radius: 18px; padding: 22px 24px; }
+  .scard-row { display: flex; align-items: center; gap: 18px; }
+  .scard-row img { width: 50px; height: 50px; border-radius: 12px;
+                   filter: drop-shadow(0 6px 14px rgba(0,0,0,0.14)); }
+  .scard-name { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+  .scard-cat { margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+               text-transform: uppercase; color: var(--muted); }
+  .scard-n { margin-left: auto; text-align: right; }
+  .scard-n b { font-size: 34px; font-weight: 700; letter-spacing: -0.03em; }
+  .scard-n span { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+                  text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .scard-vers { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.07);
+                display: flex; flex-wrap: wrap; gap: 8px; }
+  .scard-vers .v { font-size: 12px; color: var(--muted); background: #fff;
+                   border: 1px solid rgba(0,0,0,0.08); border-radius: 8px; padding: 5px 10px; }
+  .scard-vers .v b { color: var(--fg); font-weight: 700; }
 
-  /* ---- dashboard ---- */
-  #app{display:none;max-width:920px;margin:0 auto;padding:56px 28px 80px}
-  .head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
-  .head h1{font-size:30px;font-weight:700;letter-spacing:-0.02em}
-  .head .sub{font-size:13px;color:var(--dim)}
-  .total{margin:26px 0 34px;padding:26px 28px;background:var(--panel);border:1px solid var(--line);border-radius:20px;
-        display:flex;align-items:center;justify-content:space-between}
-  .total .n{font-size:52px;font-weight:700;letter-spacing:-0.03em;line-height:1}
-  .total .l{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
-  .total .badge{font-size:12px;color:var(--good);border:1px solid rgba(48,209,88,.35);border-radius:999px;padding:6px 12px}
-  .apps{display:flex;flex-direction:column;gap:14px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px}
-  .card .row{display:flex;align-items:center;gap:16px}
-  .card img{width:46px;height:46px;border-radius:11px;box-shadow:0 8px 20px rgba(0,0,0,.5)}
-  .card .name{font-size:19px;font-weight:600}
-  .card .cat{font-size:12px;color:var(--dim);margin-top:2px}
-  .card .count{margin-left:auto;text-align:right}
-  .card .count b{font-size:30px;font-weight:700;letter-spacing:-0.02em}
-  .card .count span{display:block;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
-  .card .versions{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
-        display:flex;flex-wrap:wrap;gap:8px}
-  .card .v{font-size:12px;color:var(--dim);background:#0f0f14;border:1px solid var(--line);
-        border-radius:8px;padding:5px 10px}
-  .card .v b{color:var(--ink);font-weight:600}
-  .foot{margin-top:30px;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--dim)}
-  .foot button{font:inherit;font-size:12px;color:var(--accent);background:none;border:1px solid var(--line);
-        border-radius:999px;padding:7px 14px;cursor:pointer}
-  .foot button:hover{border-color:var(--accent)}
-  .note{margin-top:22px;font-size:12px;color:#6a6a72;line-height:1.5}
-  #err{display:none;margin:20px 0;padding:16px 18px;border-radius:14px;background:rgba(255,69,58,.08);
-        border:1px solid rgba(255,69,58,.3);color:#ff8a80;font-size:13px}
+  .stats-foot { margin-top: 26px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .stats-foot .rate { font-size: 12px; color: var(--muted); }
+  .stats-note { margin-top: 20px; font-size: 12.5px; line-height: 1.55; color: var(--muted); max-width: 720px; }
+  #stats-err { display: none; margin-top: 20px; padding: 16px 18px; border-radius: 14px;
+               background: #fdecec; border: 1px solid #f3c2c2; color: #a12a2a; font-size: 13px; }
+  .pill.mini { padding: 10px 20px; font-size: 14px; cursor: pointer; border: none; }
+
+  /* password gate */
+  #gate { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+          background: var(--page); }
+  #gate .box { background: var(--panel); border-radius: 22px; padding: 40px 36px; width: 340px;
+               text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.12); }
+  #gate strong { font-size: 18px; }
+  #gate p { font-size: 13px; color: var(--muted); margin: 8px 0 22px; }
+  #gate input { width: 100%; padding: 13px 16px; border-radius: 12px; border: 1px solid #e2e2e2;
+                background: #fafafa; font: inherit; font-size: 16px; text-align: center; outline: none; }
+  #gate input:focus { border-color: #111; }
+  #gate .gerr { color: #c0392b; font-size: 12px; height: 16px; margin-top: 12px; }
 </style>
 </head>
 <body>
 
   <div id="gate">
     <div class="box">
-      <h1>builtoberemembered</h1>
+      <strong>builtoberemembered</strong>
       <p>Private stats · enter password</p>
       <form id="gateForm"><input id="pw" type="password" autocomplete="off" autofocus placeholder="••••" /></form>
-      <div class="err" id="gerr"></div>
+      <div class="gerr" id="gerr"></div>
     </div>
   </div>
 
-  <main id="app">
-    <div class="head">
-      <h1>Downloads</h1>
-      <div class="sub" id="asof"></div>
-    </div>
-    <div id="err"></div>
-    <div class="total">
-      <div><div class="n" id="grand">—</div><div class="l">Total downloads</div></div>
-      <div class="badge">live · GitHub Releases</div>
-    </div>
-    <div class="apps" id="apps"></div>
-    <div class="foot">
-      <button id="refresh">↻ Refresh</button>
-      <span id="rate"></span>
-    </div>
-    <p class="note">
-      Counts are every download of each app's DMG from GitHub Releases, updated live.
-      Downloads before this switch aren't included — the tally starts now.
-      Numbers can lag a few minutes and don't de-duplicate repeat downloads from the same person.
-    </p>
-  </main>
+  <div class="frame" id="frame" style="display:none">
+    <header class="feedbar">
+      <a class="feedbar-brand" href="/"><strong>builtoberemembered</strong> <span>Free macOS apps</span></a>
+    </header>
+
+    <main class="project">
+      <div class="stats">
+        <div class="stats-head">
+          <h1 class="project-title">Downloads</h1>
+          <span class="stats-asof" id="asof"></span>
+        </div>
+
+        <div id="stats-err"></div>
+
+        <div class="stats-total">
+          <div><div class="n" id="grand">—</div><div class="l">Total downloads</div></div>
+          <div class="badge">live · GitHub Releases</div>
+        </div>
+
+        <div class="stats-apps" id="apps"></div>
+
+        <div class="stats-foot">
+          <button class="pill mini" id="refresh">↻ Refresh</button>
+          <span class="rate" id="rate"></span>
+        </div>
+
+        <p class="stats-note">
+          Counts are every download of each app's DMG from GitHub Releases, updated live.
+          Downloads from before this was set up aren't included — the tally starts now.
+          Numbers can lag a few minutes and don't de-duplicate repeat downloads from the same person.
+        </p>
+      </div>
+    </main>
+
+    <footer class="foot project-foot">
+      <a class="pill back-home" href="/"><span class="arrow">←</span> Home</a>
+      <a class="sig" href="/about/" data-text="build to be remembered">build to be remembered</a>
+    </footer>
+  </div>
 
 <script>
 (function(){
   var REPO = "02-alt/btbr-website";
   var APPS = {
-    encore:        {name:"Encore",            cat:"Game Emulator",    icon:"/assets/encore.png"},
-    reed:          {name:"Reed",              cat:"RSS Reader",       icon:"/assets/rssreader.png"},
-    "claude-fuel": {name:"Claude Fuel",       cat:"Usage Meter",      icon:"/assets/claude-fuel.png"},
-    tidal:         {name:"Tidal Mini Player", cat:"Music Player",     icon:"/assets/tidal.png"},
+    encore:        {name:"Encore",            cat:"Game Emulator",     icon:"/assets/encore.png"},
+    reed:          {name:"Reed",              cat:"RSS Reader",        icon:"/assets/rssreader.png"},
+    "claude-fuel": {name:"Claude Fuel",       cat:"Usage Meter",       icon:"/assets/claude-fuel.png"},
+    tidal:         {name:"Tidal Mini Player", cat:"Music Player",      icon:"/assets/tidal.png"},
     pik:           {name:"Pik",               cat:"Picture in Picture",icon:"/assets/pik.png"}
   };
   var ORDER = ["encore","reed","claude-fuel","tidal","pik"];
 
-  // --- password gate (casual: data is public anyway) ---
   function hash(s){var x=5381;for(var i=0;i<s.length;i++){x=((x*33)+s.charCodeAt(i))>>>0;}return x;}
-  var PASS = 5861379;
+  var PASS = 5861379; // hash of the password (data is public anyway; this just hides the page)
   function unlock(){ document.getElementById("gate").style.display="none";
-                     document.getElementById("app").style.display="block"; load(); }
+                     document.getElementById("frame").style.display="flex"; load(); }
   if(sessionStorage.getItem("btbrStats")==="1"){ unlock(); }
   document.getElementById("gateForm").addEventListener("submit",function(e){
     e.preventDefault();
@@ -118,7 +141,7 @@
   function fmt(n){ return n.toLocaleString("en-US"); }
 
   async function load(){
-    var errEl=document.getElementById("err"); errEl.style.display="none";
+    var errEl=document.getElementById("stats-err"); errEl.style.display="none";
     try{
       var res=await fetch("https://api.github.com/repos/"+REPO+"/releases?per_page=100",
                           {headers:{"Accept":"application/vnd.github+json"}});
@@ -134,17 +157,16 @@
         grand+=sum;
         var vers=assets.slice().sort(function(a,b){return b.download_count-a.download_count;})
           .map(function(x){return '<span class="v"><b>'+fmt(x.download_count)+'</b> · '+x.name.replace(/\.dmg$/,'')+'</span>';}).join("");
-        html+='<div class="card"><div class="row">'
-             +'<img src="'+app.icon+'" alt=""><div><div class="name">'+app.name+'</div>'
-             +'<div class="cat">'+app.cat+'</div></div>'
-             +'<div class="count"><b>'+fmt(sum)+'</b><span>downloads</span></div></div>'
-             +(vers?'<div class="versions">'+vers+'</div>':'')+'</div>';
+        html+='<div class="scard"><div class="scard-row">'
+             +'<img src="'+app.icon+'" alt=""><div><div class="scard-name">'+app.name+'</div>'
+             +'<div class="scard-cat">'+app.cat+'</div></div>'
+             +'<div class="scard-n"><b>'+fmt(sum)+'</b><span>downloads</span></div></div>'
+             +(vers?'<div class="scard-vers">'+vers+'</div>':'')+'</div>';
       });
       document.getElementById("apps").innerHTML=html;
       document.getElementById("grand").textContent=fmt(grand);
-      var now=new Date();
-      document.getElementById("asof").textContent="as of "+now.toLocaleString();
-      document.getElementById("rate").textContent = remain?("· GitHub API calls left this hour: "+remain):"";
+      document.getElementById("asof").textContent="as of "+new Date().toLocaleString();
+      document.getElementById("rate").textContent = remain?("· "+remain+" GitHub checks left this hour"):"";
     }catch(e){
       errEl.textContent="Couldn't load stats: "+e.message+". (GitHub allows ~60 checks per hour — try again shortly.)";
       errEl.style.display="block";
