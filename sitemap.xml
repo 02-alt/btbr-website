@@ -3,12 +3,21 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://buildtoberemembered.com/</loc>
-    <lastmod>2026-08-21</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://buildtoberemembered.com/notch/</loc>
+    <lastmod>2026-08-27</lastmod>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://buildtoberemembered.com/assets/og/notch.jpg</image:loc>
+      <image:title>NotchGlass — everything, in your Mac's notch</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://buildtoberemembered.com/encore/</loc>
-    <lastmod>2026-08-21</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/encore.jpg</image:loc>
@@ -17,20 +26,11 @@
   </url>
   <url>
     <loc>https://buildtoberemembered.com/reed/</loc>
-    <lastmod>2026-08-21</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/reed.jpg</image:loc>
       <image:title>Reed — a native macOS RSS reader</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://buildtoberemembered.com/claude-fuel/</loc>
-    <lastmod>2026-08-12</lastmod>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://buildtoberemembered.com/assets/og/claude-fuel.jpg</image:loc>
-      <image:title>Claude Fuel — a macOS menu-bar token gauge</image:title>
     </image:image>
   </url>
   <url>
@@ -40,15 +40,6 @@
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/tidal.jpg</image:loc>
       <image:title>Tidal Mini Player — a menu-bar player for TIDAL</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://buildtoberemembered.com/pik/</loc>
-    <lastmod>2026-08-21</lastmod>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://buildtoberemembered.com/assets/og/pik.jpg</image:loc>
-      <image:title>Pik — pop a Discord stream into a floating window</image:title>
     </image:image>
   </url>
   <url>

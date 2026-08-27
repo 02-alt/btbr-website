@@ -119,13 +119,12 @@
 (function(){
   var REPO = "02-alt/btbr-website";
   var APPS = {
+    notch:         {name:"NotchGlass",        cat:"Notch",             icon:"/assets/notch.png"},
     encore:        {name:"Encore",            cat:"Game Emulator",     icon:"/assets/encore.png"},
     reed:          {name:"Reed",              cat:"RSS Reader",        icon:"/assets/rssreader.png"},
-    "claude-fuel": {name:"Claude Fuel",       cat:"Usage Meter",       icon:"/assets/claude-fuel.png"},
-    tidal:         {name:"Tidal Mini Player", cat:"Music Player",      icon:"/assets/tidal.png"},
-    pik:           {name:"Pik",               cat:"Picture in Picture",icon:"/assets/pik.png"}
+    tidal:         {name:"Tidal Mini Player", cat:"Music Player",      icon:"/assets/tidal.png"}
   };
-  var ORDER = ["encore","reed","claude-fuel","tidal","pik"];
+  var ORDER = ["notch","encore","reed","tidal"];
 
   function hash(s){var x=5381;for(var i=0;i<s.length;i++){x=((x*33)+s.charCodeAt(i))>>>0;}return x;}
   var PASS = 5861379; // hash of the password (data is public anyway; this just hides the page)
