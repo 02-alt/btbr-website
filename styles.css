@@ -478,6 +478,12 @@ a.feedbar-brand:hover { opacity: 0.55; }
   background: #f2f2f2;
   padding: clamp(28px, 6vw, 84px);
 }
+
+/* the Dynamic Island lives at the top of the screen — sit it near the top of
+   its stage (the padding keeps it off the edge, so it floats, not sticks) */
+.shot-stage.stage-top {
+  align-items: flex-start;
+}
 /* these are small menu-bar widget captures (~310–420px wide), so cap them
    near their native size rather than blowing them up to fill the stage */
 .shot.device img {
