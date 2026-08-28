@@ -50,32 +50,11 @@
   #stats-err { display: none; margin-top: 20px; padding: 16px 18px; border-radius: 14px;
                background: #fdecec; border: 1px solid #f3c2c2; color: #a12a2a; font-size: 13px; }
   .pill.mini { padding: 10px 20px; font-size: 14px; cursor: pointer; border: none; }
-
-  /* password gate */
-  #gate { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
-          background: var(--page); }
-  #gate .box { background: var(--panel); border-radius: 22px; padding: 40px 36px; width: 340px;
-               text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.12); }
-  #gate strong { font-size: 18px; }
-  #gate p { font-size: 13px; color: var(--muted); margin: 8px 0 22px; }
-  #gate input { width: 100%; padding: 13px 16px; border-radius: 12px; border: 1px solid #e2e2e2;
-                background: #fafafa; font: inherit; font-size: 16px; text-align: center; outline: none; }
-  #gate input:focus { border-color: #111; }
-  #gate .gerr { color: #c0392b; font-size: 12px; height: 16px; margin-top: 12px; }
 </style>
 </head>
 <body>
 
-  <div id="gate">
-    <div class="box">
-      <strong>builtoberemembered</strong>
-      <p>Private stats · enter password</p>
-      <form id="gateForm"><input id="pw" type="password" autocomplete="off" autofocus placeholder="••••" /></form>
-      <div class="gerr" id="gerr"></div>
-    </div>
-  </div>
-
-  <div class="frame" id="frame" style="display:none">
+  <div class="frame" id="frame">
     <header class="feedbar">
       <a class="feedbar-brand" href="/"><strong>builtoberemembered</strong> <span>Free macOS apps</span></a>
     </header>
@@ -126,16 +105,7 @@
   };
   var ORDER = ["notch","encore","reed","tidal"];
 
-  function hash(s){var x=5381;for(var i=0;i<s.length;i++){x=((x*33)+s.charCodeAt(i))>>>0;}return x;}
-  var PASS = 5861379; // hash of the password (data is public anyway; this just hides the page)
-  function unlock(){ document.getElementById("gate").style.display="none";
-                     document.getElementById("frame").style.display="flex"; load(); }
-  if(sessionStorage.getItem("btbrStats")==="1"){ unlock(); }
-  document.getElementById("gateForm").addEventListener("submit",function(e){
-    e.preventDefault();
-    if(hash(document.getElementById("pw").value)===PASS){ sessionStorage.setItem("btbrStats","1"); unlock(); }
-    else { document.getElementById("gerr").textContent="Nope."; document.getElementById("pw").value=""; }
-  });
+  load();
 
   function fmt(n){ return n.toLocaleString("en-US"); }
 
