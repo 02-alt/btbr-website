@@ -897,6 +897,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .feedfoot {
   display: flex;
   justify-content: center;
+  gap: 18px;
   padding-top: 18px;
 }
 
