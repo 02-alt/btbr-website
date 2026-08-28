@@ -35,21 +35,25 @@
     .fini .about-message {
       font-family: "ABC Marist", "Times New Roman", Times, Georgia, serif;
       font-weight: 400;
-      letter-spacing: -0.01em;
+      letter-spacing: 0;
       text-align: left;
-      font-size: clamp(15px, 2.2vw, 18px);
+      /* small and muted, like a photo caption */
+      font-size: clamp(12px, 1.5vw, 13.5px);
+      line-height: 1.5;
+      color: var(--muted);
       /* match the picture's width so the line wraps to the same measure */
       max-width: clamp(280px, 32vw, 460px);
       width: 100%;
     }
     .fini .about-message .sign {
       display: block;
-      margin-top: 0.9em;
+      margin-top: 0.6em;
     }
-    /* the closing line shares the picture's width, left-aligned */
+    /* the caption sits just under the picture, sharing its width */
     .fini .fini-copy {
       width: 100%;
       max-width: clamp(280px, 32vw, 460px);
+      margin-top: -24px;
     }
     /* minimalist hairline frame around the pic */
     .fini .about-photo {
