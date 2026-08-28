@@ -46,31 +46,11 @@
       display: block;
       margin-top: 0.9em;
     }
-    /* text + play button share the picture's width, left-aligned */
+    /* the closing line shares the picture's width, left-aligned */
     .fini .fini-copy {
       width: 100%;
       max-width: clamp(280px, 32vw, 460px);
     }
-    /* small minimalist play / pause control */
-    .fini .fini-play {
-      margin-top: 18px;
-      width: 42px;
-      height: 42px;
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.14);
-      background: #fff;
-      color: var(--fg);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease;
-    }
-    .fini .fini-play:hover {
-      transform: translateY(-2px);
-      background: #fafafa;
-    }
-    .fini .fini-play .ic-play { margin-left: 2px; }
     /* minimalist hairline frame around the pic */
     .fini .about-photo {
       border: 1px solid rgba(0, 0, 0, 0.12);
@@ -89,17 +69,17 @@
     </header>
 
     <main class="about-page">
-      <img class="about-photo" src="/assets/fini-tweet.png" width="877" height="814" alt="Tweet by @fabiankunick: delete everything / it never happened / go different country / marry that girl / work as gardener / never use computer again" />
+      <img class="about-photo" src="/assets/fini-desktop.jpg" width="1600" height="1000" alt="A Mac desktop with a grid of many screenshots over a black-and-white portrait wallpaper" />
 
       <div class="fini-copy">
         <p class="about-message">
           one day with it, one day without: one step at the time i look forward for my time.
           <span class="soft sign">buildtobeended</span>
         </p>
-        <button class="fini-play" type="button" aria-label="Play" onclick="var b=this,f=b._yt;if(!f){f=document.createElement('iframe');f.allow='autoplay';f.style.cssText='position:absolute;left:-9999px;width:1px;height:1px;border:0';f.src='https://www.youtube.com/embed/o4m5jQy5A2U?enablejsapi=1&amp;autoplay=1&amp;playsinline=1&amp;list=RDo4m5jQy5A2U';document.body.appendChild(f);b._yt=f;b._on=true;}else{b._on=!b._on;f.contentWindow.postMessage(JSON.stringify({event:'command',func:b._on?'playVideo':'pauseVideo',args:[]}),'*');}b.querySelector('.ic-play').style.display=b._on?'none':'';b.querySelector('.ic-pause').style.display=b._on?'':'none';b.setAttribute('aria-label',b._on?'Pause':'Play');">
-          <svg class="ic ic-play" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          <svg class="ic ic-pause" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
-        </button>
+      </div>
+
+      <div class="player">
+        <button class="song-btn" type="button" onclick="var b=this,f=b._yt;if(!f){f=document.createElement('iframe');f.allow='autoplay';f.style.cssText='position:absolute;left:-9999px;width:1px;height:1px;border:0';f.src='https://www.youtube.com/embed/o4m5jQy5A2U?enablejsapi=1&amp;autoplay=1&amp;playsinline=1&amp;list=RDo4m5jQy5A2U';document.body.appendChild(f);b._yt=f;b._on=true;}else{b._on=!b._on;f.contentWindow.postMessage(JSON.stringify({event:'command',func:b._on?'playVideo':'pauseVideo',args:[]}),'*');}b.textContent=b._on?'pause':'play';">play</button>
       </div>
     </main>
   </div>
