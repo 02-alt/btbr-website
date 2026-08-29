@@ -55,6 +55,25 @@
       max-width: clamp(280px, 32vw, 460px);
       margin-top: -24px;
     }
+    /* barely-there play / pause — a muted glyph, no button chrome */
+    .fini .fini-play {
+      margin-top: 14px;
+      padding: 0;
+      border: 0;
+      background: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      opacity: 0.6;
+      cursor: pointer;
+      transition: opacity 0.2s ease, color 0.2s ease;
+    }
+    .fini .fini-play:hover {
+      opacity: 1;
+      color: var(--fg);
+    }
+    .fini .fini-play svg { display: block; }
     /* minimalist hairline frame around the pic */
     .fini .about-photo {
       border: 1px solid rgba(0, 0, 0, 0.12);
@@ -80,10 +99,10 @@
           one day with it, one day without: one step at the time i look forward.
           <span class="soft sign">buildtobeended</span>
         </p>
-      </div>
-
-      <div class="player">
-        <button class="song-btn" type="button" onclick="var b=this,f=b._yt;if(!f){f=document.createElement('iframe');f.allow='autoplay';f.style.cssText='position:absolute;left:-9999px;width:1px;height:1px;border:0';f.src='https://www.youtube.com/embed/o4m5jQy5A2U?enablejsapi=1&amp;autoplay=1&amp;playsinline=1&amp;list=RDo4m5jQy5A2U';document.body.appendChild(f);b._yt=f;b._on=true;}else{b._on=!b._on;f.contentWindow.postMessage(JSON.stringify({event:'command',func:b._on?'playVideo':'pauseVideo',args:[]}),'*');}b.textContent=b._on?'pause':'play';">play</button>
+        <button class="fini-play" type="button" aria-label="Play" onclick="var b=this,f=b._yt;if(!f){f=document.createElement('iframe');f.allow='autoplay';f.style.cssText='position:absolute;left:-9999px;width:1px;height:1px;border:0';f.src='https://www.youtube.com/embed/o4m5jQy5A2U?enablejsapi=1&amp;autoplay=1&amp;playsinline=1&amp;list=RDo4m5jQy5A2U';document.body.appendChild(f);b._yt=f;b._on=true;}else{b._on=!b._on;f.contentWindow.postMessage(JSON.stringify({event:'command',func:b._on?'playVideo':'pauseVideo',args:[]}),'*');}b.querySelector('.ic-play').style.display=b._on?'none':'';b.querySelector('.ic-pause').style.display=b._on?'':'none';b.setAttribute('aria-label',b._on?'Pause':'Play');">
+          <svg class="ic-play" viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="ic-pause" viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+        </button>
       </div>
     </main>
   </div>
