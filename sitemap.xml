@@ -3,7 +3,7 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://buildtoberemembered.com/</loc>
-    <lastmod>2026-08-27</lastmod>
+    <lastmod>2026-08-30</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
@@ -40,6 +40,15 @@
     <image:image>
       <image:loc>https://buildtoberemembered.com/assets/og/tidal.jpg</image:loc>
       <image:title>Tidal Mini Player — a menu-bar player for TIDAL</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://buildtoberemembered.com/yoin/</loc>
+    <lastmod>2026-08-30</lastmod>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://buildtoberemembered.com/assets/og/yoin.jpg</image:loc>
+      <image:title>Yoin — a player for your Bandcamp collection</image:title>
     </image:image>
   </url>
   <url>
