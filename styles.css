@@ -1036,3 +1036,24 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .cf-instant .project-side { animation: none; }
 .cf-instant .reveal-init { opacity: 1; transform: none; }
 
+
+/* ===== giant red overlay ===== */
+.joke-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4vw;
+  pointer-events: none;
+  color: #ff1a1a;
+  font-weight: 900;
+  font-size: clamp(2.5rem, 9vw, 12rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.25);
+}
