@@ -827,6 +827,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
   opacity: 0.5;
 }
 
+/* Wide windows keep the signature full-height panels. */
 .feed {
   flex: 1;
   display: flex;
@@ -850,6 +851,38 @@ a.feedbar-brand:hover { opacity: 0.55; }
   height: 48vh;
   overflow: hidden;
   background: #0e1420;
+}
+
+/* Small windows: the tall portrait panels crop the sides off the landscape app
+   shots, so reflow into a clean fixed 3-up grid of square tiles (like the
+   Special Projects reference), vertically centred with breathing room. Steps
+   down to 2 then 1 column as the window keeps narrowing. */
+@media (max-width: 1200px) {
+  .feed {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 8px;
+    align-content: center;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .tile { flex: none; }
+  .tile-img {
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+@media (max-width: 860px) {
+  .feed { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .feed {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
 }
 
 /* both layers fill the frame identically (same source dimensions),
@@ -888,10 +921,11 @@ a.feedbar-brand:hover { opacity: 0.55; }
 
 .tile-cap {
   display: block;
-  margin-top: 12px;
+  margin-top: 9px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: -0.01em;
+  color: #6b6b6b;
 }
 
 .feedfoot {
@@ -901,24 +935,6 @@ a.feedbar-brand:hover { opacity: 0.55; }
   padding-top: 18px;
 }
 
-@media (max-width: 720px) {
-  /* stack the tiles full-width and uniform, instead of letting the flex row
-     shrink each one to its image width and stretch the gaps */
-  .feed {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    gap: 20px;
-  }
-  .tile {
-    flex: none;
-    width: 100%;
-  }
-  .tile-img {
-    height: auto;
-    aspect-ratio: 16 / 10;
-  }
-}
 
 /* ============ "fade to memory" transition into /about/ ============ */
 /* leaving page: the current view desaturates, dims and softly blurs away */
