@@ -298,7 +298,7 @@ body {
     width: 100%;
     max-width: 340px;
   }
-  /* keep the Email/Discord row from crowding the last app card */
+  /* keep the Email link row from crowding the last app card */
   .foot {
     margin-top: 44px;
   }
@@ -790,7 +790,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
   font-size: 13px;
 }
 
-/* on phones, stack the brand over the Email/Discord links so the long brand
+/* on phones, stack the brand over the Email link so the long brand
    name and the links never collide or clip off the edge */
 @media (max-width: 620px) {
   .feedbar {
