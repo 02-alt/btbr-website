@@ -427,13 +427,6 @@ a.feedbar-brand:hover { opacity: 0.55; }
   align-items: center;
 }
 
-/* quiet line under the download CTA noting the platform and what's coming */
-.cta-note {
-  margin: -12px 0 0;
-  font-size: 14px;
-  color: var(--muted);
-}
-
 /* quiet neutral pill at the foot of each app page that returns to the app menu
    — reads as a way back, not a second call to action */
 .back-home {
