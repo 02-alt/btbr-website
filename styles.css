@@ -429,6 +429,21 @@ a.feedbar-brand:hover { opacity: 0.55; }
 
 /* quiet neutral pill at the foot of each app page that returns to the app menu
    — reads as a way back, not a second call to action */
+/* contact prompt sitting under the FAQ, above the "All apps" link */
+.faq-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  text-align: center;
+}
+.faq-contact p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
 .back-home {
   display: inline-flex;
   align-items: center;
