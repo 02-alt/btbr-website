@@ -1089,3 +1089,61 @@ a.feedbar-brand:hover { opacity: 0.55; }
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
   -webkit-text-stroke: 2px rgba(0, 0, 0, 0.25);
 }
+
+/* ===== /fini/ (buildtobeended) — moved here from the page's inline <style> so
+   the font + scoped styles apply on soft navigation too, not only on refresh.
+   All rules are .fini-scoped; the @font-face pair is global but only used here. */
+@font-face {
+  font-family: "ABC Marist";
+  src: url("/assets/fonts/ABCMarist-Regular.woff2") format("woff2"),
+       url("/assets/fonts/ABCMarist-Regular.woff") format("woff");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "ABC Marist";
+  src: url("/assets/fonts/ABCMarist-Medium.woff2") format("woff2"),
+       url("/assets/fonts/ABCMarist-Medium.woff") format("woff");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+.fini .about-message {
+  font-family: "ABC Marist", "Times New Roman", Times, Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: left;
+  font-size: clamp(12px, 1.5vw, 13.5px);
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: clamp(280px, 32vw, 460px);
+  width: 100%;
+}
+.fini .about-message .sign {
+  display: block;
+  margin-top: 0.6em;
+}
+.fini .fini-copy {
+  width: 100%;
+  max-width: clamp(280px, 32vw, 460px);
+  margin-top: -24px;
+}
+.fini .fini-play {
+  margin-top: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.fini .fini-play:hover {
+  opacity: 1;
+  color: var(--fg);
+}
+.fini .fini-play svg { display: block; }
+.fini .about-photo {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
