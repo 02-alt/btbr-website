@@ -1069,12 +1069,12 @@ a.feedbar-brand:hover { opacity: 0.55; }
 
 
 /* ===== giant red overlay ===== */
-/* hidden for now — flip to `flex` to bring it back */
+/* visible — set to `none` to hide it again */
 .joke-overlay {
   position: fixed;
   inset: 0;
   z-index: 99999;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
