@@ -1082,7 +1082,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
   pointer-events: none;
   color: #ff1a1a;
   font-weight: 900;
-  font-size: clamp(2.5rem, 9vw, 12rem);
+  font-size: clamp(5rem, 18vw, 24rem);
   line-height: 0.95;
   letter-spacing: -0.02em;
   text-transform: uppercase;
