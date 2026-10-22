@@ -1376,16 +1376,31 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .cur-empty-sub { margin-top: 10px; font-size: 15px; color: var(--muted); }
 .cur-end { text-align: center; color: var(--muted); font-size: 13px; letter-spacing: 0.01em; padding: 44px 0 8px; }
 
-/* "soon" micro-label on the curation link — shown on hover while no topics exist */
+/* curation "in the works" marker — a small colourless pulsing dot, with a
+   "soon" tooltip on hover. Only active while the feed is empty (.is-soon). */
 .home-choice .home-link { position: relative; }
+/* colourless pulsing dot, as a superscript beside the word */
+.home-choice .soon-dot {
+  display: none;
+  position: absolute; top: 0.08em; left: 100%;
+  width: 0.13em; height: 0.13em; margin-left: 0.16em;
+  border-radius: 50%; background: var(--muted);
+  animation: soon-pulse 1.9s ease-in-out infinite;
+}
+.home-choice .home-link.is-soon .soon-dot { display: block; }
+@keyframes soon-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1); }
+}
+/* "soon" tooltip, centred below, fades in on hover */
 .home-choice .soon {
-  position: absolute; top: 100%; left: 50%;
+  position: absolute; top: 100%; left: 50%; margin-top: 7px;
   font-size: 0.3em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--muted); white-space: nowrap; pointer-events: none;
-  opacity: 0; transform: translate(-50%, 0);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  opacity: 0; transform: translate(-50%, -3px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.home-choice .home-link.is-soon:hover .soon { opacity: 1; transform: translate(-50%, 4px); }
+.home-choice .home-link.is-soon:hover .soon { opacity: 1; transform: translate(-50%, 0); }
 
 /* discreet Studio link in the curation header (revealed by JS only on the
    author's device, where a publish token is saved) */
