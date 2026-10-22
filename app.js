@@ -42,7 +42,7 @@
 
   function reflect() {
     var p = document.getElementById("play");
-    if (p) p.textContent = audio.paused ? "Play song" : "Pause";
+    if (p) p.textContent = tr(audio.paused ? "Play song" : "Pause");
   }
 
   // ---- smooth open/close for <details> accordions (FAQ) ----
@@ -123,6 +123,7 @@
     wireFaq();
     wireImages();
     wireReveal();
+    applyLang(false);
     if (window.__btbrInitCuration) window.__btbrInitCuration();
     if (window.__btbrInitHomeSoon) window.__btbrInitHomeSoon();
     if (window.__btbrInitStudioLink) window.__btbrInitStudioLink();
@@ -305,21 +306,19 @@
   // ---- curation: data-driven feed + in-tab reading pop-up ----
   function esc(s) { return String(s == null ? "" : s); }
 
-  // reading language (English default, French optional). A topic stores its
-  // French words in `.fr` on the topic / index entry / each block; anything
-  // not translated falls back to English.
-  var CUR_LANG_KEY = "btbr_cur_lang";
+  // reading language: English by default, French on request (site-wide — see
+  // "site language" below). A topic stores its French in `.fr` on the topic /
+  // index entry / each block; anything not translated falls back to English.
   var CUR_UI = {
-    en: { tag: "An ongoing curation", open: "Open", loading: "Loading…", failed: "Couldn’t load this topic.",
+    en: { open: "Open", loading: "Loading…", failed: "Couldn’t load this topic.",
           emptyT: "Curation is in the making.", emptyS: "New topics are on the way — come back soon.",
-          end: "You’re at the bottom of the list.", sw: "Lire en français" },
-    fr: { tag: "Une curation en cours", open: "Ouvrir", loading: "Chargement…", failed: "Impossible de charger ce sujet.",
+          end: "You’re at the bottom of the list." },
+    fr: { open: "Ouvrir", loading: "Chargement…", failed: "Impossible de charger ce sujet.",
           emptyT: "La curation est en préparation.", emptyS: "De nouveaux sujets arrivent — revenez bientôt.",
-          end: "Vous êtes en bas de la liste.", sw: "Read in English" }
+          end: "Vous êtes en bas de la liste." }
   };
-  function curLang() { try { return localStorage.getItem(CUR_LANG_KEY) === "fr" ? "fr" : "en"; } catch (e) { return "en"; } }
-  function ui(k) { return CUR_UI[curLang()][k]; }
-  function loc(o, k) { return (curLang() === "fr" && o.fr && o.fr[k]) || o[k] || ""; }
+  function ui(k) { return CUR_UI[siteLang()][k]; }
+  function loc(o, k) { return (siteLang() === "fr" && o.fr && o.fr[k]) || o[k] || ""; }
   var curList = null, curTopic = null;
 
   function curBlocksHTML(blocks) {
@@ -385,7 +384,6 @@
     var feed = document.querySelector("[data-curation]");
     if (!feed || feed.dataset.loaded) return;
     feed.dataset.loaded = "1";
-    applyCurLang(false);
     fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
       curList = list || [];
       if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
@@ -393,21 +391,9 @@
       feed.insertAdjacentHTML("beforeend", '<p class="cur-end">' + ui("end") + "</p>");
     }).catch(function () { curList = []; feed.insertAdjacentHTML("beforeend", curEmptyHTML()); });
   }
-  // put every curation string in the current language; `fade` re-develops
-  // the swapped words (blur → sharp) when the reader flips it by hand
-  function applyCurLang(fade) {
+  // re-render the curation feed + open topic in the current language
+  function applyCurLang(touched) {
     var frame = document.querySelector(".curation-frame"); if (!frame) return;
-    var lang = curLang();
-    frame.lang = lang;
-    frame.querySelectorAll(".cur-lang").forEach(function (b) {
-      b.textContent = lang.toUpperCase();
-      b.setAttribute("aria-label", ui("sw")); b.title = ui("sw");
-    });
-    frame.querySelectorAll("[data-fr]").forEach(function (el) {
-      if (!el.dataset.en) el.dataset.en = el.textContent;
-      el.textContent = lang === "fr" ? el.dataset.fr : el.dataset.en;
-    });
-    var touched = [];
     if (curList) {
       frame.querySelectorAll(".cur-card").forEach(function (card) {
         var t = curList.filter(function (x) { return x.slug === card.dataset.slug; })[0];
@@ -419,14 +405,117 @@
     }
     var modal = frame.querySelector(".cur-modal");
     if (modal && !modal.hidden && curTopic) { renderCurTopic(modal); touched.push(modal.querySelector(".cur-modal-panel")); }
+  }
+
+  // ---- site language (EN / FR) ----
+  // English by default; the choice is remembered per device. Static page text
+  // is translated by /i18n/fr.js — a map from the English (an element's inner
+  // HTML, whitespace collapsed) to its French — fetched only once someone picks
+  // FR. Each swapped element keeps its English in a data-en-* attribute, so
+  // flipping back is exact.
+  var LANG_KEY = "btbr_lang";
+  function siteLang() {
+    var v = null;
+    try { v = localStorage.getItem(LANG_KEY) || localStorage.getItem("btbr_cur_lang"); } catch (e) {}
+    return v === "fr" ? "fr" : "en";
+  }
+  function tr(en) { return (siteLang() === "fr" && window.__btbrFR && window.__btbrFR[en]) || en; }
+  var frLoading = null;
+  function loadFR() {
+    if (window.__btbrFR) return Promise.resolve();
+    if (!frLoading) frLoading = new Promise(function (res, rej) {
+      var s = document.createElement("script");
+      s.src = "/i18n/fr.js?v=1";
+      s.onload = res;
+      s.onerror = function () { frLoading = null; rej(); };
+      document.head.appendChild(s);
+    });
+    return frLoading;
+  }
+  var I18N_SKIP = ".curation, .cur-modal, .lang-btn, svg";
+  var I18N_ATTRS = ["alt", "aria-label", "title"];
+  function squash(s) { return s.replace(/\s+/g, " ").trim(); }
+  function ownText(el) {
+    for (var n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue.trim()) return true;
+    return false;
+  }
+  // dict = the French map to translate into, or null to restore the English
+  function i18nFrame(frame, dict, touched) {
+    var all = frame.querySelectorAll("*");
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      // skip nodes already swapped out with their parent, and areas that
+      // translate themselves (curation feed + pop-up)
+      if (!frame.contains(el) || el.closest(I18N_SKIP)) continue;
+      I18N_ATTRS.forEach(function (a) {
+        var keep = "data-en-" + a;
+        if (dict) {
+          var v = !el.hasAttribute(keep) && el.getAttribute(a);
+          var fr = v && dict[squash(v)];
+          if (fr) { el.setAttribute(keep, v); el.setAttribute(a, fr); }
+        } else if (el.hasAttribute(keep)) {
+          el.setAttribute(a, el.getAttribute(keep)); el.removeAttribute(keep);
+        }
+      });
+      if (dict) {
+        if (el.hasAttribute("data-en-html") || !ownText(el)) continue;
+        var html = dict[squash(el.innerHTML)];
+        if (html == null) continue;
+        el.setAttribute("data-en-html", el.innerHTML);
+        el.innerHTML = html;
+        touched.push(el);
+      } else if (el.hasAttribute("data-en-html")) {
+        el.innerHTML = el.getAttribute("data-en-html");
+        el.removeAttribute("data-en-html");
+        touched.push(el);
+      }
+    }
+  }
+  function i18nTitle(dict) {
+    var root = document.documentElement, en = root.getAttribute("data-en-title");
+    if (dict) {
+      var fr = dict[document.title];
+      if (fr) { root.setAttribute("data-en-title", document.title); document.title = fr; }
+    } else if (en) {
+      if (window.__btbrFR && document.title === window.__btbrFR[en]) document.title = en;
+      root.removeAttribute("data-en-title");
+    }
+  }
+  // put the page in the reader's language; `fade` re-develops the swapped
+  // words (blur → sharp) when they flip it by hand
+  function applyLang(fade) {
+    var lang = siteLang(), root = document.documentElement;
+    root.lang = lang;
+    var label = lang === "fr" ? "Read in English" : "Lire en français";
+    document.querySelectorAll(".lang-btn").forEach(function (b) {
+      b.textContent = lang.toUpperCase();
+      b.setAttribute("aria-label", label); b.title = label;
+    });
+    if (lang === "fr" && !window.__btbrFR) {
+      // first paint of a French page waits (briefly) for the translations
+      if (!fade) {
+        root.classList.add("i18n-wait");
+        setTimeout(function () { root.classList.remove("i18n-wait"); }, 1500);
+      }
+      loadFR().then(function () { root.classList.remove("i18n-wait"); applyLang(fade); },
+                    function () { root.classList.remove("i18n-wait"); });
+      return;
+    }
+    var dict = lang === "fr" ? window.__btbrFR : null, touched = [];
+    var frame = document.querySelector(".frame");
+    if (frame) i18nFrame(frame, dict, touched);
+    i18nTitle(dict);
+    reflect();
+    applyCurLang(touched);
     if (fade && !reduceMotion) touched.forEach(function (el) {
-      if (!el) return;
-      el.classList.remove("cur-lang-in"); void el.offsetWidth; el.classList.add("cur-lang-in");
+      // leave hidden words hidden (e.g. the home page's hover-only "soon")
+      if (!el || getComputedStyle(el).opacity === "0") return;
+      el.classList.remove("lang-in"); void el.offsetWidth; el.classList.add("lang-in");
     });
   }
-  function toggleCurLang() {
-    try { localStorage.setItem(CUR_LANG_KEY, curLang() === "fr" ? "en" : "fr"); } catch (e) { return; }
-    applyCurLang(true);
+  function toggleLang() {
+    try { localStorage.setItem(LANG_KEY, siteLang() === "fr" ? "en" : "fr"); } catch (e) { return; }
+    applyLang(true);
   }
   // reveal the "Studio" link only on devices that have a saved publish token
   function initStudioLink() {
@@ -449,7 +538,7 @@
   document.addEventListener("click", function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
-    if (t.closest(".cur-lang")) { toggleCurLang(); return; }
+    if (t.closest(".lang-btn")) { toggleLang(); return; }
     var openBtn = t.closest(".cur-open");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
     if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();
