@@ -7,11 +7,15 @@
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <meta name="theme-color" content="#ffffff" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
-  <link rel="stylesheet" href="/admin/editor.css" />
+  <link rel="stylesheet" href="/admin/editor.css?v=2" />
 </head>
 <body class="studio">
   <header class="studio-bar">
     <div class="studio-brand">Curation&nbsp;·&nbsp;<span>Studio</span></div>
+    <div class="studio-tabs" role="tablist">
+      <button class="studio-tab is-active" data-tab="write" type="button">Write</button>
+      <button class="studio-tab" data-tab="topics" type="button">Topics</button>
+    </div>
     <div class="studio-actions">
       <div class="lang-seg" id="langSeg" role="group" aria-label="Language">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
@@ -34,6 +38,14 @@
         </div>
       </article>
     </main>
+
+    <section class="topics-view" id="topicsView" hidden>
+      <div class="topics-head">
+        <h2>Published topics</h2>
+        <button class="sbtn" id="topicsNew" type="button">+ New topic</button>
+      </div>
+      <div class="topics-list" id="topicsList"></div>
+    </section>
 
     <aside class="studio-inspector" id="inspector" aria-label="Settings"></aside>
   </div>
@@ -61,6 +73,6 @@
     </div>
   </div>
 
-  <script src="/admin/editor.js"></script>
+  <script src="/admin/editor.js?v=2"></script>
 </body>
 </html>

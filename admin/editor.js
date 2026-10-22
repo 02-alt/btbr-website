@@ -14,6 +14,7 @@
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
   };
+  var editingSlug = null; // set when editing an existing topic so Publish overwrites it
 
   var blocksEl = document.getElementById("blocks");
   var inspectorEl = document.getElementById("inspector");
@@ -748,7 +749,7 @@
   }
   async function publish(token, log) {
     log("Preparing…");
-    var slug = slugify(state.title) || ("topic-" + Date.now());
+    var slug = editingSlug || slugify(state.title) || ("topic-" + Date.now());
     var date = new Date().toISOString().slice(0, 10);
     var files = [], outBlocks = [], cover = null, mi = 0;
     for (var i = 0; i < state.blocks.length; i++) {
@@ -756,12 +757,14 @@
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
+        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) cover = b.src; outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset }, b, ["alt", "caption"])); continue; }
         var bl = await blobFromSrc(b.src), ext = extFromType(bl.type), p = "curation/media/" + slug + "/img-" + (++mi) + "." + ext;
         files.push({ path: p, base64: await blobToBase64(bl) }); if (!cover) cover = "/" + p;
         outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset }, b, ["alt", "caption"]));
       } else if (b.type === "video") {
         if (!b.src) continue;
         if (/youtu\.?be/.test(b.src)) { outBlocks.push(withFr({ type: "video", src: b.src, caption: b.caption || "" }, b, ["caption"])); }
+        else if (b.src.indexOf("/curation/media/") === 0) { outBlocks.push(withFr({ type: "video", src: b.src, caption: b.caption || "", loop: true }, b, ["caption"])); }
         else { var bl2 = await blobFromSrc(b.src), ext2 = extFromType(bl2.type), p2 = "curation/media/" + slug + "/vid-" + (++mi) + "." + ext2; files.push({ path: p2, base64: await blobToBase64(bl2) }); outBlocks.push(withFr({ type: "video", src: "/" + p2, caption: b.caption || "", loop: true }, b, ["caption"])); }
       } else if (b.type === "board") {
         if (!b.items.length) continue; var vid = boardHasVideo(b);
@@ -830,6 +833,98 @@
     publish(token, log).then(function () { btn.disabled = false; btn.textContent = "Publish now"; })
       .catch(function (e) { log("❌ " + (e && e.message || e)); btn.disabled = false; btn.textContent = "Publish now"; });
   });
+
+  /* ---------- Topics tab: list, edit, delete ---------- */
+  function switchTab(tab) {
+    document.body.classList.toggle("view-topics", tab === "topics");
+    var tv = document.getElementById("topicsView"); if (tv) tv.hidden = tab !== "topics";
+    [].forEach.call(document.querySelectorAll(".studio-tab"), function (b) { b.classList.toggle("is-active", b.dataset.tab === tab); });
+    if (tab === "topics") renderTopicsList();
+  }
+  function renderTopicsList() {
+    var listEl = document.getElementById("topicsList"); if (!listEl) return;
+    listEl.innerHTML = '<p class="topics-loading">Loading…</p>';
+    fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
+      if (!list || !list.length) { listEl.innerHTML = '<p class="topics-empty">No topics published yet.</p>'; return; }
+      listEl.innerHTML = "";
+      list.forEach(function (t) {
+        var row = document.createElement("div"); row.className = "topic-row";
+        var thumb = document.createElement(t.cover ? "img" : "div"); thumb.className = "topic-thumb"; if (t.cover) thumb.src = t.cover;
+        var meta = document.createElement("div"); meta.className = "topic-meta";
+        var ti = document.createElement("div"); ti.className = "topic-title"; ti.textContent = t.title || "Untitled";
+        var sub = document.createElement("div"); sub.className = "topic-sub"; sub.textContent = (t.author || "") + (t.date ? " · " + t.date : "") + (t.langs && t.langs.length > 1 ? " · EN/FR" : "");
+        meta.appendChild(ti); meta.appendChild(sub);
+        var acts = document.createElement("div"); acts.className = "topic-acts";
+        var ed = document.createElement("button"); ed.type = "button"; ed.textContent = "Edit"; ed.addEventListener("click", function () { editTopic(t.slug); });
+        var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl); });
+        acts.appendChild(ed); acts.appendChild(dl);
+        row.appendChild(thumb); row.appendChild(meta); row.appendChild(acts); listEl.appendChild(row);
+      });
+    }).catch(function () { listEl.innerHTML = '<p class="topics-empty">Couldn’t load topics.</p>'; });
+  }
+  function blockFromPublished(pb) {
+    var nb = { id: uid(), type: pb.type };
+    if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
+    else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.inset = !!pb.inset; }
+    else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; }
+    if (pb.fr) nb.fr = pb.fr;
+    return nb;
+  }
+  function editTopic(slug) {
+    fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
+      state.title = t.title || "";
+      state.fr = { title: (t.fr && t.fr.title) || "" };
+      state.author = t.author || "Isaac";
+      state.blocks = (t.blocks || []).map(blockFromPublished);
+      if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
+      editingSlug = slug;
+      selectedId = null;
+      switchTab("write");
+      render();
+    }).catch(function () { alert("Couldn’t load that topic for editing."); });
+  }
+  function newTopic() {
+    editingSlug = null;
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac";
+    state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
+    selectedId = null;
+    switchTab("write"); render();
+  }
+  async function deleteTopic(slug, btn) {
+    var token = (localStorage.getItem(TOKEN_KEY) || "").trim();
+    if (!token) { alert("Set your GitHub token first — open Publish and paste it."); return; }
+    if (!confirm("Delete “" + slug + "”? This removes the topic and its media. This can’t be undone.")) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Deleting…"; }
+    try {
+      var t = { blocks: [] };
+      try { t = await fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }); } catch (e) {}
+      var mediaPaths = [];
+      (t.blocks || []).forEach(function (b) { if (b.src && b.src.indexOf("/curation/media/") === 0) mediaPaths.push(b.src.replace(/^\//, "")); });
+      var index = [];
+      try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
+      index = index.filter(function (x) { return x.slug !== slug; });
+      var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token);
+      var baseSha = ref.object.sha;
+      var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
+      var treeItems = [{ path: "curation/topics/" + slug + ".json", mode: "100644", type: "blob", sha: null }];
+      mediaPaths.forEach(function (p) { treeItems.push({ path: p, mode: "100644", type: "blob", sha: null }); });
+      var iblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: JSON.stringify(index, null, 2), encoding: "utf-8" }) }, token);
+      treeItems.push({ path: "curation/topics/index.json", mode: "100644", type: "blob", sha: iblob.sha });
+      var tree = await gh("/repos/" + REPO + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: treeItems }) }, token);
+      var commit = await gh("/repos/" + REPO + "/git/commits", { method: "POST", body: JSON.stringify({ message: 'Curation: delete "' + slug + '"', tree: tree.sha, parents: [baseSha] }) }, token);
+      await gh("/repos/" + REPO + "/git/refs/heads/" + BRANCH, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }, token);
+      renderTopicsList();
+    } catch (e) {
+      alert("Delete failed: " + (e && e.message || e));
+      if (btn) { btn.disabled = false; btn.textContent = "Delete"; }
+    }
+  }
+  (function () {
+    var tabs = document.querySelector(".studio-tabs");
+    if (tabs) tabs.addEventListener("click", function (e) { var b = e.target.closest(".studio-tab"); if (b) switchTab(b.dataset.tab); });
+    var nw = document.getElementById("topicsNew");
+    if (nw) nw.addEventListener("click", newTopic);
+  })();
 
   render();
 })();
