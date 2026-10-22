@@ -1379,21 +1379,20 @@ a.feedbar-brand:hover { opacity: 0.55; }
 /* curation "in the works" marker — on hover the word "curation" develops out
    and "soon" develops in (the site's blur→sharp transition), colourless.
    Only active while the feed is empty (.is-soon). */
-.home-choice .swap { position: relative; }
+.home-choice .swap { position: relative; overflow: hidden; vertical-align: bottom; }
 .home-choice .swap-base {
   display: inline-block;
-  transition: opacity 0.4s ease, filter 0.4s ease, transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.45s ease;
 }
 .home-choice .swap-alt {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; filter: blur(6px); transform: translateY(5px);
-  transition: opacity 0.4s ease, filter 0.4s ease, transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-  pointer-events: none;
+  transform: translateY(105%); opacity: 0; pointer-events: none;
+  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.45s ease;
 }
 .home-choice .home-link.is-soon:hover { opacity: 1; }
-.home-choice .home-link.is-soon:hover .swap-base { opacity: 0; filter: blur(6px); transform: translateY(-5px); }
-.home-choice .home-link.is-soon:hover .swap-alt { opacity: 1; filter: blur(0); transform: none; }
+.home-choice .home-link.is-soon:hover .swap-base { transform: translateY(-105%); opacity: 0; }
+.home-choice .home-link.is-soon:hover .swap-alt { transform: translateY(0); opacity: 1; }
 
 /* discreet Studio link in the curation header (revealed by JS only on the
    author's device, where a publish token is saved) */
