@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tidal Mini Player — a menu-bar player for TIDAL</title>
+  <meta name="description" content="Tidal Mini Player is a free macOS menu-bar mini player for TIDAL. See the current track in your menu bar and pop a compact player with album art, progress and controls." />
+  <link rel="canonical" href="https://buildtoberemembered.com/apps/tidal/" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="author" content="Isaac" />
+  <meta name="application-name" content="Tidal Mini Player" />
+  <meta name="apple-mobile-web-app-title" content="Tidal Mini Player" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="builtoberemembered" />
+  <meta property="og:title" content="Tidal Mini Player — a menu-bar player for TIDAL" />
+  <meta property="og:description" content="A free macOS menu-bar mini player for TIDAL — current track, album art, progress and transport controls." />
+  <meta property="og:url" content="https://buildtoberemembered.com/apps/tidal/" />
+  <meta property="og:image" content="https://buildtoberemembered.com/assets/og/tidal.jpg" />
+  <meta property="og:image:secure_url" content="https://buildtoberemembered.com/assets/og/tidal.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Tidal Mini Player — a compact menu-bar player for TIDAL, on macOS" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tidal Mini Player — a menu-bar player for TIDAL" />
+  <meta name="twitter:description" content="A free macOS menu-bar mini player for TIDAL — current track, album art, progress and transport controls." />
+  <meta name="twitter:image" content="https://buildtoberemembered.com/assets/og/tidal.jpg" />
+  <meta name="twitter:image:alt" content="Tidal Mini Player — a compact menu-bar player for TIDAL, on macOS" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png?v=4" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=4" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","isPartOf":{"@id":"https://buildtoberemembered.com/#website"},"name":"Tidal Mini Player","operatingSystem":"macOS 13+","applicationCategory":"MultimediaApplication","softwareVersion":"1.26.08","description":"A macOS menu-bar mini player for the TIDAL desktop app — shows the current track in the menu bar and opens a compact player with album art, progress and transport controls.","url":"https://buildtoberemembered.com/apps/tidal/","image":"https://buildtoberemembered.com/assets/og/tidal.jpg","screenshot":["https://buildtoberemembered.com/assets/work/tidal-kozelek.png","https://buildtoberemembered.com/assets/work/tidal-desktop.png"],"featureList":["Current track shown in the menu bar","Compact player with album art","Play/pause, next and previous controls","Live progress bar","Universal build for Intel and Apple silicon","Menu-bar only — no Dock icon"],"downloadUrl":"https://buildtoberemembered.com/downloads/TidalMiniPlayer-1.26.08.dmg","installUrl":"https://buildtoberemembered.com/downloads/TidalMiniPlayer-1.26.08.dmg","fileSize":"2.9 MB","datePublished":"2025","inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","availability":"https://schema.org/InStock"},"author":{"@type":"Person","name":"Isaac","url":"https://buildtoberemembered.com/about/"},"publisher":{"@id":"https://buildtoberemembered.com/#org","@type":"Organization","name":"builtoberemembered","url":"https://buildtoberemembered.com/","logo":"https://buildtoberemembered.com/assets/apple-touch-icon.png","sameAs":["https://buymeacoffee.com/builttoberemembered"]}}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Tidal Mini Player?","acceptedAnswer":{"@type":"Answer","text":"A menu-bar mini player for the TIDAL desktop app. It shows the current track in your menu bar and opens a compact player with album art, a live progress bar, and previous / play-pause / next controls."}},{"@type":"Question","name":"Do I need the TIDAL app?","acceptedAnswer":{"@type":"Answer","text":"Yes. It mirrors and controls TIDAL's own desktop app, so TIDAL needs to be running."}},{"@type":"Question","name":"Does it need any permissions?","acceptedAnswer":{"@type":"Answer","text":"For everyday use, no. Controlling TIDAL in the background can use the macOS Accessibility permission, which you grant once."}},{"@type":"Question","name":"macOS says it's from an unidentified developer — is that OK?","acceptedAnswer":{"@type":"Answer","text":"Yes. On first launch, right-click the app and choose Open to get past Gatekeeper. You only need to do this once."}},{"@type":"Question","name":"Why did the track freeze when I played a video elsewhere?","acceptedAnswer":{"@type":"Answer","text":"macOS only tracks one Now Playing app at a time. If a browser video grabs that slot, TIDAL stops being reported — the player keeps showing the last TIDAL track until TIDAL takes the slot back. Controls only act while TIDAL owns it."}},{"@type":"Question","name":"Does it run on Intel and Apple silicon?","acceptedAnswer":{"@type":"Answer","text":"Yes — it's a universal build for both. Requires macOS 13 or later, and it lives in the menu bar (no Dock icon)."}},{"@type":"Question","name":"What's new in this version?","acceptedAnswer":{"@type":"Answer","text":"Tidal Mini Player shows the current TIDAL track in your menu bar and opens a compact player with album art, a live progress bar and previous / play-pause / next controls — a universal build for Intel and Apple silicon, with built-in auto-updates."}},{"@type":"Question","name":"What version is this?","acceptedAnswer":{"@type":"Answer","text":"1.26.08. Updates are dated — numbered 1.YY.MM (year then month), so this build is from August 2026. That way you can always tell how recent your copy is."}},{"@type":"Question","name":"How much does it cost?","acceptedAnswer":{"@type":"Answer","text":"Free."}}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://buildtoberemembered.com/"},{"@type":"ListItem","position":2,"name":"Tidal Mini Player","item":"https://buildtoberemembered.com/apps/tidal/"}]}
+  </script>
+</head>
+<body>
+  <div class="frame">
+    <header class="feedbar">
+      <a class="feedbar-brand" href="/"><strong>builtoberemembered</strong> <span>Free macOS apps</span></a>
+    </header>
+
+    <main class="project">
+      <div class="project-intro">
+        <div class="project-lede">
+          <img class="project-icon" src="/assets/tidal.png" alt="Tidal Mini Player icon" />
+          <p class="project-meta">Music Player · 2025 · macOS · Free</p>
+          <h1 class="project-title">Tidal Mini Player</h1>
+        </div>
+        <div class="project-side">
+          <p class="project-desc">
+            A menu-bar mini player for TIDAL. Shows the current track and pops a compact
+            player with album art, progress and controls.
+          </p>
+          <div class="project-cta">
+            <a class="pill primary" href="https://github.com/02-alt/btbr-website/releases/download/tidal/TidalMiniPlayer-1.26.08.dmg">Download</a>
+            <a class="pill coffee" href="https://buymeacoffee.com/builttoberemembered" target="_blank" rel="noopener">Buy me a coffee</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="shots">
+        <figure class="shot device"><span class="shot-stage"><img src="/assets/work/tidal-kozelek.png" width="418" height="418" loading="eager" fetchpriority="high" decoding="async" alt="Tidal mini player" /></span><figcaption>A compact player with album art and controls</figcaption></figure>
+        <figure class="shot"><img src="/assets/work/tidal-desktop.png" width="1400" height="788" loading="lazy" decoding="async" alt="Tidal mini player floating on the desktop beside the full TIDAL app" /><figcaption>Floating beside the full TIDAL app</figcaption></figure>
+      </div>
+    </main>
+
+    <footer class="foot project-foot">
+      <section class="faq">
+        <h2 class="faq-title">FAQ</h2>
+        <div class="faq-body">
+          <details class="faq-item">
+            <summary>What is Tidal Mini Player?</summary>
+            <p>A menu-bar mini player for the TIDAL desktop app. It shows the current track in your menu bar and opens a compact player with album art, a live progress bar, and previous / play-pause / next controls.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do I need the TIDAL app?</summary>
+            <p>Yes. It mirrors and controls TIDAL's own desktop app, so TIDAL needs to be running.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Does it need any permissions?</summary>
+            <p>For everyday use, no. Controlling TIDAL in the background can use the macOS Accessibility permission, which you grant once.</p>
+          </details>
+          <details class="faq-item">
+            <summary>macOS says it's from an unidentified developer — is that OK?</summary>
+            <p>Yes. On first launch, right-click the app and choose Open to get past Gatekeeper. You only need to do this once.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Why did the track freeze when I played a video elsewhere?</summary>
+            <p>macOS only tracks one “Now Playing” app at a time. If a browser video grabs that slot, TIDAL stops being reported — the player keeps showing the last TIDAL track until TIDAL takes the slot back. Controls only act while TIDAL owns it.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Does it run on Intel and Apple silicon?</summary>
+            <p>Yes — it's a universal build for both. Requires macOS 13 or later, and it lives in the menu bar (no Dock icon).</p>
+          </details>
+          <details class="faq-item">
+            <summary>What's new in this version?</summary>
+            <p>Tidal Mini Player shows the current TIDAL track in your menu bar and opens a compact player with album art, a live progress bar and previous / play-pause / next controls — a universal build for Intel and Apple silicon, with built-in auto-updates.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What version is this?</summary>
+            <p>1.26.08. Updates are dated — numbered <strong>1.YY.MM</strong> (year then month), so this build is from August 2026. That way you can always tell how recent your copy is.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How much does it cost?</summary>
+            <p>Free.</p>
+          </details>
+        </div>
+      </section>
+      <div class="faq-contact">
+        <p>Questions, an idea, or a bug? I'd love to hear from you.</p>
+        <a class="pill contact" href="mailto:TalkToBtbr@pm.me?subject=Tidal%20Mini%20Player%20%E2%80%94%20hello">Contact</a>
+      </div>
+      <a class="pill back-home" href="/apps/"><span class="arrow">←</span> All apps</a>
+      <a class="sig" href="/about/" data-text="build to be remembered">build to be remembered</a>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

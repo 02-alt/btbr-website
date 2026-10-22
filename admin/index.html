@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Curation Studio</title>
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
+  <link rel="stylesheet" href="/admin/editor.css" />
+</head>
+<body class="studio">
+  <header class="studio-bar">
+    <div class="studio-brand">Curation&nbsp;·&nbsp;<span>Studio</span></div>
+    <div class="studio-actions">
+      <button class="sbtn" id="previewBtn" type="button">Preview</button>
+      <button class="sbtn" id="exportBtn" type="button">Export</button>
+      <button class="sbtn primary" id="publishBtn" type="button" title="Publishing gets wired up next">Publish</button>
+    </div>
+  </header>
+
+  <div class="studio-body">
+    <main class="studio-canvas">
+      <article class="doc">
+        <input class="doc-title" id="docTitle" placeholder="Title" aria-label="Title" />
+        <div class="doc-byline"><span class="doc-byline-dot" aria-hidden="true"></span><span id="docByline">Author</span></div>
+        <div class="blocks" id="blocks"></div>
+        <div class="add-rail">
+          <button class="add-block" id="addBlock" type="button" aria-label="Add a block">+</button>
+        </div>
+      </article>
+    </main>
+
+    <aside class="studio-inspector" id="inspector" aria-label="Settings"></aside>
+  </div>
+
+  <!-- block-type picker -->
+  <div class="picker" id="picker" hidden>
+    <button class="picker-item" data-type="text" type="button"><span class="picker-ico">¶</span> Text</button>
+    <button class="picker-item" data-type="image" type="button"><span class="picker-ico">▦</span> Image</button>
+    <button class="picker-item" data-type="video" type="button"><span class="picker-ico">▷</span> Video</button>
+    <button class="picker-item" data-type="board" type="button"><span class="picker-ico">▣</span> Board</button>
+  </div>
+
+  <!-- publish panel -->
+  <div class="pub-modal" id="pubModal" hidden>
+    <div class="pub-backdrop" id="pubBackdrop"></div>
+    <div class="pub-panel" role="dialog" aria-modal="true" aria-label="Publish">
+      <button class="pub-close" id="pubClose" type="button" aria-label="Close">&times;</button>
+      <h2 class="pub-title">Publish topic</h2>
+      <p class="pub-note">Commits this topic (and its media) to the repo. Your token stays in this browser only.</p>
+      <label class="insp-label" for="pubToken">GitHub token</label>
+      <input class="insp-input" id="pubToken" type="password" placeholder="github_pat_…" autocomplete="off" />
+      <label class="pub-remember"><input type="checkbox" id="pubRemember" checked /> Remember on this device</label>
+      <button class="sbtn primary pub-go" id="pubGo" type="button">Publish now</button>
+      <pre class="pub-log" id="pubLog" hidden></pre>
+    </div>
+  </div>
+
+  <script src="/admin/editor.js"></script>
+</body>
+</html>

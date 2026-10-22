@@ -123,6 +123,8 @@
     wireFaq();
     wireImages();
     wireReveal();
+    if (window.__btbrInitCuration) window.__btbrInitCuration();
+    if (window.__btbrInitHomeSoon) window.__btbrInitHomeSoon();
   }
 
   // ---- subtle scroll reveal: screenshots + the FAQ block fade/rise into view.
@@ -184,7 +186,10 @@
     // the about page carries its own "develop-in" entrance; other pages get the
     // quick fade+lift — unless a View Transition is driving the swap, which owns
     // the motion itself.
-    var themed = incoming.classList.contains("about-frame");
+    var themed = incoming.classList.contains("about-frame") ||
+                 incoming.classList.contains("home-frame") ||
+                 incoming.classList.contains("curation-frame") ||
+                 incoming.classList.contains("feed-home");
     var enter = !themed && !opts.noEnter;
     if (enter) incoming.classList.add("frame-enter"); // start faded/lifted
     // a card morph captures a snapshot of the incoming page — suppress its own
@@ -295,6 +300,86 @@
       .then(function (r) { return r.text(); })
       .then(function (html) { swap(html); });
   });
+
+  // ---- curation: data-driven feed + in-tab reading pop-up ----
+  function esc(s) { return String(s == null ? "" : s); }
+  function curBlocksHTML(blocks) {
+    return (blocks || []).map(function (b) {
+      if (b.type === "text") return b.head ? '<h3 class="cur-h">' + esc(b.html) + "</h3>" : "<p>" + esc(b.html) + "</p>";
+      if (b.type === "image") {
+        var cap = b.caption ? '<figcaption class="cur-cap">' + b.caption + "</figcaption>" : "";
+        return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img src="' + esc(b.src) + '" alt="' + esc(b.alt) + '" loading="lazy">' + cap + "</figure>";
+      }
+      if (b.type === "video") {
+        if (/youtu\.?be/.test(b.src)) {
+          var m = b.src.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
+          return '<figure class="cur-fig2 cur-vid"><iframe src="https://www.youtube.com/embed/' + (m ? m[1] : "") + '" allowfullscreen></iframe></figure>';
+        }
+        var at = b.loop ? "autoplay muted loop playsinline" : "controls playsinline";
+        var cap2 = b.caption ? '<figcaption class="cur-cap">' + b.caption + "</figcaption>" : "";
+        return '<figure class="cur-fig2"><video src="' + esc(b.src) + '" ' + at + "></video>" + cap2 + "</figure>";
+      }
+      return "";
+    }).join("");
+  }
+  function closeCurModal() {
+    var m = document.querySelector(".cur-modal");
+    if (m && !m.hidden) { m.hidden = true; document.body.style.overflow = ""; var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = ""; }
+  }
+  function openCurTopic(slug) {
+    var modal = document.querySelector(".cur-modal"); if (!modal) return;
+    var content = modal.querySelector(".cur-modal-content");
+    modal.querySelector(".cur-modal-title").textContent = "";
+    modal.querySelector(".cur-modal-author").textContent = "";
+    content.innerHTML = '<p class="cur-loading">Loading…</p>';
+    modal.hidden = false; document.body.style.overflow = "hidden";
+    fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
+      modal.querySelector(".cur-modal-title").textContent = t.title || "";
+      modal.querySelector(".cur-modal-author").textContent = t.author || "";
+      content.innerHTML = curBlocksHTML(t.blocks);
+    }).catch(function () { content.innerHTML = '<p class="cur-loading">Couldn’t load this topic.</p>'; });
+  }
+  function curCard(t) {
+    var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
+    return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
+      + '<div class="cur-text">'
+      + '<div class="cur-author"><span class="cur-avatar" aria-hidden="true"></span> ' + esc(t.author || "") + "</div>"
+      + '<h2 class="cur-title">' + esc(t.title || "") + "</h2>"
+      + (t.desc ? '<p class="cur-desc">' + esc(t.desc) + "</p>" : "")
+      + '<button class="cur-open" type="button">Open</button>'
+      + "</div>"
+      + '<div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div>"
+      + "</article>";
+  }
+  function initCuration() {
+    var feed = document.querySelector("[data-curation]");
+    if (!feed || feed.dataset.loaded) return;
+    feed.dataset.loaded = "1";
+    var emptyHTML = '<div class="cur-empty"><p class="cur-empty-title">Curation is in the making.</p><p class="cur-empty-sub">New topics are on the way — come back soon.</p></div>';
+    fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
+      if (!list || !list.length) { feed.insertAdjacentHTML("beforeend", emptyHTML); return; }
+      feed.insertAdjacentHTML("beforeend", list.map(curCard).join(""));
+      feed.insertAdjacentHTML("beforeend", '<p class="cur-end">You’re at the bottom of the list.</p>');
+    }).catch(function () { feed.insertAdjacentHTML("beforeend", emptyHTML); });
+  }
+  function initHomeSoon() {
+    var link = document.getElementById("curationLink");
+    if (!link || link.dataset.checked) return;
+    link.dataset.checked = "1";
+    fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
+      if (!list || !list.length) link.classList.add("is-soon");
+    }).catch(function () { link.classList.add("is-soon"); });
+  }
+  window.__btbrInitCuration = initCuration;
+  window.__btbrInitHomeSoon = initHomeSoon;
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var openBtn = t.closest(".cur-open");
+    if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
+    if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeCurModal(); });
 
   bindPage();
 })();
