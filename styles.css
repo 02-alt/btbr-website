@@ -1386,3 +1386,12 @@ a.feedbar-brand:hover { opacity: 0.55; }
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 .home-choice .home-link.is-soon:hover .soon { opacity: 1; transform: translate(-50%, 4px); }
+
+/* discreet Studio link in the curation header (revealed by JS only on the
+   author's device, where a publish token is saved) */
+.feedbar-studio {
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  text-decoration: none; letter-spacing: 0.01em;
+  transition: color 0.15s ease;
+}
+.feedbar-studio:hover { color: var(--fg); }

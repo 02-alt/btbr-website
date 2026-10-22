@@ -125,6 +125,7 @@
     wireReveal();
     if (window.__btbrInitCuration) window.__btbrInitCuration();
     if (window.__btbrInitHomeSoon) window.__btbrInitHomeSoon();
+    if (window.__btbrInitStudioLink) window.__btbrInitStudioLink();
   }
 
   // ---- subtle scroll reveal: screenshots + the FAQ block fade/rise into view.
@@ -362,6 +363,14 @@
       feed.insertAdjacentHTML("beforeend", '<p class="cur-end">You’re at the bottom of the list.</p>');
     }).catch(function () { feed.insertAdjacentHTML("beforeend", emptyHTML); });
   }
+  // reveal the "Studio" link only on devices that have a saved publish token
+  function initStudioLink() {
+    var has = false;
+    try { has = !!localStorage.getItem("btbr_cur_token"); } catch (e) {}
+    if (!has) return;
+    document.querySelectorAll(".studio-reveal[hidden]").forEach(function (el) { el.hidden = false; });
+  }
+  window.__btbrInitStudioLink = initStudioLink;
   function initHomeSoon() {
     var link = document.getElementById("curationLink");
     if (!link || link.dataset.checked) return;
