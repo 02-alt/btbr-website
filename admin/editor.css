@@ -92,7 +92,7 @@ body.studio {
   font-weight: 590;
   color: var(--ink-soft);
 }
-.doc-byline-dot { width: 18px; height: 18px; border-radius: 50%; background: #dcdce0; }
+.doc-byline-dot { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, rgb(132, 165, 165), rgb(75, 82, 93), rgb(17, 15, 18)); }
 
 /* --- blocks --- */
 .blocks { display: flex; flex-direction: column; }

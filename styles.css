@@ -1033,40 +1033,6 @@ a.feedbar-brand:hover { opacity: 0.55; }
   transition: opacity 0.6s ease, transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* --- clicking a home app card morphs it into the app page's first screenshot
-   (View Transitions API; these pseudo-elements exist only mid-transition, and
-   only when JS starts one — never under reduced motion) --- */
-::view-transition-group(app-hero) {
-  animation-duration: 0.44s;
-  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-/* keep both snapshots undistorted while the box morphs from the tall card to
-   the wide screenshot — cover-crop, never squish */
-::view-transition-old(app-hero),
-::view-transition-new(app-hero) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-/* fade the card art out early so it doesn't ghost against the real screenshot */
-::view-transition-old(app-hero) { animation: cf-hero-out 0.22s ease both; }
-::view-transition-new(app-hero) { animation: cf-hero-in 0.44s ease both; }
-@keyframes cf-hero-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes cf-hero-in { from { opacity: 0; } 50% { opacity: 1; } to { opacity: 1; } }
-
-/* the incoming page materialises OVER the old one (which stays opaque
-   underneath) — a clean dissolve with no mid-transition fade-to-white flash */
-::view-transition-old(root) { animation: none; }
-::view-transition-new(root) { animation: cf-root-in 0.34s ease both; }
-@keyframes cf-root-in { from { opacity: 0; } to { opacity: 1; } }
-
-/* during a card-driven morph, skip the destination's own entrance/reveal so the
-   captured snapshot is fully painted (no empty-masthead pop, no hidden hero) */
-.cf-instant .project-lede,
-.cf-instant .project-side { animation: none; }
-.cf-instant .reveal-init { opacity: 1; transform: none; }
-
 
 /* ===== giant red overlay ===== */
 /* hidden for now — flip to `flex` to bring it back */
@@ -1209,7 +1175,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .cur-avatar {
   width: 18px; height: 18px;
   border-radius: 50%;
-  background: #dcdcdc;
+  background: linear-gradient(135deg, rgb(132, 165, 165), rgb(75, 82, 93), rgb(17, 15, 18));
   flex: none;
 }
 .cur-title {
@@ -1337,6 +1303,47 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .feed-home .feed .tile:nth-of-type(4) { animation-delay: 0.62s; }
 .feed-home .feed .tile:nth-of-type(5) { animation-delay: 0.76s; }
 .feed-home .feedfoot             { animation-delay: 0.55s; }
+
+/* ===== app pages (/apps/<app>/) arrival — same develop-in, sequenced
+   top → bottom: header, icon + title, description, then the first screenshot
+   (overrides the plain btbr-rise; later screenshots keep their scroll reveal). */
+.project-frame .feedbar,
+.project-frame .project-lede,
+.project-frame .project-side,
+.project-frame .shots .shot:first-child {
+  animation: home-develop 0.95s both cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.project-frame .feedbar                  { animation-delay: 0.05s; }
+.project-frame .project-lede             { animation-delay: 0.20s; }
+.project-frame .project-side             { animation-delay: 0.34s; }
+.project-frame .shots .shot:first-child  { animation-delay: 0.48s; }
+
+/* ===== leaving the apps menu or an app page — the reverse: each piece
+   blurs and fades back out, top → bottom, before the next page develops in ===== */
+@keyframes home-undevelop {
+  to { opacity: 0; transform: translateY(-8px); filter: blur(7px); }
+}
+.frame.develop-out { pointer-events: none; }
+.develop-out .feedbar,
+.develop-out .feed .tile,
+.develop-out .feedfoot,
+.develop-out .project-lede,
+.develop-out .project-side,
+.develop-out .shots,
+.develop-out .project-foot {
+  animation: home-undevelop 0.36s both cubic-bezier(0.55, 0, 0.75, 0.4);
+}
+.develop-out .feedbar                     { animation-delay: 0s; }
+.develop-out .feed .tile:nth-of-type(1),
+.develop-out .project-lede                { animation-delay: 0.03s; }
+.develop-out .feed .tile:nth-of-type(2),
+.develop-out .project-side                { animation-delay: 0.06s; }
+.develop-out .feed .tile:nth-of-type(3),
+.develop-out .shots                       { animation-delay: 0.09s; }
+.develop-out .feed .tile:nth-of-type(4)   { animation-delay: 0.12s; }
+.develop-out .feed .tile:nth-of-type(5)   { animation-delay: 0.15s; }
+.develop-out .feedfoot,
+.develop-out .project-foot                { animation-delay: 0.09s; }
 
 /* square (1:1) images inside a curation topic pop-up */
 .cur-fig {
