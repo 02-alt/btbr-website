@@ -1380,15 +1380,16 @@ a.feedbar-brand:hover { opacity: 0.55; }
    and "soon" develops in (the site's blur→sharp transition), colourless.
    Only active while the feed is empty (.is-soon). */
 .home-choice .swap { position: relative; overflow: hidden; vertical-align: bottom; }
+/* easing with a small overshoot → the odometer "settle" of SwiftUI .numericText() */
 .home-choice .swap-base {
   display: inline-block;
-  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.45s ease;
+  transition: transform 0.52s cubic-bezier(0.32, 1.42, 0.5, 1), opacity 0.3s ease;
 }
 .home-choice .swap-alt {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  transform: translateY(105%); opacity: 0; pointer-events: none;
-  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.45s ease;
+  transform: translateY(110%); opacity: 0; pointer-events: none;
+  transition: transform 0.52s cubic-bezier(0.32, 1.42, 0.5, 1), opacity 0.3s ease;
 }
 .home-choice .home-link.is-soon:hover { opacity: 1; }
 .home-choice .home-link.is-soon:hover .swap-base { transform: translateY(-105%); opacity: 0; }
