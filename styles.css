@@ -1403,3 +1403,29 @@ a.feedbar-brand:hover { opacity: 0.55; }
   transition: color 0.15s ease;
 }
 .feedbar-studio:hover { color: var(--fg); }
+
+/* curation language glyph (EN / FR) — top-right of the feed header and of the
+   reading pop-up; a small hairline circle holding the current language */
+.feedbar-tools { display: flex; align-items: center; gap: 14px; align-self: center; }
+.cur-lang {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0;
+  border: 1px solid #e2e2e2; border-radius: 50%;
+  background: none; color: var(--muted);
+  font: inherit; font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.cur-lang:hover { color: var(--fg); border-color: #c8c8c8; }
+.cur-lang:active { transform: scale(0.94); }
+.cur-modal-lang { position: absolute; top: 14px; right: 48px; }
+/* keep brand + glyph on one row on phones (the descriptor already hides) */
+@media (max-width: 620px) {
+  .curation-frame .feedbar { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+/* words re-develop when the language flips */
+.cur-lang-in { animation: cur-lang-in 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes cur-lang-in {
+  from { opacity: 0; filter: blur(4px); }
+  to   { opacity: 1; filter: none; }
+}

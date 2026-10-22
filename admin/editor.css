@@ -151,7 +151,7 @@ body.studio {
   min-height: 1.6em;
 }
 .b-text.is-empty::before {
-  content: "Write…";
+  content: attr(data-ph);
   color: #c7c7cc;
 }
 .b-text.b-head { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; color: var(--ink); }
@@ -351,7 +351,7 @@ body.is-preview .b-board.is-arranging { box-shadow: none; }
 
 /* editable caption under media, with inline colour emphasis */
 .b-cap { margin-top: 10px; font-size: 14px; outline: 0; }
-.b-cap.is-empty::before { content: "Add a caption…"; color: #c7c7cc; }
+.b-cap.is-empty::before { content: attr(data-ph); color: #c7c7cc; }
 body.is-preview .b-cap.is-empty { display: none; }
 
 /* floating selection toolbar (dark, Apple-style) for colouring caption text */
@@ -402,3 +402,17 @@ body.is-preview .b-cap.is-empty { display: none; }
 .pub-go { width: 100%; padding: 11px; font-size: 14px; }
 .pub-log { margin-top: 16px; font-size: 12px; line-height: 1.5; color: var(--ink-soft); white-space: pre-wrap; max-height: 180px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .pub-log[hidden] { display: none; }
+
+/* --- language switch (EN / FR): same layout, per-language text --- */
+.lang-seg {
+  display: inline-flex; padding: 2px; gap: 2px;
+  border: 1px solid var(--hair); border-radius: 980px; background: #fff;
+  margin-right: 4px;
+}
+.lang-seg button {
+  font: inherit; font-size: 12px; font-weight: 590; letter-spacing: 0.02em;
+  padding: 5px 11px; border: 0; border-radius: 980px;
+  background: none; color: var(--ink-soft); cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.lang-seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }

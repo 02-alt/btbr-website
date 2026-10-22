@@ -18,13 +18,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=4" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />
-  <link rel="stylesheet" href="/styles.css?v=5" />
+  <link rel="stylesheet" href="/styles.css?v=6" />
 </head>
 <body>
   <div class="frame curation-frame">
     <header class="feedbar">
-      <a class="feedbar-brand" href="/"><strong>builtoberemembered</strong> <span>An ongoing curation</span></a>
-      <a class="feedbar-studio studio-reveal" href="/admin/" hidden>Studio</a>
+      <a class="feedbar-brand" href="/"><strong>builtoberemembered</strong> <span data-fr="Une curation en cours">An ongoing curation</span></a>
+      <div class="feedbar-tools">
+        <a class="feedbar-studio studio-reveal" href="/admin/" hidden>Studio</a>
+        <button class="cur-lang" type="button" aria-label="Lire en français" title="Lire en français">EN</button>
+      </div>
     </header>
 
     <main class="curation" id="curationFeed" data-curation>
@@ -40,6 +43,7 @@
     <div class="cur-modal" hidden>
       <div class="cur-modal-backdrop"></div>
       <div class="cur-modal-panel" role="dialog" aria-modal="true" aria-label="Topic">
+        <button class="cur-lang cur-modal-lang" type="button" aria-label="Lire en français" title="Lire en français">EN</button>
         <button class="cur-modal-close" type="button" aria-label="Close">&times;</button>
         <div class="cur-modal-author"></div>
         <h2 class="cur-modal-title"></h2>

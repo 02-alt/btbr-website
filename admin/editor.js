@@ -8,6 +8,7 @@
 
   var state = {
     title: "",
+    fr: { title: "" },
     author: "Isaac",
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
@@ -22,6 +23,16 @@
 
   var selectedId = null;
 
+  /* ---------- languages ----------
+     English is the source. A translation shares the same blocks (layout, media)
+     and only overrides the words: each object keeps its French text in `.fr`. */
+  var lang = "en";
+  function tr(o, key) { return lang === "en" ? (o[key] || "") : ((o.fr && o.fr[key]) || ""); }
+  function setTr(o, key, v) { if (lang === "en") o[key] = v; else { o.fr = o.fr || {}; o.fr[key] = v; } }
+  function plain(html) { var d = document.createElement("div"); d.innerHTML = html || ""; return d.textContent.replace(/\s+/g, " ").trim(); }
+  // greyed hint for an empty field: the English source while translating
+  function hint(o, key, fallback) { return lang === "en" ? fallback : (plain(o[key]) || fallback); }
+
   /* ---------- helpers ---------- */
   function youtubeId(url) {
     var m = String(url).match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
@@ -31,7 +42,8 @@
 
   /* ---------- render ---------- */
   function render() {
-    titleEl.value = state.title;
+    titleEl.value = tr(state, "title");
+    titleEl.placeholder = lang === "en" ? "Title" : (state.title || "Titre");
     bylineEl.textContent = state.author || "Author";
     blocksEl.innerHTML = "";
     state.blocks.forEach(function (b) { blocksEl.appendChild(renderBlock(b)); });
@@ -76,10 +88,11 @@
       t.className = "b-text" + (b.head ? " b-head" : "");
       t.contentEditable = "true";
       t.spellcheck = false;
-      t.innerHTML = b.html || "";
-      if (!b.html) t.classList.add("is-empty");
+      t.innerHTML = tr(b, "html");
+      t.dataset.ph = hint(b, "html", lang === "en" ? "Write…" : "Écrire…");
+      if (!t.textContent.trim()) t.classList.add("is-empty");
       t.addEventListener("input", function () {
-        b.html = t.innerHTML;
+        setTr(b, "html", t.innerHTML);
         t.classList.toggle("is-empty", !t.textContent.trim());
       });
       return t;
@@ -87,7 +100,7 @@
     if (b.type === "image") {
       var iw = document.createElement("div");
       iw.className = "b-media" + (b.src ? " has-src" : "");
-      if (b.src) { var img = document.createElement("img"); img.src = b.src; img.alt = b.alt || ""; iw.appendChild(img); }
+      if (b.src) { var img = document.createElement("img"); img.src = b.src; img.alt = tr(b, "alt") || b.alt || ""; iw.appendChild(img); }
       else { iw.innerHTML = "<span>click or drop an image</span>"; iw.addEventListener("click", function () { pickImage(b); }); }
       wireMediaDrop(iw, b);
       return withCaption(iw, b);
@@ -109,12 +122,14 @@
     var frag = document.createDocumentFragment();
     frag.appendChild(media);
     var c = document.createElement("div");
-    c.className = "b-cap" + (b.caption ? "" : " is-empty");
+    var cap = tr(b, "caption");
+    c.className = "b-cap" + (plain(cap) ? "" : " is-empty");
+    c.dataset.ph = hint(b, "caption", lang === "en" ? "Add a caption…" : "Ajouter une légende…");
     c.contentEditable = document.body.classList.contains("is-preview") ? "false" : "true";
     c.spellcheck = false;
-    c.innerHTML = b.caption || "";
+    c.innerHTML = cap;
     c.addEventListener("input", function () {
-      b.caption = c.innerHTML;
+      setTr(b, "caption", c.innerHTML);
       c.classList.toggle("is-empty", !c.textContent.trim());
     });
     frag.appendChild(c);
@@ -424,7 +439,7 @@
       sec.appendChild(field("Style", seg));
     } else if (b.type === "image") {
       sec.appendChild(field("Image URL", textInput(b.src, "https://… or use the picker", function (v) { b.src = v; rerenderBlock(b.id); })));
-      sec.appendChild(field("Alt text", textInput(b.alt, "Describe the image", function (v) { b.alt = v; })));
+      sec.appendChild(field(lang === "en" ? "Alt text" : "Alt text (FR)", textInput(tr(b, "alt"), hint(b, "alt", "Describe the image"), function (v) { setTr(b, "alt", v); })));
       var wseg = document.createElement("div"); wseg.className = "insp-seg";
       ["Full", "Inset"].forEach(function (name, i) {
         var btn = document.createElement("button"); btn.type = "button"; btn.textContent = name;
@@ -581,14 +596,24 @@
 
   /* ---------- top bar ---------- */
   function exportDoc() {
-    var out = JSON.stringify({ title: state.title, author: state.author, blocks: state.blocks }, null, 2);
+    var out = JSON.stringify({ title: state.title, fr: state.fr, author: state.author, blocks: state.blocks }, null, 2);
     if (navigator.clipboard) navigator.clipboard.writeText(out);
     console.log(out);
     alert("Topic copied to clipboard as JSON (also logged to the console). This is the data a publish step would commit.");
   }
 
   /* ---------- wire up ---------- */
-  titleEl.addEventListener("input", function () { state.title = titleEl.value; });
+  titleEl.addEventListener("input", function () { setTr(state, "title", titleEl.value); });
+  var langSeg = document.getElementById("langSeg");
+  langSeg.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-lang]"); if (!btn || btn.dataset.lang === lang) return;
+    lang = btn.dataset.lang;
+    [].forEach.call(langSeg.children, function (c) { c.setAttribute("aria-pressed", c === btn ? "true" : "false"); });
+    document.querySelector(".doc").lang = lang;
+    hideCapToolbar();
+    render();
+    if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap").forEach(function (t) { t.contentEditable = "false"; });
+  });
   document.getElementById("addBlock").addEventListener("click", function (e) { e.stopPropagation(); openPicker(e.currentTarget); });
   document.getElementById("exportBtn").addEventListener("click", exportDoc);
   document.getElementById("publishBtn").addEventListener("click", openPub);
@@ -642,7 +667,7 @@
     tb.style.left = (rect.left + rect.width / 2) + "px";
     tb.style.top = rect.top + "px";
   }
-  function saveCap(cap) { var blk = cap.closest(".block"); var b = blk && blockById(blk.dataset.id); if (b) b.caption = cap.innerHTML; }
+  function saveCap(cap) { var blk = cap.closest(".block"); var b = blk && blockById(blk.dataset.id); if (b) setTr(b, "caption", cap.innerHTML); }
   function applyCapGrad() {
     var cap = capFromSelection(); if (!cap) return;
     var sel = window.getSelection(); if (!sel.rangeCount) return;
@@ -672,6 +697,13 @@
     return t.indexOf("png") > -1 ? "png" : (t.indexOf("jpeg") > -1 || t.indexOf("jpg") > -1) ? "jpg"
       : t.indexOf("webp") > -1 ? "webp" : t.indexOf("gif") > -1 ? "gif" : t.indexOf("webm") > -1 ? "webm"
       : t.indexOf("quicktime") > -1 ? "mov" : t.indexOf("mp4") > -1 ? "mp4" : "bin";
+  }
+  // copy the non-empty French overrides of `keys` from studio block `b` onto `out`
+  function withFr(out, b, keys) {
+    var fr = {};
+    keys.forEach(function (k) { var v = b.fr && b.fr[k]; if (v && plain(v)) fr[k] = v; });
+    if (Object.keys(fr).length) out.fr = fr;
+    return out;
   }
   function blobFromSrc(src) { return fetch(src).then(function (r) { return r.blob(); }); }
   function blobToBase64(blob) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).split(",")[1]); }; fr.readAsDataURL(blob); }); }
@@ -721,16 +753,16 @@
     var files = [], outBlocks = [], cover = null, mi = 0;
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
-      if (b.type === "text") { outBlocks.push({ type: "text", head: !!b.head, html: b.html || "" }); }
+      if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
         var bl = await blobFromSrc(b.src), ext = extFromType(bl.type), p = "curation/media/" + slug + "/img-" + (++mi) + "." + ext;
         files.push({ path: p, base64: await blobToBase64(bl) }); if (!cover) cover = "/" + p;
-        outBlocks.push({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset });
+        outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset }, b, ["alt", "caption"]));
       } else if (b.type === "video") {
         if (!b.src) continue;
-        if (/youtu\.?be/.test(b.src)) { outBlocks.push({ type: "video", src: b.src, caption: b.caption || "" }); }
-        else { var bl2 = await blobFromSrc(b.src), ext2 = extFromType(bl2.type), p2 = "curation/media/" + slug + "/vid-" + (++mi) + "." + ext2; files.push({ path: p2, base64: await blobToBase64(bl2) }); outBlocks.push({ type: "video", src: "/" + p2, caption: b.caption || "", loop: true }); }
+        if (/youtu\.?be/.test(b.src)) { outBlocks.push(withFr({ type: "video", src: b.src, caption: b.caption || "" }, b, ["caption"])); }
+        else { var bl2 = await blobFromSrc(b.src), ext2 = extFromType(bl2.type), p2 = "curation/media/" + slug + "/vid-" + (++mi) + "." + ext2; files.push({ path: p2, base64: await blobToBase64(bl2) }); outBlocks.push(withFr({ type: "video", src: "/" + p2, caption: b.caption || "", loop: true }, b, ["caption"])); }
       } else if (b.type === "board") {
         if (!b.items.length) continue; var vid = boardHasVideo(b);
         log("Rendering board (" + (vid ? "WebM" : "PNG") + ")…");
@@ -742,14 +774,25 @@
       }
     }
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, blocks: outBlocks };
+    var frTitle = (state.fr && state.fr.title || "").trim();
+    var langs = ["en"];
+    if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
+    topic.langs = langs;
     files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) });
     log("Updating index…");
     var index = [];
     try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
     index = index.filter(function (t) { return t.slug !== slug; });
     var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
-    var desc = firstText ? firstText.html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 160) : "";
-    index.unshift({ slug: slug, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc });
+    var desc = firstText ? plain(firstText.html).slice(0, 160) : "";
+    var entry = { slug: slug, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
+    if (topic.fr) {
+      var firstFr = outBlocks.filter(function (b) { return b.type === "text" && b.fr && b.fr.html; })[0];
+      entry.fr = {};
+      if (topic.fr.title) entry.fr.title = topic.fr.title;
+      if (firstFr) entry.fr.desc = plain(firstFr.fr.html).slice(0, 160);
+    }
+    index.unshift(entry);
     files.push({ path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) });
     log("Committing " + files.length + " files…");
     var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token);

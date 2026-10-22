@@ -304,12 +304,31 @@
 
   // ---- curation: data-driven feed + in-tab reading pop-up ----
   function esc(s) { return String(s == null ? "" : s); }
+
+  // reading language (English default, French optional). A topic stores its
+  // French words in `.fr` on the topic / index entry / each block; anything
+  // not translated falls back to English.
+  var CUR_LANG_KEY = "btbr_cur_lang";
+  var CUR_UI = {
+    en: { tag: "An ongoing curation", open: "Open", loading: "Loading…", failed: "Couldn’t load this topic.",
+          emptyT: "Curation is in the making.", emptyS: "New topics are on the way — come back soon.",
+          end: "You’re at the bottom of the list.", sw: "Lire en français" },
+    fr: { tag: "Une curation en cours", open: "Ouvrir", loading: "Chargement…", failed: "Impossible de charger ce sujet.",
+          emptyT: "La curation est en préparation.", emptyS: "De nouveaux sujets arrivent — revenez bientôt.",
+          end: "Vous êtes en bas de la liste.", sw: "Read in English" }
+  };
+  function curLang() { try { return localStorage.getItem(CUR_LANG_KEY) === "fr" ? "fr" : "en"; } catch (e) { return "en"; } }
+  function ui(k) { return CUR_UI[curLang()][k]; }
+  function loc(o, k) { return (curLang() === "fr" && o.fr && o.fr[k]) || o[k] || ""; }
+  var curList = null, curTopic = null;
+
   function curBlocksHTML(blocks) {
     return (blocks || []).map(function (b) {
-      if (b.type === "text") return b.head ? '<h3 class="cur-h">' + esc(b.html) + "</h3>" : "<p>" + esc(b.html) + "</p>";
+      if (b.type === "text") return b.head ? '<h3 class="cur-h">' + esc(loc(b, "html")) + "</h3>" : "<p>" + esc(loc(b, "html")) + "</p>";
       if (b.type === "image") {
-        var cap = b.caption ? '<figcaption class="cur-cap">' + b.caption + "</figcaption>" : "";
-        return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img src="' + esc(b.src) + '" alt="' + esc(b.alt) + '" loading="lazy">' + cap + "</figure>";
+        var capT = loc(b, "caption");
+        var cap = capT ? '<figcaption class="cur-cap">' + capT + "</figcaption>" : "";
+        return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + cap + "</figure>";
       }
       if (b.type === "video") {
         if (/youtu\.?be/.test(b.src)) {
@@ -317,7 +336,8 @@
           return '<figure class="cur-fig2 cur-vid"><iframe src="https://www.youtube.com/embed/' + (m ? m[1] : "") + '" allowfullscreen></iframe></figure>';
         }
         var at = b.loop ? "autoplay muted loop playsinline" : "controls playsinline";
-        var cap2 = b.caption ? '<figcaption class="cur-cap">' + b.caption + "</figcaption>" : "";
+        var capV = loc(b, "caption");
+        var cap2 = capV ? '<figcaption class="cur-cap">' + capV + "</figcaption>" : "";
         return '<figure class="cur-fig2"><video src="' + esc(b.src) + '" ' + at + "></video>" + cap2 + "</figure>";
       }
       return "";
@@ -326,42 +346,87 @@
   function closeCurModal() {
     var m = document.querySelector(".cur-modal");
     if (m && !m.hidden) { m.hidden = true; document.body.style.overflow = ""; var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = ""; }
+    curTopic = null;
+  }
+  function renderCurTopic(modal) {
+    modal.querySelector(".cur-modal-title").textContent = loc(curTopic, "title");
+    modal.querySelector(".cur-modal-author").textContent = curTopic.author || "";
+    modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
   }
   function openCurTopic(slug) {
     var modal = document.querySelector(".cur-modal"); if (!modal) return;
     var content = modal.querySelector(".cur-modal-content");
     modal.querySelector(".cur-modal-title").textContent = "";
     modal.querySelector(".cur-modal-author").textContent = "";
-    content.innerHTML = '<p class="cur-loading">Loading…</p>';
+    content.innerHTML = '<p class="cur-loading">' + ui("loading") + "</p>";
     modal.hidden = false; document.body.style.overflow = "hidden";
     fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
-      modal.querySelector(".cur-modal-title").textContent = t.title || "";
-      modal.querySelector(".cur-modal-author").textContent = t.author || "";
-      content.innerHTML = curBlocksHTML(t.blocks);
-    }).catch(function () { content.innerHTML = '<p class="cur-loading">Couldn’t load this topic.</p>'; });
+      curTopic = t; renderCurTopic(modal);
+    }).catch(function () { content.innerHTML = '<p class="cur-loading">' + ui("failed") + "</p>"; });
+  }
+  function curCardText(t) {
+    var desc = loc(t, "desc");
+    return '<div class="cur-author"><span class="cur-avatar" aria-hidden="true"></span> ' + esc(t.author || "") + "</div>"
+      + '<h2 class="cur-title">' + esc(loc(t, "title")) + "</h2>"
+      + (desc ? '<p class="cur-desc">' + esc(desc) + "</p>" : "")
+      + '<button class="cur-open" type="button">' + ui("open") + "</button>";
   }
   function curCard(t) {
     var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
-      + '<div class="cur-text">'
-      + '<div class="cur-author"><span class="cur-avatar" aria-hidden="true"></span> ' + esc(t.author || "") + "</div>"
-      + '<h2 class="cur-title">' + esc(t.title || "") + "</h2>"
-      + (t.desc ? '<p class="cur-desc">' + esc(t.desc) + "</p>" : "")
-      + '<button class="cur-open" type="button">Open</button>'
-      + "</div>"
+      + '<div class="cur-text">' + curCardText(t) + "</div>"
       + '<div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div>"
       + "</article>";
+  }
+  function curEmptyHTML() {
+    return '<div class="cur-empty"><p class="cur-empty-title">' + ui("emptyT") + '</p><p class="cur-empty-sub">' + ui("emptyS") + "</p></div>";
   }
   function initCuration() {
     var feed = document.querySelector("[data-curation]");
     if (!feed || feed.dataset.loaded) return;
     feed.dataset.loaded = "1";
-    var emptyHTML = '<div class="cur-empty"><p class="cur-empty-title">Curation is in the making.</p><p class="cur-empty-sub">New topics are on the way — come back soon.</p></div>';
+    applyCurLang(false);
     fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
-      if (!list || !list.length) { feed.insertAdjacentHTML("beforeend", emptyHTML); return; }
-      feed.insertAdjacentHTML("beforeend", list.map(curCard).join(""));
-      feed.insertAdjacentHTML("beforeend", '<p class="cur-end">You’re at the bottom of the list.</p>');
-    }).catch(function () { feed.insertAdjacentHTML("beforeend", emptyHTML); });
+      curList = list || [];
+      if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
+      feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
+      feed.insertAdjacentHTML("beforeend", '<p class="cur-end">' + ui("end") + "</p>");
+    }).catch(function () { curList = []; feed.insertAdjacentHTML("beforeend", curEmptyHTML()); });
+  }
+  // put every curation string in the current language; `fade` re-develops
+  // the swapped words (blur → sharp) when the reader flips it by hand
+  function applyCurLang(fade) {
+    var frame = document.querySelector(".curation-frame"); if (!frame) return;
+    var lang = curLang();
+    frame.lang = lang;
+    frame.querySelectorAll(".cur-lang").forEach(function (b) {
+      b.textContent = lang.toUpperCase();
+      b.setAttribute("aria-label", ui("sw")); b.title = ui("sw");
+    });
+    frame.querySelectorAll("[data-fr]").forEach(function (el) {
+      if (!el.dataset.en) el.dataset.en = el.textContent;
+      el.textContent = lang === "fr" ? el.dataset.fr : el.dataset.en;
+    });
+    var touched = [];
+    if (curList) {
+      frame.querySelectorAll(".cur-card").forEach(function (card) {
+        var t = curList.filter(function (x) { return x.slug === card.dataset.slug; })[0];
+        var box = card.querySelector(".cur-text");
+        if (t && box) { box.innerHTML = curCardText(t); touched.push(box); }
+      });
+      var end = frame.querySelector(".cur-end"); if (end) { end.textContent = ui("end"); touched.push(end); }
+      var empty = frame.querySelector(".cur-empty"); if (empty) { empty.outerHTML = curEmptyHTML(); touched.push(frame.querySelector(".cur-empty")); }
+    }
+    var modal = frame.querySelector(".cur-modal");
+    if (modal && !modal.hidden && curTopic) { renderCurTopic(modal); touched.push(modal.querySelector(".cur-modal-panel")); }
+    if (fade && !reduceMotion) touched.forEach(function (el) {
+      if (!el) return;
+      el.classList.remove("cur-lang-in"); void el.offsetWidth; el.classList.add("cur-lang-in");
+    });
+  }
+  function toggleCurLang() {
+    try { localStorage.setItem(CUR_LANG_KEY, curLang() === "fr" ? "en" : "fr"); } catch (e) { return; }
+    applyCurLang(true);
   }
   // reveal the "Studio" link only on devices that have a saved publish token
   function initStudioLink() {
@@ -384,6 +449,7 @@
   document.addEventListener("click", function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
+    if (t.closest(".cur-lang")) { toggleCurLang(); return; }
     var openBtn = t.closest(".cur-open");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
     if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();
