@@ -389,13 +389,21 @@
     var i = document.createElement("input"); i.className = "insp-input"; i.value = val || ""; i.placeholder = ph || "";
     i.addEventListener("input", function () { oninput(i.value); }); return i;
   }
+  var AUTHORS = ["Isaaaaaaaac", "Rayn", "Vic"];
+  function authorSelect() {
+    if (AUTHORS.indexOf(state.author) === -1) { state.author = AUTHORS[0]; bylineEl.textContent = state.author; }
+    var s = document.createElement("select"); s.className = "insp-select";
+    AUTHORS.forEach(function (n) { var o = document.createElement("option"); o.value = n; o.textContent = n; if (n === state.author) o.selected = true; s.appendChild(o); });
+    s.addEventListener("change", function () { state.author = s.value; bylineEl.textContent = s.value; });
+    return s;
+  }
 
   function renderInspector() {
     inspectorEl.innerHTML = "";
     // document settings (always)
     var docSec = document.createElement("div"); docSec.className = "insp-section";
     var dt = document.createElement("div"); dt.className = "insp-title"; dt.textContent = "Topic"; docSec.appendChild(dt);
-    docSec.appendChild(field("Author", textInput(state.author, "Author", function (v) { state.author = v; bylineEl.textContent = v || "Author"; })));
+    docSec.appendChild(field("Author", authorSelect()));
     inspectorEl.appendChild(docSec);
 
     var b = selectedId && blockById(selectedId);
