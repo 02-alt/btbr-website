@@ -506,25 +506,78 @@
     s.addEventListener("change", function () { state.author = s.value; setByline(s.value); });
     return s;
   }
-  function pickCover() {
+  function coverIsBoard() { return state.cover && typeof state.cover === "object" && state.cover.items; }
+  function coverAddImage() {
+    if (!coverIsBoard()) state.cover = { bg: "#ebebef", zc: 0, items: [] };
+    if (state.cover.items.length >= 4) return;
     var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
-    inp.addEventListener("change", function () { var f = inp.files && inp.files[0]; if (!f) return; state.cover = URL.createObjectURL(f); renderInspector(); });
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      var n = state.cover.items.length;
+      var item = { id: uid(), src: URL.createObjectURL(f), x: 6 + n * 5, y: 6 + n * 5, w: 55, z: (state.cover.zc = (state.cover.zc || 0) + 1) };
+      state.cover.items.push(item);
+      trimTransparentURL(item.src).then(function (t) { if (t && t !== item.src) { try { URL.revokeObjectURL(item.src); } catch (e) {} item.src = t; renderInspector(); } });
+      renderInspector();
+    });
     inp.click();
+  }
+  function renderCoverItem(it, box) {
+    var wrap = document.createElement("div"); wrap.className = "cover-item"; wrap.dataset.iid = it.id;
+    wrap.style.left = it.x + "%"; wrap.style.top = it.y + "%"; wrap.style.width = it.w + "%"; wrap.style.zIndex = it.z || 1;
+    var img = document.createElement("img"); img.src = it.src; img.draggable = false; wrap.appendChild(img);
+    var rs = document.createElement("div"); rs.className = "cover-resize"; rs.textContent = "⤡"; wrap.appendChild(rs);
+    var del = document.createElement("button"); del.type = "button"; del.className = "cover-del"; del.innerHTML = "&times;"; wrap.appendChild(del);
+    del.addEventListener("click", function (e) { e.stopPropagation(); state.cover.items = state.cover.items.filter(function (x) { return x.id !== it.id; }); renderInspector(); });
+    wrap.addEventListener("pointerdown", function (e) { if (e.target === rs) { coverResize(e, it, wrap, box); return; } coverMove(e, it, wrap, box); });
+    return wrap;
+  }
+  function coverMove(e, it, wrap, box) {
+    e.preventDefault(); e.stopPropagation();
+    it.z = (state.cover.zc = (state.cover.zc || 0) + 1); wrap.style.zIndex = it.z;
+    wrap.setPointerCapture(e.pointerId);
+    var brd = box.getBoundingClientRect(), r = wrap.getBoundingClientRect();
+    var offX = e.clientX - r.left, offY = e.clientY - r.top, wP = r.width / brd.width * 100, hP = r.height / brd.height * 100;
+    function mv(ev) { it.x = clamp((ev.clientX - brd.left - offX) / brd.width * 100, 0, 100 - wP); it.y = clamp((ev.clientY - brd.top - offY) / brd.height * 100, 0, 100 - hP); wrap.style.left = it.x + "%"; wrap.style.top = it.y + "%"; }
+    function up() { wrap.removeEventListener("pointermove", mv); }
+    wrap.addEventListener("pointermove", mv); wrap.addEventListener("pointerup", up, { once: true });
+  }
+  function coverResize(e, it, wrap, box) {
+    e.preventDefault(); e.stopPropagation(); wrap.setPointerCapture(e.pointerId);
+    var brd = box.getBoundingClientRect(), left = wrap.getBoundingClientRect().left;
+    function mv(ev) { it.w = clamp((ev.clientX - left) / brd.width * 100, 12, 100 - it.x); wrap.style.width = it.w + "%"; }
+    function up() { wrap.removeEventListener("pointermove", mv); }
+    wrap.addEventListener("pointermove", mv); wrap.addEventListener("pointerup", up, { once: true });
+  }
+  function coverToPNGBlob(cover) {
+    return new Promise(function (resolve) {
+      var W = 1080, H = 1800, c = document.createElement("canvas"); c.width = W; c.height = H; var ctx = c.getContext("2d");
+      ctx.fillStyle = cover.bg || "#ebebef"; ctx.fillRect(0, 0, W, H);
+      var items = cover.items.slice().sort(function (a, b) { return (a.z || 0) - (b.z || 0); });
+      Promise.all(items.map(function (it) { return new Promise(function (r) { var im = new Image(); im.onload = function () { r({ it: it, im: im }); }; im.onerror = function () { r(null); }; im.src = it.src; }); }))
+        .then(function (arr) { arr.forEach(function (o) { if (!o) return; var dw = o.it.w / 100 * W, dh = dw * (o.im.naturalHeight / o.im.naturalWidth); ctx.drawImage(o.im, o.it.x / 100 * W, o.it.y / 100 * H, dw, dh); }); c.toBlob(resolve, "image/png"); });
+    });
   }
   function coverField() {
     var wrap = document.createElement("div");
-    var thumb = document.createElement("div"); thumb.className = "cover-thumb" + (state.cover ? " has" : "");
-    if (state.cover) { var im = document.createElement("img"); im.src = state.cover; thumb.appendChild(im); } else { thumb.textContent = "No cover"; }
-    thumb.addEventListener("click", pickCover);
-    thumb.addEventListener("dragover", function (e) { e.preventDefault(); thumb.classList.add("drop"); });
-    thumb.addEventListener("dragleave", function () { thumb.classList.remove("drop"); });
-    thumb.addEventListener("drop", function (e) { e.preventDefault(); thumb.classList.remove("drop"); var f = [].slice.call(e.dataTransfer.files).filter(function (x) { return x.type.indexOf("image/") === 0; })[0]; if (f) { state.cover = URL.createObjectURL(f); renderInspector(); } });
-    wrap.appendChild(thumb);
+    var box = document.createElement("div"); box.className = "cover-board";
+    if (typeof state.cover === "string" && state.cover) { box.classList.add("cover-static"); var si = document.createElement("img"); si.src = state.cover; box.appendChild(si); }
+    else if (coverIsBoard()) {
+      box.style.background = state.cover.bg || "#ebebef";
+      if (!state.cover.items.length) { var e0 = document.createElement("div"); e0.className = "cover-empty"; e0.textContent = "Add up to 4 images"; box.appendChild(e0); }
+      state.cover.items.forEach(function (it) { box.appendChild(renderCoverItem(it, box)); });
+    } else { box.classList.add("cover-static"); var e1 = document.createElement("div"); e1.className = "cover-empty"; e1.textContent = "No cover"; box.appendChild(e1); }
+    wrap.appendChild(box);
     var btns = document.createElement("div"); btns.className = "cover-btns";
-    var choose = document.createElement("button"); choose.className = "sbtn"; choose.type = "button"; choose.textContent = state.cover ? "Change" : "Choose image"; choose.addEventListener("click", pickCover); btns.appendChild(choose);
-    if (state.cover) { var rm = document.createElement("button"); rm.className = "sbtn"; rm.type = "button"; rm.textContent = "Remove"; rm.addEventListener("click", function () { state.cover = null; renderInspector(); }); btns.appendChild(rm); }
+    var count = coverIsBoard() ? state.cover.items.length : 0;
+    var add = document.createElement("button"); add.className = "sbtn"; add.type = "button"; add.textContent = count >= 4 ? "Max 4 images" : "Add image"; add.disabled = count >= 4; add.addEventListener("click", coverAddImage); btns.appendChild(add);
+    if (state.cover) { var rm = document.createElement("button"); rm.className = "sbtn"; rm.type = "button"; rm.textContent = "Clear"; rm.addEventListener("click", function () { state.cover = null; renderInspector(); }); btns.appendChild(rm); }
     wrap.appendChild(btns);
-    var hint = document.createElement("div"); hint.className = "insp-empty"; hint.style.marginTop = "8px"; hint.textContent = "The card thumbnail. Best 3:5 (portrait). If empty, the first image/board is used.";
+    if (coverIsBoard()) {
+      var sw = document.createElement("div"); sw.className = "insp-swatches"; sw.style.marginTop = "8px";
+      ["#ebebef", "#111113", "#f4ece2", "#dfe7e4", "#ffffff"].forEach(function (col) { var s = document.createElement("button"); s.type = "button"; s.style.background = col; s.addEventListener("click", function () { state.cover.bg = col; renderInspector(); }); sw.appendChild(s); });
+      wrap.appendChild(sw);
+    }
+    var hint = document.createElement("div"); hint.className = "insp-empty"; hint.style.marginTop = "8px"; hint.textContent = "The card thumbnail (3:5). Add up to 4 images, drag to place, drag the ⤡ corner to resize.";
     wrap.appendChild(hint);
     return wrap;
   }
@@ -1087,8 +1140,12 @@
       }
     }
     if (state.cover) {
-      if (state.cover.indexOf("/curation/media/") === 0) { cover = state.cover; }
-      else { var cbl = await blobFromSrc(state.cover), cext = extFromType(cbl.type), cp = "curation/media/" + slug + "/cover." + cext; files.push({ path: cp, base64: await blobToBase64(cbl) }); cover = "/" + cp; }
+      if (typeof state.cover === "string") {
+        if (state.cover.indexOf("/curation/media/") === 0) { cover = state.cover; }
+        else { var cbl = await blobFromSrc(state.cover), cext = extFromType(cbl.type), cp = "curation/media/" + slug + "/cover." + cext; files.push({ path: cp, base64: await blobToBase64(cbl) }); cover = "/" + cp; }
+      } else if (state.cover.items && state.cover.items.length) {
+        var cbb = await coverToPNGBlob(state.cover); var cpb = "curation/media/" + slug + "/cover.png"; files.push({ path: cpb, base64: await blobToBase64(cbb) }); cover = "/" + cpb;
+      }
     }
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, blocks: outBlocks };
     var frTitle = (state.fr && state.fr.title || "").trim();
@@ -1246,7 +1303,10 @@
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
     var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, editingSlug: editingSlug, cover: null, blocks: [] };
-    if (state.cover) copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
+    if (state.cover) {
+      if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
+      else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
+    }
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i], nb = Object.assign({}, b);
       if ((b.type === "image" || b.type === "video") && b.src && b.src.indexOf("blob:") === 0) nb.src = await toDataURL(b.src);
