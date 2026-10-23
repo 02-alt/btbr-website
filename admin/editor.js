@@ -202,6 +202,54 @@
   function selItem(board, id) {
     board.querySelectorAll(".board-item").forEach(function (el) { el.classList.toggle("is-sel", el.dataset.iid === id); });
   }
+  /* ---------- smart guides: snap to the board's edges/centre and to other items (Figma-style) ---------- */
+  var SNAP_PX = 6; // hold ⌘ while dragging to place freely
+  function boardRects(board, exceptId) {
+    return [].slice.call(board.querySelectorAll(".board-item")).filter(function (el) { return el.dataset.iid !== exceptId; })
+      .map(function (el) { return { l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }; });
+  }
+  function snapTargets(board, rects) {
+    var W = board.clientWidth, H = board.clientHeight;
+    var xs = [{ v: 0, board: true }, { v: W / 2, board: true }, { v: W, board: true }];
+    var ys = [{ v: 0, board: true }, { v: H / 2, board: true }, { v: H, board: true }];
+    rects.forEach(function (r) {
+      [r.l, r.l + r.w / 2, r.l + r.w].forEach(function (v) { xs.push({ v: v, r: r }); });
+      [r.t, r.t + r.h / 2, r.t + r.h].forEach(function (v) { ys.push({ v: v, r: r }); });
+    });
+    return { xs: xs, ys: ys };
+  }
+  // smallest correction that lands one of `cands` on a target, or 0
+  function snapDelta(cands, targets) {
+    var best = null;
+    cands.forEach(function (c) { targets.forEach(function (t) { var d = t.v - c; if (Math.abs(d) <= SNAP_PX && (best === null || Math.abs(d) < Math.abs(best))) best = d; }); });
+    return best === null ? 0 : best;
+  }
+  // guide lines for every edge/centre of the moved rect `m` that now sits on a target
+  function guideLines(board, m, tg) {
+    var W = board.clientWidth, H = board.clientHeight, lines = {};
+    function add(vert, v, t) {
+      var k = (vert ? "v" : "h") + Math.round(v * 2), g = lines[k];
+      if (!g) g = lines[k] = { vert: vert, pos: v, a: vert ? m.t : m.l, b: vert ? m.t + m.h : m.l + m.w };
+      if (t.board) { g.a = 0; g.b = vert ? H : W; return; }
+      g.a = Math.min(g.a, vert ? t.r.t : t.r.l); g.b = Math.max(g.b, vert ? t.r.t + t.r.h : t.r.l + t.r.w);
+    }
+    [m.l, m.l + m.w / 2, m.l + m.w].forEach(function (c) { tg.xs.forEach(function (t) { if (Math.abs(t.v - c) < 0.5) add(true, t.v, t); }); });
+    [m.t, m.t + m.h / 2, m.t + m.h].forEach(function (c) { tg.ys.forEach(function (t) { if (Math.abs(t.v - c) < 0.5) add(false, t.v, t); }); });
+    return Object.keys(lines).map(function (k) { return lines[k]; });
+  }
+  function drawGuides(board, lines) {
+    var layer = board.querySelector(".board-guides");
+    if (!layer) { layer = document.createElement("div"); layer.className = "board-guides"; board.appendChild(layer); }
+    layer.innerHTML = "";
+    lines.forEach(function (g) {
+      var el = document.createElement("div"); el.className = "board-guide " + (g.vert ? "v" : "h");
+      if (g.vert) { el.style.left = g.pos + "px"; el.style.top = g.a + "px"; el.style.height = (g.b - g.a) + "px"; }
+      else { el.style.top = g.pos + "px"; el.style.left = g.a + "px"; el.style.width = (g.b - g.a) + "px"; }
+      layer.appendChild(el);
+    });
+  }
+  function clearGuides(board) { var l = board.querySelector(".board-guides"); if (l) l.remove(); }
+
   function boardMove(e, b, board, it, wrap) {
     e.preventDefault(); e.stopPropagation();
     selItem(board, it.id);
@@ -210,15 +258,25 @@
     board.classList.add("is-arranging");
     wrap.setPointerCapture(e.pointerId);
     var brd = board.getBoundingClientRect();
-    var r = wrap.getBoundingClientRect();
-    var offX = e.clientX - r.left, offY = e.clientY - r.top;
-    var wPct = r.width / brd.width * 100, hPct = r.height / brd.height * 100;
+    var W = board.clientWidth, H = board.clientHeight;
+    var offX = e.clientX - brd.left - wrap.offsetLeft, offY = e.clientY - brd.top - wrap.offsetTop;
+    var w = wrap.offsetWidth, h = wrap.offsetHeight;
+    var tg = snapTargets(board, boardRects(board, it.id));
     function mv(ev) {
-      it.x = clamp((ev.clientX - brd.left - offX) / brd.width * 100, 0, 100 - wPct);
-      it.y = clamp((ev.clientY - brd.top - offY) / brd.height * 100, 0, 100 - hPct);
+      var L = clamp(ev.clientX - brd.left - offX, 0, W - w);
+      var T = clamp(ev.clientY - brd.top - offY, 0, H - h);
+      var lines = [];
+      if (!ev.metaKey) {
+        L = clamp(L + snapDelta([L, L + w / 2, L + w], tg.xs), 0, W - w);
+        T = clamp(T + snapDelta([T, T + h / 2, T + h], tg.ys), 0, H - h);
+        lines = guideLines(board, { l: L, t: T, w: w, h: h }, tg);
+      }
+      drawGuides(board, lines);
+      wrap.classList.toggle("is-snapped", lines.length > 0);
+      it.x = L / W * 100; it.y = T / H * 100;
       wrap.style.left = it.x + "%"; wrap.style.top = it.y + "%";
     }
-    function up() { wrap.removeEventListener("pointermove", mv); wrap.classList.remove("is-dragging"); board.classList.remove("is-arranging"); }
+    function up() { wrap.removeEventListener("pointermove", mv); wrap.classList.remove("is-dragging"); board.classList.remove("is-arranging"); wrap.classList.remove("is-snapped"); clearGuides(board); }
     wrap.addEventListener("pointermove", mv);
     wrap.addEventListener("pointerup", up, { once: true });
   }
@@ -227,12 +285,24 @@
     selItem(board, it.id);
     wrap.setPointerCapture(e.pointerId);
     var brd = board.getBoundingClientRect();
-    var left = wrap.getBoundingClientRect().left;
+    var W = board.clientWidth, H = board.clientHeight;
+    var L = wrap.offsetLeft, T = wrap.offsetTop, ratio = wrap.offsetHeight / wrap.offsetWidth;
+    var tg = snapTargets(board, boardRects(board, it.id));
+    var minW = 0.12 * W, maxW = Math.min(W - L, ratio ? (H - T) / ratio : W - L);
     function mv(ev) {
-      it.w = clamp((ev.clientX - left) / brd.width * 100, 12, 100 - it.x);
+      var w = clamp(ev.clientX - brd.left - L, minW, maxW), lines = [];
+      if (!ev.metaKey) {
+        // snap the right edge, or the bottom edge (width follows via the locked aspect) — whichever is closer
+        var dx = snapDelta([L + w], tg.xs), dy = ratio ? snapDelta([T + w * ratio], tg.ys) : 0;
+        var dw = dx && (!dy || Math.abs(dx) <= Math.abs(dy)) ? dx : dy ? dy / ratio : 0;
+        w = clamp(w + dw, minW, maxW);
+        lines = guideLines(board, { l: L, t: T, w: w, h: w * ratio }, tg);
+      }
+      drawGuides(board, lines);
+      it.w = w / W * 100;
       wrap.style.width = it.w + "%";
     }
-    function up() { wrap.removeEventListener("pointermove", mv); }
+    function up() { wrap.removeEventListener("pointermove", mv); clearGuides(board); }
     wrap.addEventListener("pointermove", mv);
     wrap.addEventListener("pointerup", up, { once: true });
   }
@@ -614,11 +684,89 @@
   });
 
   /* ---------- top bar ---------- */
-  function exportDoc() {
-    var out = JSON.stringify({ title: state.title, fr: state.fr, author: state.author, blocks: state.blocks }, null, 2);
-    if (navigator.clipboard) navigator.clipboard.writeText(out);
-    console.log(out);
-    alert("Topic copied to clipboard as JSON (also logged to the console). This is the data a publish step would commit.");
+  /* ---------- export: a ZIP of each media block (image/board → PNG, video/video-board → GIF) ---------- */
+  function loadImg(src) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = src; }); }
+  function imageToPNGBlob(src) {
+    return loadImg(src).then(function (im) {
+      var c = document.createElement("canvas"); c.width = im.naturalWidth || im.width; c.height = im.naturalHeight || im.height;
+      c.getContext("2d").drawImage(im, 0, 0);
+      return new Promise(function (res) { c.toBlob(res, "image/png"); });
+    });
+  }
+  function ensureGifWorker() {
+    if (window.__gifWorker) return Promise.resolve(window.__gifWorker);
+    return fetch("https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js").then(function (r) { return r.text(); })
+      .then(function (t) { window.__gifWorker = URL.createObjectURL(new Blob([t], { type: "application/javascript" })); return window.__gifWorker; });
+  }
+  function videoToGIFBlob(src, worker) {
+    return new Promise(function (resolve, reject) {
+      var v = document.createElement("video"); v.src = src; v.muted = true; v.playsInline = true;
+      v.addEventListener("loadeddata", function () {
+        var MAXW = 480, scale = Math.min(1, MAXW / (v.videoWidth || MAXW));
+        var w = Math.round((v.videoWidth || MAXW) * scale) || MAXW, h = Math.round((v.videoHeight || MAXW) * scale) || MAXW;
+        var c = document.createElement("canvas"); c.width = w; c.height = h; var ctx = c.getContext("2d");
+        var fps = 10, delay = Math.round(1000 / fps), dur = Math.min(6, v.duration || 3);
+        var gif = new GIF({ workers: 2, quality: 10, width: w, height: h, workerScript: worker });
+        var start = null, last = -1; v.play();
+        function tick(ts) { if (start === null) start = ts; var t = (ts - start) / 1000;
+          if (t - last >= 1 / fps - 0.001) { ctx.clearRect(0, 0, w, h); ctx.drawImage(v, 0, 0, w, h); gif.addFrame(ctx, { copy: true, delay: delay }); last = t; }
+          if (t < dur) requestAnimationFrame(tick); else { v.pause(); gif.on("finished", resolve); gif.render(); }
+        }
+        requestAnimationFrame(tick);
+      }, { once: true });
+      v.addEventListener("error", function () { reject(new Error("video load failed")); }, { once: true });
+      v.load();
+    });
+  }
+  function boardToGIFBlob(b, worker) {
+    return new Promise(function (resolve) {
+      var SIZE = 720, c = document.createElement("canvas"); c.width = c.height = SIZE; var ctx = c.getContext("2d");
+      var items = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
+      Promise.all(items.map(function (it) {
+        return new Promise(function (r) {
+          if (it.kind === "video") { var v = document.createElement("video"); v.src = it.src; v.muted = true; v.loop = true; v.playsInline = true; v.addEventListener("loadeddata", function () { r({ it: it, el: v, vid: true }); }, { once: true }); v.addEventListener("error", function () { r(null); }, { once: true }); v.load(); }
+          else { var im = new Image(); im.onload = function () { r({ it: it, el: im, vid: false }); }; im.onerror = function () { r(null); }; im.src = it.src; }
+        });
+      })).then(function (media) {
+        media = media.filter(Boolean);
+        var durs = media.filter(function (m) { return m.vid; }).map(function (m) { return m.el.duration; }).filter(function (d) { return isFinite(d) && d > 0; });
+        var dur = Math.min(6, durs.length ? Math.max.apply(null, durs) : 3), fps = 10, delay = Math.round(1000 / fps);
+        var gif = new GIF({ workers: 2, quality: 10, width: SIZE, height: SIZE, workerScript: worker });
+        media.forEach(function (m) { if (m.vid) { try { m.el.currentTime = 0; } catch (e) {} m.el.play().catch(function () {}); } });
+        var start = null, last = -1;
+        function tick(ts) { if (start === null) start = ts; var t = (ts - start) / 1000;
+          if (t - last >= 1 / fps - 0.001) {
+            ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
+            media.forEach(function (m) { var it = m.it, el = m.el, nw = m.vid ? el.videoWidth : el.naturalWidth, nh = m.vid ? el.videoHeight : el.naturalHeight; if (!nw || !nh) return; var dw = it.w / 100 * SIZE, dh = dw * (nh / nw); try { ctx.drawImage(el, it.x / 100 * SIZE, it.y / 100 * SIZE, dw, dh); } catch (e) {} });
+            gif.addFrame(ctx, { copy: true, delay: delay }); last = t;
+          }
+          if (t < dur) requestAnimationFrame(tick); else { media.forEach(function (m) { if (m.vid) m.el.pause(); }); gif.on("finished", resolve); gif.render(); }
+        }
+        requestAnimationFrame(tick);
+      });
+    });
+  }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  async function exportBlocks(btn) {
+    if (typeof JSZip === "undefined" || typeof GIF === "undefined") { alert("Export tools didn’t load (needs internet). Reload and try again."); return; }
+    var label = btn ? btn.textContent : ""; if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
+    try {
+      var worker = await ensureGifWorker();
+      var zip = new JSZip(), n = 0, any = false;
+      for (var i = 0; i < state.blocks.length; i++) {
+        var b = state.blocks[i];
+        if (b.type === "text") continue;
+        n++;
+        if (b.type === "image") { if (!b.src) continue; zip.file(pad2(n) + "-image.png", await imageToPNGBlob(b.src)); any = true; }
+        else if (b.type === "video") { if (!b.src || /youtu\.?be/.test(b.src)) continue; zip.file(pad2(n) + "-video.gif", await videoToGIFBlob(b.src, worker)); any = true; }
+        else if (b.type === "board") { if (!b.items.length) continue; if (boardHasVideo(b)) zip.file(pad2(n) + "-board.gif", await boardToGIFBlob(b, worker)); else zip.file(pad2(n) + "-board.png", await boardToPNGBlob(b)); any = true; }
+      }
+      if (!any) { alert("Nothing to export — add an image, video or board first."); if (btn) { btn.textContent = label; btn.disabled = false; } return; }
+      var out = await zip.generateAsync({ type: "blob" });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(out); a.download = (slugify(state.title) || "topic") + "-export.zip";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+    } catch (e) { alert("Export failed: " + (e && e.message || e)); }
+    if (btn) { btn.textContent = label; btn.disabled = false; }
   }
 
   /* ---------- wire up ---------- */
@@ -634,7 +782,7 @@
     if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap").forEach(function (t) { t.contentEditable = "false"; });
   });
   document.getElementById("addBlock").addEventListener("click", function (e) { e.stopPropagation(); openPicker(e.currentTarget); });
-  document.getElementById("exportBtn").addEventListener("click", exportDoc);
+  document.getElementById("exportBtn").addEventListener("click", function () { exportBlocks(this); });
   document.getElementById("publishBtn").addEventListener("click", openPub);
   document.getElementById("previewBtn").addEventListener("click", function () {
     var on = document.body.classList.toggle("is-preview");
