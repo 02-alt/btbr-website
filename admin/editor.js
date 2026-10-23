@@ -12,6 +12,7 @@
     author: "Isaac",
     cover: null,
     desc: "",
+    inspiration: "",
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
@@ -595,6 +596,11 @@
     descTa.value = state.desc || "";
     descTa.addEventListener("input", function () { state.desc = descTa.value; });
     docSec.appendChild(field("Description", descTa));
+    var inspTa = document.createElement("textarea"); inspTa.className = "insp-input insp-textarea"; inspTa.rows = 3;
+    inspTa.placeholder = "Sources / inspiration — one per line";
+    inspTa.value = state.inspiration || "";
+    inspTa.addEventListener("input", function () { state.inspiration = inspTa.value; });
+    docSec.appendChild(field("Inspiration", inspTa));
     inspectorEl.appendChild(docSec);
 
     var b = selectedId && blockById(selectedId);
@@ -1155,7 +1161,7 @@
     }
     var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
     var desc = (state.desc || "").trim() || (firstText ? plain(firstText.html).slice(0, 160) : "");
-    var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, blocks: outBlocks };
+    var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
     var frTitle = (state.fr && state.fr.title || "").trim();
     var langs = ["en"];
     if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
@@ -1254,6 +1260,7 @@
       state.author = t.author || "Isaac";
       state.cover = t.cover || null;
       state.desc = t.desc || "";
+      state.inspiration = t.inspiration || "";
       state.blocks = (t.blocks || []).map(blockFromPublished);
       if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
       editingSlug = slug;
@@ -1264,7 +1271,7 @@
   }
   function newTopic() {
     editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = "";
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = "";
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render();
@@ -1309,7 +1316,7 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, editingSlug: editingSlug, cover: null, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, editingSlug: editingSlug, cover: null, blocks: [] };
     if (state.cover) {
       if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
       else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
@@ -1335,7 +1342,7 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || "";
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || "";
     editingSlug = d.editingSlug || null;
     state.blocks = (d.blocks || []).map(function (b) { return Object.assign({ id: uid() }, b); });
     if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });

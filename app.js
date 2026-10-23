@@ -322,7 +322,7 @@
   }
   function closeCurModal() {
     var m = document.querySelector(".cur-modal");
-    if (m && !m.hidden) { m.hidden = true; document.body.style.overflow = ""; var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = ""; }
+    if (m && !m.hidden) { m.hidden = true; document.body.style.overflow = ""; var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = ""; var ip = m.querySelector(".cur-info-pop"); if (ip) ip.hidden = true; }
     curTopic = null;
   }
   function buildTOC(modal) {
@@ -353,8 +353,25 @@
     modal.querySelector(".cur-modal-title").textContent = loc(curTopic, "title");
     var au = curTopic.author || "";
     modal.querySelector(".cur-modal-author").innerHTML = authorAvatar(au) + "<span>" + esc(au) + "</span>";
-    buildTOC(modal);
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
+    buildTOC(modal);
+    setupInspiration(modal, curTopic.inspiration);
+  }
+  function setupInspiration(modal, text) {
+    var btn = modal.querySelector(".cur-modal-info"), pop = modal.querySelector(".cur-info-pop");
+    if (!btn || !pop) return;
+    var lines = String(text || "").split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!lines.length) { btn.hidden = true; pop.hidden = true; return; }
+    btn.hidden = false; pop.hidden = true;
+    pop.querySelector(".cur-info-list").innerHTML = lines.map(function (l) {
+      return "<li>" + esc(l).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>') + "</li>";
+    }).join("");
+    btn.onclick = function (e) { e.stopPropagation(); pop.hidden = !pop.hidden; };
+    if (!window.__btbrInfoClose) {
+      window.__btbrInfoClose = true;
+      document.addEventListener("click", function (e) { var p = document.querySelector(".cur-info-pop"); if (p && !p.hidden && !e.target.closest(".cur-info-pop") && !e.target.closest(".cur-modal-info")) p.hidden = true; });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") { var p = document.querySelector(".cur-info-pop"); if (p && !p.hidden) p.hidden = true; } });
+    }
   }
   function openCurTopic(slug) {
     var modal = document.querySelector(".cur-modal"); if (!modal) return;
