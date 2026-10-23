@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=4" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />
-  <link rel="stylesheet" href="/styles.css?v=15" />
+  <link rel="stylesheet" href="/styles.css?v=16" />
 </head>
 <body>
   <div class="frame curation-frame">
@@ -41,12 +41,17 @@
       <div class="cur-modal-panel" role="dialog" aria-modal="true" aria-label="Topic">
         <button class="lang-btn cur-modal-lang" type="button" aria-label="Lire en français" title="Lire en français">EN</button>
         <button class="cur-modal-close" type="button" aria-label="Close">&times;</button>
-        <div class="cur-modal-author"></div>
-        <h2 class="cur-modal-title"></h2>
-        <div class="cur-modal-content"></div>
+        <div class="cur-modal-body">
+          <nav class="cur-toc" aria-label="Contents" hidden></nav>
+          <div class="cur-article">
+            <div class="cur-modal-author"></div>
+            <h2 class="cur-modal-title"></h2>
+            <div class="cur-modal-content"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

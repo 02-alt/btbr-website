@@ -289,6 +289,7 @@
   function authorPP(name) { var m = { "Isaaaaaaaac": "/assets/pp/isaaaaaaaac.jpg" }; return m[name] || ""; }
   function authorAvatar(name) { var pp = authorPP(name); return pp ? '<img class="cur-avatar" src="' + pp + '" alt="" loading="lazy">' : '<span class="cur-avatar" aria-hidden="true"></span>'; }
   function curBlocksHTML(blocks) {
+    var hc = 0;
     return (blocks || []).map(function (b) {
       if (b.type === "text") {
         var raw = loc(b, "html") || "";
@@ -298,7 +299,7 @@
         var paras = [];
         for (var k = 0; k < parts.length; k++) { var s = parts[k].trim(); if (s && s.replace(/<[^>]+>/g, "").replace(/&nbsp;/gi, "").trim()) paras.push(s); }
         if (!paras.length) return "";
-        if (b.head) return '<h3 class="cur-h">' + paras.join(" ") + "</h3>";
+        if (b.head) { hc++; return '<h3 class="cur-h" id="sec-' + hc + '">' + paras.join(" ") + "</h3>"; }
         return paras.map(function (p) { return "<p>" + p + "</p>"; }).join("");
       }
       if (b.type === "image") {
@@ -324,10 +325,35 @@
     if (m && !m.hidden) { m.hidden = true; document.body.style.overflow = ""; var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = ""; }
     curTopic = null;
   }
+  function buildTOC(modal) {
+    var toc = modal.querySelector(".cur-toc"); if (!toc) return;
+    var content = modal.querySelector(".cur-modal-content");
+    var heads = content ? [].slice.call(content.querySelectorAll(".cur-h")) : [];
+    if (heads.length < 1) { toc.hidden = true; toc.innerHTML = ""; return; }
+    toc.hidden = false;
+    toc.innerHTML = '<div class="cur-toc-label">Contents</div>' + heads.map(function (h) {
+      return '<a href="#' + h.id + '" data-sec="' + h.id + '">' + (h.textContent || "") + "</a>";
+    }).join("");
+    [].forEach.call(toc.querySelectorAll("a"), function (a) {
+      a.addEventListener("click", function (e) { e.preventDefault(); var t = document.getElementById(a.dataset.sec); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); });
+    });
+    var panel = modal.querySelector(".cur-modal-panel");
+    if (panel && "IntersectionObserver" in window) {
+      if (modal.__tocObs) modal.__tocObs.disconnect();
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { var id = en.target.id; [].forEach.call(toc.querySelectorAll("a"), function (a) { a.classList.toggle("is-active", a.dataset.sec === id); }); }
+        });
+      }, { root: panel, rootMargin: "0px 0px -72% 0px", threshold: 0 });
+      heads.forEach(function (h) { obs.observe(h); });
+      modal.__tocObs = obs;
+    }
+  }
   function renderCurTopic(modal) {
     modal.querySelector(".cur-modal-title").textContent = loc(curTopic, "title");
     var au = curTopic.author || "";
     modal.querySelector(".cur-modal-author").innerHTML = authorAvatar(au) + "<span>" + esc(au) + "</span>";
+    buildTOC(modal);
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
   }
   function openCurTopic(slug) {
