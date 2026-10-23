@@ -1455,3 +1455,16 @@ a.feedbar-brand:hover { opacity: 0.55; }
 /* three items now: on a phone they wrap as whole phrases, never mid-phrase */
 .feedfoot { flex-wrap: wrap; row-gap: 8px; }
 .feedfoot > a { white-space: nowrap; }
+
+/* circular icon button (envelope / email) in the top-right tools, matching .lang-btn */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0;
+  border: 1px solid #e2e2e2; border-radius: 50%;
+  background: none; color: var(--muted); text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.icon-btn:hover { color: var(--fg); border-color: #c8c8c8; }
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn svg { width: 15px; height: 15px; display: block; }
