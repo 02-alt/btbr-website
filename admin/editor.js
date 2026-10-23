@@ -848,7 +848,7 @@
     var lg = document.getElementById("pubLog"); lg.hidden = false; lg.textContent = "";
     function log(m) { lg.textContent += m + "\n"; lg.scrollTop = lg.scrollHeight; }
     var btn = this; btn.disabled = true; btn.textContent = "Publishing…";
-    publish(token, log).then(function () { btn.disabled = false; btn.textContent = "Publish now"; })
+    publish(token, log).then(function () { btn.disabled = false; btn.textContent = "Publish now"; try { localStorage.removeItem("btbr_cur_draft"); } catch (e) {} })
       .catch(function (e) { log("❌ " + (e && e.message || e)); btn.disabled = false; btn.textContent = "Publish now"; });
   });
 
@@ -944,5 +944,51 @@
     if (nw) nw.addEventListener("click", newTopic);
   })();
 
+  /* ---------- local drafts: save & resume without publishing ---------- */
+  var DRAFT_KEY = "btbr_cur_draft";
+  function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
+  async function serializeDraft() {
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, editingSlug: editingSlug, blocks: [] };
+    for (var i = 0; i < state.blocks.length; i++) {
+      var b = state.blocks[i], nb = Object.assign({}, b);
+      if ((b.type === "image" || b.type === "video") && b.src && b.src.indexOf("blob:") === 0) nb.src = await toDataURL(b.src);
+      if (b.type === "board") { nb.items = []; for (var j = 0; j < b.items.length; j++) { var it = b.items[j], ni = Object.assign({}, it); if (it.src && it.src.indexOf("blob:") === 0) ni.src = await toDataURL(it.src); nb.items.push(ni); } }
+      copy.blocks.push(nb);
+    }
+    return copy;
+  }
+  async function saveDraft(btn) {
+    var label = btn ? btn.textContent : ""; if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    try {
+      var d = await serializeDraft();
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+      if (btn) { btn.textContent = "Saved ✓"; setTimeout(function () { btn.textContent = label; btn.disabled = false; }, 1400); }
+    } catch (e) {
+      if (btn) { btn.textContent = label; btn.disabled = false; }
+      var q = /quota/i.test(String(e));
+      alert("Couldn’t save the draft" + (q ? " — it’s too large for local storage (big videos/boards don’t fit). Publish is the way to keep heavy topics." : ": " + (e && e.message || e)));
+    }
+  }
+  function loadDraftData(d) {
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac";
+    editingSlug = d.editingSlug || null;
+    state.blocks = (d.blocks || []).map(function (b) { return Object.assign({ id: uid() }, b); });
+    if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
+    selectedId = null; render();
+  }
+  function showDraftBanner() {
+    var raw = null; try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) {}
+    if (!raw) return; var d; try { d = JSON.parse(raw); } catch (e) { return; }
+    var bar = document.createElement("div"); bar.className = "draft-banner";
+    var span = document.createElement("span"); span.textContent = "Saved draft from " + new Date(d.savedAt || Date.now()).toLocaleString();
+    var resume = document.createElement("button"); resume.className = "sbtn"; resume.textContent = "Resume"; resume.addEventListener("click", function () { loadDraftData(d); bar.remove(); });
+    var discard = document.createElement("button"); discard.className = "sbtn"; discard.textContent = "Discard"; discard.addEventListener("click", function () { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} bar.remove(); });
+    bar.appendChild(span); bar.appendChild(resume); bar.appendChild(discard);
+    document.body.appendChild(bar);
+  }
+  var draftBtn = document.getElementById("draftBtn");
+  if (draftBtn) draftBtn.addEventListener("click", function () { saveDraft(this); });
+
   render();
+  showDraftBanner();
 })();

@@ -450,3 +450,14 @@ body.view-topics .studio-inspector { display: none; }
 .topic-acts .del { color: #ff3b30; }
 .topic-acts button:hover { background: #fafafa; }
 .topics-empty, .topics-loading { color: var(--ink-soft); font-size: 14px; padding: 30px 0; text-align: center; }
+
+/* resume-draft banner */
+.draft-banner {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  z-index: 90; display: flex; align-items: center; gap: 10px;
+  background: rgba(30, 30, 32, 0.95); color: #fff;
+  padding: 9px 10px 9px 16px; border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); font-size: 13px;
+}
+.draft-banner .sbtn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.22); color: #fff; }
+.draft-banner .sbtn:hover { background: rgba(255,255,255,0.2); }
