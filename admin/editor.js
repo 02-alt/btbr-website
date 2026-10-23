@@ -167,7 +167,9 @@
         var x = clamp((e.clientX - brd.left) / brd.width * 100 - 21 + i * 4, 0, 58);
         var y = clamp((e.clientY - brd.top) / brd.height * 100 - 21 + i * 4, 0, 58);
         var kind = f.type.indexOf("video/") === 0 ? "video" : "image";
-        b.items.push({ id: uid(), kind: kind, src: URL.createObjectURL(f), name: f.name, x: x, y: y, w: 42, z: ++b.zc });
+        var item = { id: uid(), kind: kind, src: URL.createObjectURL(f), name: f.name, x: x, y: y, w: 42, z: ++b.zc };
+        b.items.push(item);
+        if (kind === "image") autoTrim(item, b.id);
       });
       render(); select(b.id);
     });
@@ -312,12 +314,40 @@
     inp.addEventListener("change", function () {
       var f = inp.files && inp.files[0]; if (!f) return;
       var n = b.items.length;
-      b.items.push({ id: uid(), kind: kind, src: URL.createObjectURL(f), name: f.name, x: 8 + n * 6, y: 8 + n * 6, w: 42, z: ++b.zc });
+      var item = { id: uid(), kind: kind, src: URL.createObjectURL(f), name: f.name, x: 8 + n * 6, y: 8 + n * 6, w: 42, z: ++b.zc };
+      b.items.push(item);
+      if (kind === "image") autoTrim(item, b.id);
       render(); select(b.id);
     });
     inp.click();
   }
   function boardHasVideo(b) { return b.items.some(function (it) { return it.kind === "video"; }); }
+  // crop the fully-transparent margin off an image (e.g. the empty border macOS
+  // adds around window screenshots), so the window fills its frame
+  function trimTransparentURL(src) {
+    return loadImg(src).then(function (im) {
+      var w = im.naturalWidth, h = im.naturalHeight; if (!w || !h) return src;
+      var c = document.createElement("canvas"); c.width = w; c.height = h;
+      var ctx = c.getContext("2d"); ctx.drawImage(im, 0, 0);
+      var data; try { data = ctx.getImageData(0, 0, w, h).data; } catch (e) { return src; }
+      var minX = w, minY = h, maxX = -1, maxY = -1, T = 8;
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] > T) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+      }
+      if (maxX < 0) return src;
+      if (minX === 0 && minY === 0 && maxX === w - 1 && maxY === h - 1) return src;
+      var cw = maxX - minX + 1, ch = maxY - minY + 1;
+      var oc = document.createElement("canvas"); oc.width = cw; oc.height = ch;
+      oc.getContext("2d").drawImage(c, minX, minY, cw, ch, 0, 0, cw, ch);
+      return new Promise(function (res) { oc.toBlob(function (bl) { res(bl ? URL.createObjectURL(bl) : src); }, "image/png"); });
+    }).catch(function () { return src; });
+  }
+  function autoTrim(holder, rerenderId) {
+    var url = holder.src;
+    trimTransparentURL(url).then(function (t) {
+      if (t && t !== url) { holder.src = t; try { URL.revokeObjectURL(url); } catch (e) {} if (rerenderId) rerenderBlock(rerenderId); }
+    });
+  }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function wireMediaDrop(el, b) {
     el.addEventListener("dragover", function (e) {
@@ -330,7 +360,7 @@
       e.preventDefault(); el.classList.remove("is-dropping");
       var want = b.type === "video" ? "video/" : "image/";
       var f = [].slice.call(e.dataTransfer.files).filter(function (x) { return x.type.indexOf(want) === 0; })[0];
-      if (f) { b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id); }
+      if (f) { b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id); if (b.type === "image") autoTrim(b, b.id); }
     });
   }
 
@@ -610,7 +640,7 @@
     var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
     inp.addEventListener("change", function () {
       var f = inp.files && inp.files[0]; if (!f) return;
-      b.src = URL.createObjectURL(f); render(); select(b.id);
+      b.src = URL.createObjectURL(f); render(); select(b.id); autoTrim(b, b.id);
     });
     inp.click();
   }
