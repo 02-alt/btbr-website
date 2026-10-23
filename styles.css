@@ -1142,36 +1142,101 @@ a.feedbar-brand:hover { opacity: 0.55; }
 }
 
 /* ===== curation feed (/curation/) ===== */
+/* Apple-style gallery: a large title, then poster cards (3:5 cover + caption)
+   on a centred grid. The whole card is one target; it lifts on hover and
+   presses in on click. Set in the system face (SF on Apple devices). */
+.cur-head,
+.curation {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
+  letter-spacing: 0;
+}
+.cur-head {
+  text-align: center;
+  margin: clamp(28px, 6vh, 64px) auto clamp(32px, 5vh, 56px);
+  padding-inline: 8px;
+}
+.cur-large {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Helvetica Neue", sans-serif;
+  font-size: clamp(34px, 5vw, 52px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  color: #1d1d1f;
+}
+.cur-lede {
+  margin-top: 10px;
+  font-size: clamp(17px, 1.6vw, 19px);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: #6e6e73;
+}
 .curation {
   flex: 1;
   width: 100%;
-  max-width: 760px;
+  max-width: 1040px;
   margin-inline: auto;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(28px, 4vw, 44px);
-  padding: 24px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
+  justify-content: center;
+  align-content: start;
+  gap: 48px 32px;
+  padding-bottom: 24px;
 }
 .cur-card {
-  display: grid;
-  grid-template-columns: 1fr 1.05fr;
-  gap: clamp(18px, 3vw, 32px);
-  align-items: start;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+.cur-media {
+  position: relative;
+  aspect-ratio: 3 / 5;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f5f5f7;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  /* keep the rounded clip crisp while the image scales inside it */
+  isolation: isolate;
+}
+/* hairline edge, so light covers don't dissolve into the white page */
+.cur-media::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+}
+.cur-media img { transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
+.cur-card:hover .cur-media {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 18px 40px rgba(0, 0, 0, 0.12);
+}
+.cur-card:hover .cur-media img { transform: scale(1.025); }
+/* press: instant, on pointer-down */
+.cur-card:active .cur-media {
+  transform: scale(0.975);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.08);
+  transition-duration: 0.12s;
 }
 .cur-text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 6px;
+  padding-inline: 4px;
 }
 .cur-author {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.3;
+  color: #86868b;
 }
+.cur-dot { margin: 0 -1px; }
 .cur-avatar {
   width: 18px; height: 18px;
   border-radius: 50%;
@@ -1179,49 +1244,55 @@ a.feedbar-brand:hover { opacity: 0.55; }
   flex: none;
 }
 .cur-title {
-  font-size: clamp(19px, 2.4vw, 24px);
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.12;
+  line-height: 1.15;
+  color: #1d1d1f;
+}
+/* the title is the card's button; its ::after stretches over the whole card */
+.cur-open {
+  all: unset;
+  cursor: pointer;
+}
+.cur-open::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 24px;
+}
+.cur-open:focus-visible::after {
+  outline: 3px solid rgba(0, 113, 227, 0.6);
+  outline-offset: 2px;
 }
 .cur-desc {
-  font-size: 14px;
-  line-height: 1.5;
-  color: #555;
-}
-.cur-open {
-  margin-top: 4px;
-  padding: 8px 20px;
-  border: 1px solid #e2e2e2;
-  border-radius: 999px;
-  background: #f4f4f4;
-  color: var(--fg);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-.cur-open:hover { background: #ececec; transform: translateY(-1px); }
-.cur-media {
-  aspect-ratio: 3 / 5;
-  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: #6e6e73;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  text-wrap: pretty;
 }
 .cur-ph {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: repeating-linear-gradient(135deg, #efefef, #efefef 12px, #e8e8e8 12px, #e8e8e8 24px);
+  background: repeating-linear-gradient(135deg, #f5f5f7, #f5f5f7 12px, #eeeef0 12px, #eeeef0 24px);
   color: #b4b4b4;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-@media (max-width: 640px) {
-  .cur-card { grid-template-columns: 1fr; }
-  .cur-media { aspect-ratio: 16 / 10; order: -1; }
+@media (max-width: 560px) {
+  .curation { grid-template-columns: minmax(0, 340px); gap: 40px; }
+}
+@media (hover: none) {
+  .cur-card:hover .cur-media { transform: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06); }
+  .cur-card:hover .cur-media img { transform: none; }
 }
 
 /* ===== curation reading pop-up (in-tab) ===== */
@@ -1280,11 +1351,13 @@ a.feedbar-brand:hover { opacity: 0.55; }
 /* ===== curation page (/curation/) arrival — same develop-in, sequenced
    top → bottom: the header focuses first, then each card in turn down the page. */
 .curation-frame .feedbar,
+.curation-frame .cur-head,
 .curation-frame .cur-card,
 .curation-frame .feedfoot {
   animation: home-develop 0.95s both cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .curation-frame .feedbar            { animation-delay: 0.05s; }
+.curation-frame .cur-head           { animation-delay: 0.12s; }
 .curation-frame .cur-card:nth-of-type(1) { animation-delay: 0.20s; }
 .curation-frame .cur-card:nth-of-type(2) { animation-delay: 0.34s; }
 .curation-frame .cur-card:nth-of-type(3) { animation-delay: 0.48s; }
@@ -1390,12 +1463,12 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .cur-cap { margin-top: 10px; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); }
 
 /* curation empty state + end-of-list */
-.cur-empty { text-align: center; padding: 24px 0; }
+.cur-empty { grid-column: 1 / -1; text-align: center; padding: 24px 0; }
 /* when the feed is just the empty state, centre it in the page */
-.curation:has(.cur-empty) { justify-content: center; }
+.curation:has(.cur-empty) { align-content: center; }
 .cur-empty-title { font-size: clamp(20px, 3vw, 26px); font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }
 .cur-empty-sub { margin-top: 10px; font-size: 15px; color: var(--muted); }
-.cur-end { text-align: center; color: var(--muted); font-size: 13px; letter-spacing: 0.01em; padding: 44px 0 8px; }
+.cur-end { text-align: center; color: #86868b; font-size: 13px; padding: 40px 0 8px; font-family: -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", sans-serif; letter-spacing: 0; }
 
 /* curation "in the works" marker — on hover the word "curation" develops out
    and "soon" develops in (the site's blur→sharp transition), colourless.
@@ -1441,7 +1514,7 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .lang-btn:hover { color: var(--fg); border-color: #c8c8c8; }
 .lang-btn:active { transform: scale(0.94); }
 .lang-corner { position: absolute; top: 40px; right: 32px; z-index: 5; }
-.cur-modal-lang { position: absolute; top: 14px; right: 48px; }
+.cur-modal-lang { position: absolute; top: 14px; right: 52px; }
 @media (max-width: 560px) {
   .lang-corner { top: 32px; right: 18px; }
 }
@@ -1539,7 +1612,7 @@ img.cur-avatar { object-fit: cover; }
 
 /* info (inspiration) button + popover in the topic pop-up */
 .cur-modal-info {
-  position: absolute; top: 14px; right: 84px; z-index: 6;
+  position: absolute; top: 14px; right: 90px; z-index: 6;
   width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
   padding: 0; border: 1px solid #e2e2e2; border-radius: 50%;
   background: #fff; color: var(--muted); cursor: pointer;
@@ -1563,3 +1636,39 @@ img.cur-avatar { object-fit: cover; }
 .cur-info-list li { font-size: 14px; line-height: 1.5; color: #333; padding: 5px 0; border-top: 1px solid #f0f0f0; }
 .cur-info-list li:first-child { border-top: 0; }
 .cur-info-list a { color: var(--fg); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; word-break: break-word; }
+
+/* ===== curation pop-up: sheet motion + close button ===== */
+/* the sheet rises out of the dimmed page (iOS sheet curve) and sinks back the
+   same way on close (.is-closing, set by app.js) */
+.cur-modal-backdrop {
+  background: rgba(0, 0, 0, 0.32);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  animation: cur-fade-in 0.32s ease both;
+}
+.cur-modal-panel { animation: cur-sheet-in 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.cur-modal.is-closing .cur-modal-backdrop { animation: cur-fade-out 0.24s ease both; }
+.cur-modal.is-closing .cur-modal-panel { animation: cur-sheet-out 0.24s cubic-bezier(0.32, 0, 0.67, 0) both; }
+@keyframes cur-fade-in  { from { opacity: 0; } }
+@keyframes cur-fade-out { to { opacity: 0; } }
+@keyframes cur-sheet-in  { from { opacity: 0; transform: translateY(28px) scale(0.98); } }
+@keyframes cur-sheet-out { to   { opacity: 0; transform: translateY(20px) scale(0.985); } }
+@media (prefers-reduced-motion: reduce) {
+  .cur-modal-panel { animation-name: cur-fade-in; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .cur-modal-backdrop { background: rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* close: a filled circular xmark, like a system sheet */
+.cur-modal-close {
+  top: 14px; right: 14px; z-index: 6;
+  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6e6e73;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+.cur-modal-close:hover { background: rgba(0, 0, 0, 0.09); color: #1d1d1f; }
+.cur-modal-close:active { transform: scale(0.92); }
+.cur-modal-close svg { width: 14px; height: 14px; display: block; }

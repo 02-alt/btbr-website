@@ -16,6 +16,7 @@ window.__btbrFR = {
   "Reed on macOS": "Reed sur macOS",
   "Cabin on macOS": "Cabin sur macOS",
   "An ongoing curation": "Une curation en cours",
+  "Topics worth remembering.": "Des sujets qui méritent qu’on s’en souvienne.",
   "About builtoberemembered": "À propos de builtoberemembered",
   "Hi, I'm isaaaaaaaac. I'm trying to do good things, and to help as much as I can. <span class=\"soft\">I hope I can make things a little easier for you.</span>": "Salut, moi c’est isaaaaaaaac. J’essaie de faire de bonnes choses, et d’aider autant que je peux. <span class=\"soft\">J’espère pouvoir vous simplifier un peu la vie.</span>",
   "Play song": "Écouter la chanson",

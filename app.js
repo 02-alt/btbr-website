@@ -320,10 +320,22 @@
       return "";
     }).join("");
   }
+  // the sheet sinks back the way it rose, then the pop-up hides
+  var curCloseTimer = null;
   function closeCurModal() {
     var m = document.querySelector(".cur-modal");
-    if (m && !m.hidden) { m.hidden = true; document.body.style.overflow = ""; var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = ""; var ip = m.querySelector(".cur-info-pop"); if (ip) ip.hidden = true; }
+    if (!m || m.hidden || m.classList.contains("is-closing")) return;
+    var ip = m.querySelector(".cur-info-pop"); if (ip) ip.hidden = true;
+    function done() {
+      curCloseTimer = null;
+      m.classList.remove("is-closing");
+      m.hidden = true; document.body.style.overflow = "";
+      var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = "";
+    }
     curTopic = null;
+    if (reduceMotion) { done(); return; }
+    m.classList.add("is-closing");
+    curCloseTimer = setTimeout(done, 240);
   }
   function buildTOC(modal) {
     var toc = modal.querySelector(".cur-toc"); if (!toc) return;
@@ -375,6 +387,7 @@
   }
   function openCurTopic(slug) {
     var modal = document.querySelector(".cur-modal"); if (!modal) return;
+    if (curCloseTimer) { clearTimeout(curCloseTimer); curCloseTimer = null; modal.classList.remove("is-closing"); }
     var content = modal.querySelector(".cur-modal-content");
     modal.querySelector(".cur-modal-title").textContent = "";
     modal.querySelector(".cur-modal-author").textContent = "";
@@ -384,18 +397,28 @@
       curTopic = t; renderCurTopic(modal);
     }).catch(function () { content.innerHTML = '<p class="cur-loading">' + ui("failed") + "</p>"; });
   }
+  // "23 Oct 2026" (or "23 oct. 2026") from the topic's YYYY-MM-DD date
+  function curDate(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || "");
+    if (!m) return "";
+    try {
+      return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(siteLang() === "fr" ? "fr-FR" : "en-GB",
+        { day: "numeric", month: "short", year: "numeric" });
+    } catch (e) { return ""; }
+  }
+  // the whole card is the target: the title's button stretches over it
   function curCardText(t) {
-    var desc = loc(t, "desc");
-    return '<div class="cur-author">' + authorAvatar(t.author || "") + " " + esc(t.author || "") + "</div>"
-      + '<h2 class="cur-title">' + esc(loc(t, "title")) + "</h2>"
-      + (desc ? '<p class="cur-desc">' + esc(desc) + "</p>" : "")
-      + '<button class="cur-open" type="button">' + ui("open") + "</button>";
+    var desc = loc(t, "desc"), date = curDate(t.date);
+    return '<div class="cur-author">' + authorAvatar(t.author || "") + "<span>" + esc(t.author || "") + "</span>"
+      + (date ? '<span class="cur-dot" aria-hidden="true">·</span><time datetime="' + esc(t.date) + '">' + date + "</time>" : "") + "</div>"
+      + '<h2 class="cur-title"><button class="cur-open" type="button">' + esc(loc(t, "title")) + "</button></h2>"
+      + (desc ? '<p class="cur-desc">' + esc(desc) + "</p>" : "");
   }
   function curCard(t) {
     var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
-      + '<div class="cur-text">' + curCardText(t) + "</div>"
       + '<div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div>"
+      + '<div class="cur-text">' + curCardText(t) + "</div>"
       + "</article>";
   }
   function curEmptyHTML() {
@@ -409,7 +432,8 @@
       curList = list || [];
       if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
       feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
-      feed.insertAdjacentHTML("beforeend", '<p class="cur-end">' + ui("end") + "</p>");
+      // after the grid, not in it, so a short row of cards stays centred
+      feed.insertAdjacentHTML("afterend", '<p class="cur-end">' + ui("end") + "</p>");
     }).catch(function () { curList = []; feed.insertAdjacentHTML("beforeend", curEmptyHTML()); });
   }
   // re-render the curation feed + open topic in the current language
