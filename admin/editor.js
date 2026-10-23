@@ -10,6 +10,7 @@
     title: "",
     fr: { title: "" },
     author: "Isaac",
+    cover: null,
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
@@ -499,6 +500,28 @@
     s.addEventListener("change", function () { state.author = s.value; bylineEl.textContent = s.value; });
     return s;
   }
+  function pickCover() {
+    var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    inp.addEventListener("change", function () { var f = inp.files && inp.files[0]; if (!f) return; state.cover = URL.createObjectURL(f); renderInspector(); });
+    inp.click();
+  }
+  function coverField() {
+    var wrap = document.createElement("div");
+    var thumb = document.createElement("div"); thumb.className = "cover-thumb" + (state.cover ? " has" : "");
+    if (state.cover) { var im = document.createElement("img"); im.src = state.cover; thumb.appendChild(im); } else { thumb.textContent = "No cover"; }
+    thumb.addEventListener("click", pickCover);
+    thumb.addEventListener("dragover", function (e) { e.preventDefault(); thumb.classList.add("drop"); });
+    thumb.addEventListener("dragleave", function () { thumb.classList.remove("drop"); });
+    thumb.addEventListener("drop", function (e) { e.preventDefault(); thumb.classList.remove("drop"); var f = [].slice.call(e.dataTransfer.files).filter(function (x) { return x.type.indexOf("image/") === 0; })[0]; if (f) { state.cover = URL.createObjectURL(f); renderInspector(); } });
+    wrap.appendChild(thumb);
+    var btns = document.createElement("div"); btns.className = "cover-btns";
+    var choose = document.createElement("button"); choose.className = "sbtn"; choose.type = "button"; choose.textContent = state.cover ? "Change" : "Choose image"; choose.addEventListener("click", pickCover); btns.appendChild(choose);
+    if (state.cover) { var rm = document.createElement("button"); rm.className = "sbtn"; rm.type = "button"; rm.textContent = "Remove"; rm.addEventListener("click", function () { state.cover = null; renderInspector(); }); btns.appendChild(rm); }
+    wrap.appendChild(btns);
+    var hint = document.createElement("div"); hint.className = "insp-empty"; hint.style.marginTop = "8px"; hint.textContent = "The card thumbnail. Best 3:5 (portrait). If empty, the first image/board is used.";
+    wrap.appendChild(hint);
+    return wrap;
+  }
 
   function renderInspector() {
     inspectorEl.innerHTML = "";
@@ -506,6 +529,7 @@
     var docSec = document.createElement("div"); docSec.className = "insp-section";
     var dt = document.createElement("div"); dt.className = "insp-title"; dt.textContent = "Topic"; docSec.appendChild(dt);
     docSec.appendChild(field("Author", authorSelect()));
+    docSec.appendChild(field("Cover", coverField()));
     inspectorEl.appendChild(docSec);
 
     var b = selectedId && blockById(selectedId);
@@ -564,7 +588,7 @@
       sec.appendChild(pick);
     } else if (b.type === "video") {
       sec.appendChild(field("Video URL", textInput(b.src, "YouTube link or .mp4", function (v) { b.src = v; rerenderBlock(b.id); })));
-      var hint = document.createElement("div"); hint.className = "insp-empty"; hint.textContent = "YouTube links embed automatically; direct .mp4 files get a player. Caption: type under the video; select text to colour it.";
+      var hint = document.createElement("div"); hint.className = "insp-empty"; hint.textContent = "YouTube links embed automatically; direct .mp4 files get a player. Caption: type under the video; select text to format it.";
       sec.appendChild(hint);
     } else if (b.type === "board") {
       // background: swatches + colour picker
@@ -807,7 +831,7 @@
     lang = btn.dataset.lang;
     [].forEach.call(langSeg.children, function (c) { c.setAttribute("aria-pressed", c === btn ? "true" : "false"); });
     document.querySelector(".doc").lang = lang;
-    hideCapToolbar();
+    hideFmtBar();
     render();
     if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap").forEach(function (t) { t.contentEditable = "false"; });
   });
@@ -818,7 +842,7 @@
     var on = document.body.classList.toggle("is-preview");
     this.textContent = on ? "Edit" : "Preview";
     document.querySelectorAll(".b-text, .b-cap").forEach(function (t) { t.contentEditable = on ? "false" : "true"; });
-    if (on) hideCapToolbar();
+    if (on) hideFmtBar();
   });
   document.addEventListener("pointerdown", function (e) {
     if (!e.target.closest(".picker") && !e.target.closest("#addBlock")) closePicker();
@@ -833,58 +857,142 @@
   window.addEventListener("dragover", function (e) { e.preventDefault(); });
   window.addEventListener("drop", function (e) { e.preventDefault(); });
 
-  /* ---------- caption colour-emphasis toolbar ---------- */
-  var capTb = null;
-  function buildCapToolbar() {
-    if (capTb) return capTb;
-    capTb = document.createElement("div"); capTb.className = "cap-toolbar"; capTb.hidden = true;
-    var g = document.createElement("button"); g.type = "button"; g.className = "cap-swatch grad"; g.title = "Gradient emphasis";
-    g.addEventListener("mousedown", function (e) { e.preventDefault(); applyCapGrad(); });
-    capTb.appendChild(g);
-    var plain = document.createElement("button"); plain.type = "button"; plain.className = "cap-plain"; plain.textContent = "Plain";
-    plain.addEventListener("mousedown", function (e) { e.preventDefault(); applyCapPlain(); });
-    capTb.appendChild(plain);
-    document.body.appendChild(capTb);
-    return capTb;
+  /* ---------- format bar: emphasis for selected text (text blocks + captions) ----------
+     Pinned at the bottom of the canvas. Bold / italic / link use the browser's
+     editing commands (keeps native undo); gradient + highlight are class spans. */
+  var fmtBar = null, fmtBtns = {}, fmtLink = null, fmtRange = null;
+  var FMT = [
+    { k: "bold", label: "B", title: "Bold (⌘B)" },
+    { k: "italic", label: "I", title: "Italic (⌘I)" },
+    { k: "grad", label: "", title: "Gradient" },
+    { k: "mark", label: "", title: "Highlight (⌘⇧H)" },
+    { k: "link", label: "Link", title: "Link (⌘K)" },
+    { k: "plain", label: "Plain", title: "Remove formatting" }
+  ];
+  var SPAN_CLS = { grad: "cap-grad", mark: "txt-mark" };
+  function buildFmtBar() {
+    if (fmtBar) return fmtBar;
+    fmtBar = document.createElement("div"); fmtBar.className = "fmt-bar"; fmtBar.hidden = true;
+    FMT.forEach(function (f, i) {
+      if (f.k === "link" || f.k === "plain") { var sep = document.createElement("span"); sep.className = "fmt-sep"; fmtBar.appendChild(sep); }
+      var btn = document.createElement("button"); btn.type = "button"; btn.className = "fmt-btn fmt-" + f.k; btn.title = f.title;
+      btn.setAttribute("aria-label", f.title); btn.textContent = f.label;
+      btn.addEventListener("mousedown", function (e) { e.preventDefault(); fmtApply(f.k); });
+      fmtBtns[f.k] = btn; fmtBar.appendChild(btn);
+    });
+    // link entry: replaces the buttons while typing a URL
+    fmtLink = document.createElement("form"); fmtLink.className = "fmt-url"; fmtLink.hidden = true; fmtLink.noValidate = true;
+    var inp = document.createElement("input"); inp.type = "url"; inp.placeholder = "Paste a link…"; inp.spellcheck = false;
+    var ok = document.createElement("button"); ok.type = "submit"; ok.className = "fmt-btn fmt-ok"; ok.textContent = "Add";
+    fmtLink.appendChild(inp); fmtLink.appendChild(ok);
+    fmtLink.addEventListener("submit", function (e) { e.preventDefault(); commitLink(inp.value.trim()); });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); closeLinkEntry(true); } });
+    inp.addEventListener("blur", function () { setTimeout(function () { if (!fmtLink.hidden && !fmtLink.contains(document.activeElement)) closeLinkEntry(false); }, 0); });
+    fmtBar.appendChild(fmtLink);
+    document.body.appendChild(fmtBar);
+    return fmtBar;
   }
-  function hideCapToolbar() { if (capTb) capTb.hidden = true; }
-  function capFromSelection() {
+  function hideFmtBar() { if (fmtBar) { fmtBar.hidden = true; if (!fmtLink.hidden) closeLinkEntry(false); } }
+  // the editable text (.b-text or .b-cap) holding a non-empty selection
+  function fmtTarget() {
     var s = window.getSelection();
     if (!s || s.isCollapsed || !s.rangeCount) return null;
     var n = s.anchorNode, el = n && (n.nodeType === 1 ? n : n.parentElement);
-    var cap = el && el.closest && el.closest(".b-cap");
-    return (cap && cap.isContentEditable) ? cap : null;
+    var t = el && el.closest && el.closest(".b-text, .b-cap");
+    if (!t || !t.isContentEditable || !t.contains(s.focusNode)) return null;
+    return t;
   }
-  function updateCapToolbar() {
-    var cap = capFromSelection(); var tb = buildCapToolbar();
-    if (!cap) { tb.hidden = true; return; }
-    var rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
-    if (!rect || (!rect.width && !rect.height)) { tb.hidden = true; return; }
-    tb.hidden = false;
-    tb.style.left = (rect.left + rect.width / 2) + "px";
-    tb.style.top = rect.top + "px";
+  function inClass(node, sel, root) {
+    var el = node && (node.nodeType === 1 ? node : node.parentElement);
+    var hit = el && el.closest(sel);
+    return hit && root.contains(hit) ? hit : null;
   }
-  function saveCap(cap) { var blk = cap.closest(".block"); var b = blk && blockById(blk.dataset.id); if (b) setTr(b, "caption", cap.innerHTML); }
-  function applyCapGrad() {
-    var cap = capFromSelection(); if (!cap) return;
-    var sel = window.getSelection(); if (!sel.rangeCount) return;
-    var range = sel.getRangeAt(0); if (range.collapsed) return;
-    var span = document.createElement("span"); span.className = "cap-grad";
-    try { span.appendChild(range.extractContents()); range.insertNode(span); } catch (e) { return; }
-    cap.normalize();
+  function fmtState(t) {
+    var s = window.getSelection();
+    var st = function (sel) { return !!(inClass(s.anchorNode, sel, t) && inClass(s.focusNode, sel, t)); };
+    return {
+      bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic"),
+      grad: st(".cap-grad"), mark: st(".txt-mark"), link: !!(inClass(s.anchorNode, "a", t) || inClass(s.focusNode, "a", t))
+    };
+  }
+  function updateFmtBar() {
+    var bar = buildFmtBar();
+    if (!fmtLink.hidden) return; // typing a URL — keep the bar as is
+    var t = fmtTarget();
+    if (!t) { bar.hidden = true; return; }
+    var st = fmtState(t);
+    Object.keys(st).forEach(function (k) { fmtBtns[k].classList.toggle("is-on", st[k]); fmtBtns[k].setAttribute("aria-pressed", st[k] ? "true" : "false"); });
+    fmtBtns.bold.disabled = t.classList.contains("b-head"); // headings are already bold
+    // centre over the canvas, not the whole window (the inspector sits on the right)
+    var cv = document.querySelector(".studio-canvas").getBoundingClientRect();
+    bar.style.left = (cv.left + cv.width / 2) + "px";
+    var wasHidden = bar.hidden; bar.hidden = false;
+    if (wasHidden) { // first show: nudge the canvas so the bar never covers the selection
+      var r = window.getSelection().getRangeAt(0).getBoundingClientRect(), top = bar.getBoundingClientRect().top - 16;
+      if (r.bottom > top) document.querySelector(".studio-canvas").scrollTop += r.bottom - top;
+    }
+  }
+  function fmtSaved(t) { t.dispatchEvent(new Event("input")); } // reuses each block's own save
+  function unwrap(el) { while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el); el.remove(); }
+  function toggleSpan(t, cls) {
+    var sel = window.getSelection(), range = sel.getRangeAt(0);
+    var hits = [].slice.call(t.querySelectorAll("." + cls)).filter(function (s) { return range.intersectsNode(s); });
+    if (hits.length && fmtState(t)[cls === "cap-grad" ? "grad" : "mark"]) { hits.forEach(unwrap); t.normalize(); fmtSaved(t); return; }
+    var span = document.createElement("span"); span.className = cls;
+    try { span.appendChild(range.extractContents()); } catch (e) { return; }
+    [].slice.call(span.querySelectorAll("." + cls)).forEach(unwrap);
+    range.insertNode(span);
+    [].slice.call(t.querySelectorAll("." + cls)).forEach(function (s) { if (!s.textContent) s.remove(); });
+    t.normalize();
     var r = document.createRange(); r.selectNodeContents(span); sel.removeAllRanges(); sel.addRange(r);
-    saveCap(cap); updateCapToolbar();
+    fmtSaved(t);
   }
-  function applyCapPlain() {
-    var cap = capFromSelection(); if (!cap) return;
-    var range = window.getSelection().getRangeAt(0);
-    [].slice.call(cap.querySelectorAll(".cap-grad")).forEach(function (s) {
-      if (range.intersectsNode(s)) { while (s.firstChild) s.parentNode.insertBefore(s.firstChild, s); s.remove(); }
+  function fmtApply(k) {
+    var t = fmtTarget(); if (!t) return;
+    if (k === "bold" || k === "italic") { document.execCommand("styleWithCSS", false, false); document.execCommand(k); }
+    else if (k === "grad" || k === "mark") toggleSpan(t, SPAN_CLS[k]);
+    else if (k === "link") { if (fmtState(t).link) document.execCommand("unlink"); else openLinkEntry(); }
+    else if (k === "plain") {
+      document.execCommand("unlink"); document.execCommand("removeFormat");
+      var range = window.getSelection().getRangeAt(0);
+      [].slice.call(t.querySelectorAll(".cap-grad, .txt-mark, b, strong, i, em")).forEach(function (s) { if (range.intersectsNode(s)) unwrap(s); });
+      t.normalize(); fmtSaved(t);
+    }
+    updateFmtBar();
+  }
+  function openLinkEntry() {
+    fmtRange = window.getSelection().getRangeAt(0).cloneRange();
+    fmtBar.classList.add("is-link"); fmtLink.hidden = false;
+    var inp = fmtLink.querySelector("input"); inp.value = ""; inp.focus();
+  }
+  function closeLinkEntry(restore) {
+    fmtLink.hidden = true; fmtBar.classList.remove("is-link");
+    if (restore && fmtRange) {
+      var c = fmtRange.commonAncestorContainer, host = (c.nodeType === 1 ? c : c.parentElement).closest(".b-text, .b-cap");
+      if (host) host.focus({ preventScroll: true });
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(fmtRange);
+    }
+    fmtRange = null; updateFmtBar();
+  }
+  function commitLink(url) {
+    var range = fmtRange; closeLinkEntry(true);
+    if (!url || !range) return;
+    if (!/^(https?:|mailto:|\/|#)/i.test(url)) url = "https://" + url;
+    var t = fmtTarget(); if (!t) return;
+    document.execCommand("createLink", false, url);
+    [].slice.call(t.querySelectorAll("a")).forEach(function (a) {
+      if (a.getAttribute("href") === url && /^https?:/i.test(url)) { a.target = "_blank"; a.rel = "noopener"; }
     });
-    cap.normalize(); saveCap(cap); hideCapToolbar();
+    fmtSaved(t); updateFmtBar();
   }
-  document.addEventListener("selectionchange", updateCapToolbar);
-  window.addEventListener("scroll", function () { if (capTb && !capTb.hidden) updateCapToolbar(); }, true);
+  document.addEventListener("selectionchange", updateFmtBar);
+  document.addEventListener("keydown", function (e) {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || !fmtTarget()) return;
+    var key = e.key.toLowerCase();
+    if (key === "k" && !e.shiftKey) { e.preventDefault(); fmtApply("link"); }
+    else if (key === "h" && e.shiftKey) { e.preventDefault(); fmtApply("mark"); }
+    else if ((key === "b" || key === "i") && !e.shiftKey) { e.preventDefault(); if (!(key === "b" && fmtBtns.bold.disabled)) fmtApply(key === "b" ? "bold" : "italic"); }
+  });
 
   /* ---------- publishing to GitHub ---------- */
   var REPO = "02-alt/btbr-website", BRANCH = "minimalist-apps-showcase", TOKEN_KEY = "btbr_cur_token";
@@ -971,6 +1079,10 @@
         if (vid) outBlocks.push({ type: "video", src: "/" + p3, caption: "", loop: true });
         else { if (!cover) cover = "/" + p3; outBlocks.push({ type: "image", src: "/" + p3, alt: state.title || "", caption: "", inset: false }); }
       }
+    }
+    if (state.cover) {
+      if (state.cover.indexOf("/curation/media/") === 0) { cover = state.cover; }
+      else { var cbl = await blobFromSrc(state.cover), cext = extFromType(cbl.type), cp = "curation/media/" + slug + "/cover." + cext; files.push({ path: cp, base64: await blobToBase64(cbl) }); cover = "/" + cp; }
     }
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, blocks: outBlocks };
     var frTitle = (state.fr && state.fr.title || "").trim();
@@ -1071,6 +1183,7 @@
       state.title = t.title || "";
       state.fr = { title: (t.fr && t.fr.title) || "" };
       state.author = t.author || "Isaac";
+      state.cover = t.cover || null;
       state.blocks = (t.blocks || []).map(blockFromPublished);
       if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
       editingSlug = slug;
@@ -1081,7 +1194,7 @@
   }
   function newTopic() {
     editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac";
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null;
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render();
@@ -1126,7 +1239,8 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, editingSlug: editingSlug, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, editingSlug: editingSlug, cover: null, blocks: [] };
+    if (state.cover) copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i], nb = Object.assign({}, b);
       if ((b.type === "image" || b.type === "video") && b.src && b.src.indexOf("blob:") === 0) nb.src = await toDataURL(b.src);
@@ -1148,7 +1262,7 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac";
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null;
     editingSlug = d.editingSlug || null;
     state.blocks = (d.blocks || []).map(function (b) { return Object.assign({ id: uid() }, b); });
     if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });

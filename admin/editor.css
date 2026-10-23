@@ -363,22 +363,50 @@ body.is-preview .b-board.is-arranging { box-shadow: none; }
 .b-cap.is-empty::before { content: attr(data-ph); color: #c7c7cc; }
 body.is-preview .b-cap.is-empty { display: none; }
 
-/* floating selection toolbar (dark, Apple-style) for colouring caption text */
-.cap-toolbar {
-  position: fixed; z-index: 70;
-  display: flex; gap: 8px; align-items: center;
+/* format bar — pinned at the bottom of the canvas while text is selected (dark, Apple-style) */
+.fmt-bar {
+  position: fixed; z-index: 70; bottom: 24px;
+  display: flex; gap: 2px; align-items: center;
   background: rgba(30, 30, 32, 0.94);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-radius: 11px; padding: 7px 9px;
+  border-radius: 14px; padding: 6px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  transform: translate(-50%, calc(-100% - 8px));
+  transform: translateX(-50%);
+  animation: fmt-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.cap-toolbar[hidden] { display: none; }
-.cap-swatch { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.35); cursor: pointer; padding: 0; }
-.cap-swatch:hover { transform: scale(1.12); }
-.cap-plain { color: #fff; background: none; border: 0; font: inherit; font-size: 12px; font-weight: 590; cursor: pointer; padding: 0 3px; opacity: 0.85; }
-.cap-plain:hover { opacity: 1; }
+.fmt-bar[hidden] { display: none; }
+@keyframes fmt-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+@media (prefers-reduced-motion: reduce) { .fmt-bar { animation: none; } }
+.fmt-btn {
+  height: 30px; min-width: 32px; padding: 0 9px; border: 0; border-radius: 8px;
+  background: none; color: #fff; font: inherit; font-size: 13px; font-weight: 590;
+  cursor: pointer; opacity: 0.85; display: inline-flex; align-items: center; justify-content: center;
+}
+.fmt-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.1); }
+.fmt-btn.is-on { opacity: 1; background: rgba(255, 255, 255, 0.2); }
+.fmt-btn:disabled { opacity: 0.3; cursor: default; background: none; }
+.fmt-bold { font-weight: 800; font-size: 14px; }
+.fmt-italic { font-style: italic; font-family: Georgia, "Times New Roman", serif; font-size: 15px; }
+.fmt-grad::before, .fmt-mark::before { content: ""; display: block; width: 26px; height: 14px; border-radius: 5px; }
+.fmt-grad::before { background: linear-gradient(90deg, rgb(132, 165, 165), rgb(75, 82, 93), rgb(17, 15, 18)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+.fmt-mark::before { background: rgba(132, 165, 165, 0.75); }
+.fmt-sep { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.18); margin: 0 4px; }
+.fmt-bar.is-link > .fmt-btn, .fmt-bar.is-link > .fmt-sep { display: none; }
+.fmt-url { display: flex; align-items: center; gap: 4px; }
+.fmt-url[hidden] { display: none; }
+.fmt-url input {
+  width: 260px; height: 30px; border: 0; border-radius: 8px; padding: 0 10px;
+  background: rgba(255, 255, 255, 0.12); color: #fff; font: inherit; font-size: 13px; outline: 0;
+}
+.fmt-url input::placeholder { color: rgba(255, 255, 255, 0.5); }
+
+/* emphasis styles inside text blocks + captions (mirrored in /styles.css for the site) */
+.b-text a, .b-cap a { color: inherit; text-decoration: underline; text-decoration-color: rgba(0, 0, 0, 0.35); text-underline-offset: 3px; }
+.txt-mark {
+  background: linear-gradient(transparent 55%, rgba(132, 165, 165, 0.35) 55%);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
 
 /* caption centred, a bit further below the media */
 .b-cap { margin-top: 16px; text-align: center; }
@@ -387,10 +415,6 @@ body.is-preview .b-cap.is-empty { display: none; }
   background: linear-gradient(90deg, rgb(132, 165, 165), rgb(75, 82, 93), rgb(17, 15, 18));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
-}
-.cap-swatch.grad {
-  width: 40px; border-radius: 6px;
-  background: linear-gradient(90deg, rgb(132, 165, 165), rgb(75, 82, 93), rgb(17, 15, 18));
 }
 
 /* ===== publish panel ===== */
@@ -470,3 +494,16 @@ body.view-topics .studio-inspector { display: none; }
 }
 .draft-banner .sbtn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.22); color: #fff; }
 .draft-banner .sbtn:hover { background: rgba(255,255,255,0.2); }
+
+/* cover / thumbnail picker in the Topic inspector */
+.cover-thumb {
+  width: 120px; aspect-ratio: 3 / 5; border-radius: 8px;
+  border: 1px dashed var(--hair); background: #f4f4f6;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-soft); font-size: 12px; cursor: pointer; overflow: hidden;
+}
+.cover-thumb.has { border-style: solid; }
+.cover-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-thumb.drop { border-color: var(--accent); background: rgba(10,132,255,0.06); }
+.cover-btns { display: flex; gap: 6px; margin-top: 8px; }
+.cover-btns .sbtn { font-size: 12px; padding: 6px 12px; }
