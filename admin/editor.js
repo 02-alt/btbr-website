@@ -11,6 +11,7 @@
     fr: { title: "" },
     author: "Isaac",
     cover: null,
+    desc: "",
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
@@ -589,6 +590,11 @@
     var dt = document.createElement("div"); dt.className = "insp-title"; dt.textContent = "Topic"; docSec.appendChild(dt);
     docSec.appendChild(field("Author", authorSelect()));
     docSec.appendChild(field("Cover", coverField()));
+    var descTa = document.createElement("textarea"); descTa.className = "insp-input insp-textarea"; descTa.rows = 3;
+    descTa.placeholder = "Short blurb shown on the card (leave empty to auto-use the opening line)";
+    descTa.value = state.desc || "";
+    descTa.addEventListener("input", function () { state.desc = descTa.value; });
+    docSec.appendChild(field("Description", descTa));
     inspectorEl.appendChild(docSec);
 
     var b = selectedId && blockById(selectedId);
@@ -1147,7 +1153,9 @@
         var cbb = await coverToPNGBlob(state.cover); var cpb = "curation/media/" + slug + "/cover.png"; files.push({ path: cpb, base64: await blobToBase64(cbb) }); cover = "/" + cpb;
       }
     }
-    var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, blocks: outBlocks };
+    var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
+    var desc = (state.desc || "").trim() || (firstText ? plain(firstText.html).slice(0, 160) : "");
+    var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, blocks: outBlocks };
     var frTitle = (state.fr && state.fr.title || "").trim();
     var langs = ["en"];
     if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
@@ -1157,8 +1165,6 @@
     var index = [];
     try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
     index = index.filter(function (t) { return t.slug !== slug; });
-    var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
-    var desc = firstText ? plain(firstText.html).slice(0, 160) : "";
     var entry = { slug: slug, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
     if (topic.fr) {
       var firstFr = outBlocks.filter(function (b) { return b.type === "text" && b.fr && b.fr.html; })[0];
@@ -1247,6 +1253,7 @@
       state.fr = { title: (t.fr && t.fr.title) || "" };
       state.author = t.author || "Isaac";
       state.cover = t.cover || null;
+      state.desc = t.desc || "";
       state.blocks = (t.blocks || []).map(blockFromPublished);
       if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
       editingSlug = slug;
@@ -1257,7 +1264,7 @@
   }
   function newTopic() {
     editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null;
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = "";
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render();
@@ -1302,7 +1309,7 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, editingSlug: editingSlug, cover: null, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, editingSlug: editingSlug, cover: null, blocks: [] };
     if (state.cover) {
       if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
       else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
@@ -1328,7 +1335,7 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null;
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || "";
     editingSlug = d.editingSlug || null;
     state.blocks = (d.blocks || []).map(function (b) { return Object.assign({ id: uid() }, b); });
     if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
