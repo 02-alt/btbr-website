@@ -324,6 +324,15 @@ body.is-preview .board-item.is-sel { outline: none; }
 .b-board.is-arranging { box-shadow: inset 0 0 0 2px rgba(10, 132, 255, 0.45); }
 body.is-preview .b-board.is-arranging { box-shadow: none; }
 
+/* smart guides while arranging (Figma-style alignment lines) */
+.board-guides { position: absolute; inset: 0; pointer-events: none; z-index: 1000; }
+.board-guide { position: absolute; background: #ff2d6f; }
+.board-guide.v { width: 1px; margin-left: -0.5px; }
+.board-guide.h { height: 1px; margin-top: -0.5px; }
+/* drop the "picked up" scale while snapped so the item's edges sit exactly on the guide */
+.board-item.is-dragging.is-snapped img,
+.board-item.is-dragging.is-snapped video { transform: none; }
+
 /* dropping files from Finder */
 .b-board { position: relative; }
 .b-board.is-dropping { box-shadow: inset 0 0 0 3px var(--accent); }
