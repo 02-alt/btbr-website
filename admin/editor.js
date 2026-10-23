@@ -113,7 +113,8 @@
         var yt = youtubeId(b.src);
         if (yt) { var f = document.createElement("iframe"); f.src = "https://www.youtube.com/embed/" + yt; f.allowFullscreen = true; vw.appendChild(f); }
         else { var v = document.createElement("video"); v.src = b.src; v.controls = true; vw.appendChild(v); }
-      } else { vw.innerHTML = "<span>add a video in the inspector →</span>"; }
+      } else { vw.innerHTML = "<span>click or drop a video</span>"; vw.addEventListener("click", function () { pickVideo(b); }); }
+      wireMediaDrop(vw, b);
       return withCaption(vw, b);
     }
     return renderBoard(b);
@@ -257,7 +258,8 @@
     el.addEventListener("drop", function (e) {
       if (document.body.classList.contains("is-preview")) return;
       e.preventDefault(); el.classList.remove("is-dropping");
-      var f = [].slice.call(e.dataTransfer.files).filter(function (x) { return x.type.indexOf("image/") === 0; })[0];
+      var want = b.type === "video" ? "video/" : "image/";
+      var f = [].slice.call(e.dataTransfer.files).filter(function (x) { return x.type.indexOf(want) === 0; })[0];
       if (f) { b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id); }
     });
   }
@@ -539,6 +541,14 @@
     inp.addEventListener("change", function () {
       var f = inp.files && inp.files[0]; if (!f) return;
       b.src = URL.createObjectURL(f); render(); select(b.id);
+    });
+    inp.click();
+  }
+  function pickVideo(b) {
+    var inp = document.createElement("input"); inp.type = "file"; inp.accept = "video/*";
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id);
     });
     inp.click();
   }
