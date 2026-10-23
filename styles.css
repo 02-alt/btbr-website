@@ -1482,3 +1482,26 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .icon-btn:hover { color: var(--fg); border-color: #c8c8c8; }
 .icon-btn:active { transform: scale(0.94); }
 .icon-btn svg { width: 15px; height: 15px; display: block; }
+
+/* ===== B: magazine / editorial treatment for the topic reading pop-up ===== */
+.cur-modal-content {
+  font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 18px; line-height: 1.72; color: #222; max-width: 980px;
+}
+/* narrow, readable text column; images break out wider for magazine rhythm */
+.cur-modal-content > p,
+.cur-modal-content > ul,
+.cur-modal-content > .cur-h { max-width: 680px; margin-left: auto; margin-right: auto; }
+.cur-modal-content > p { margin: 0 0 1.05em; }
+.cur-modal-content > p:first-of-type { font-size: 20px; line-height: 1.6; }
+.cur-modal-content .cur-h { font-family: Charter, "Iowan Old Style", Georgia, serif; font-size: 25px; margin: 1.5em auto 0.4em; }
+.cur-modal-content .cur-fig2 { max-width: 980px; margin: 30px auto; }
+.cur-cap { font-family: system-ui, -apple-system, sans-serif; }
+/* headline block */
+.cur-modal-author { max-width: 680px; margin-inline: auto; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.cur-modal-title {
+  font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  max-width: 680px; margin: 0.35em auto 0.6em;
+  font-size: clamp(30px, 4vw, 46px); line-height: 1.08; letter-spacing: -0.01em; font-weight: 700;
+  padding-bottom: 0.5em; border-bottom: 1px solid #e8e8e8;
+}
