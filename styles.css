@@ -1378,7 +1378,9 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .cur-cap { margin-top: 10px; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); }
 
 /* curation empty state + end-of-list */
-.cur-empty { text-align: center; padding: clamp(60px, 14vh, 140px) 0; }
+.cur-empty { text-align: center; padding: 24px 0; }
+/* when the feed is just the empty state, centre it in the page */
+.curation:has(.cur-empty) { justify-content: center; }
 .cur-empty-title { font-size: clamp(20px, 3vw, 26px); font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }
 .cur-empty-sub { margin-top: 10px; font-size: 15px; color: var(--muted); }
 .cur-end { text-align: center; color: var(--muted); font-size: 13px; letter-spacing: 0.01em; padding: 44px 0 8px; }
