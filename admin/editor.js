@@ -325,8 +325,9 @@
     inp.click();
   }
   function boardHasVideo(b) { return b.items.some(function (it) { return it.kind === "video"; }); }
-  // crop the fully-transparent margin off an image (e.g. the empty border macOS
-  // adds around window screenshots), so the window fills its frame
+  // crop the transparent margin + drop shadow off an image (the border macOS
+  // adds around window screenshots), so the window fills its frame, and cut
+  // its corners round so no shadow is left in them
   function trimTransparentURL(src) {
     return loadImg(src).then(function (im) {
       var w = im.naturalWidth, h = im.naturalHeight; if (!w || !h) return src;
@@ -340,8 +341,23 @@
       if (maxX < 0) return src;
       if (minX === 0 && minY === 0 && maxX === w - 1 && maxY === h - 1) return src;
       var cw = maxX - minX + 1, ch = maxY - minY + 1;
+      // the crop is a rectangle but the window's corners are round, so the
+      // shadow would still show in the four corners. Measure the corner radius
+      // from the image itself (how far in along each corner's diagonal the
+      // solid window starts) and cut the corners round to match.
+      function inset(x0, y0, dx, dy) {
+        for (var i = 0; i < Math.min(cw, ch) / 2; i++) if (data[((y0 + i * dy) * w + (x0 + i * dx)) * 4 + 3] > T) return i;
+        return 0;
+      }
+      var d = Math.max(inset(minX, minY, 1, 1), inset(maxX, minY, -1, 1), inset(minX, maxY, 1, -1), inset(maxX, maxY, -1, -1));
+      var r = d / (1 - Math.SQRT1_2);  // diagonal gap of a circular corner = r(1 - 1/√2)
+      // shave the 1px anti-aliased rim too (it's half shadow) when there is one
+      var e = d > 0 && cw > 4 && ch > 4 ? 1 : 0;
+      minX += e; minY += e; cw -= 2 * e; ch -= 2 * e; r = Math.min(Math.max(r - e, 0), cw / 2, ch / 2);
       var oc = document.createElement("canvas"); oc.width = cw; oc.height = ch;
-      oc.getContext("2d").drawImage(c, minX, minY, cw, ch, 0, 0, cw, ch);
+      var octx = oc.getContext("2d");
+      if (r >= 2 && octx.roundRect) { octx.beginPath(); octx.roundRect(0, 0, cw, ch, r); octx.clip(); }
+      octx.drawImage(c, minX, minY, cw, ch, 0, 0, cw, ch);
       return new Promise(function (res) { oc.toBlob(function (bl) { res(bl ? URL.createObjectURL(bl) : src); }, "image/png"); });
     }).catch(function () { return src; });
   }
