@@ -1505,3 +1505,13 @@ a.feedbar-brand:hover { opacity: 0.55; }
   font-size: clamp(30px, 4vw, 46px); line-height: 1.08; letter-spacing: -0.01em; font-weight: 700;
   padding-bottom: 0.5em; border-bottom: 1px solid #e8e8e8;
 }
+
+/* headline/byline aligned to the text column; images break out wider than text */
+.cur-modal-content { max-width: 680px; }
+.cur-modal-content > p, .cur-modal-content > ul, .cur-modal-content > .cur-h { max-width: none; margin-left: 0; margin-right: 0; }
+.cur-modal-author, .cur-modal-title { max-width: 680px; }
+.cur-modal-content .cur-fig2 { width: min(940px, 92vw); max-width: none; margin-left: 50%; transform: translateX(-50%); }
+/* author byline + profile picture */
+.cur-modal-author { display: inline-flex; align-items: center; gap: 9px; }
+.cur-modal-author .cur-avatar { width: 26px; height: 26px; }
+img.cur-avatar { object-fit: cover; }

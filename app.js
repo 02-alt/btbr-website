@@ -286,6 +286,8 @@
   function loc(o, k) { return (siteLang() === "fr" && o.fr && o.fr[k]) || o[k] || ""; }
   var curList = null, curTopic = null;
 
+  function authorPP(name) { var m = { "Isaaaaaaaac": "/assets/pp/isaaaaaaaac.jpg" }; return m[name] || ""; }
+  function authorAvatar(name) { var pp = authorPP(name); return pp ? '<img class="cur-avatar" src="' + pp + '" alt="" loading="lazy">' : '<span class="cur-avatar" aria-hidden="true"></span>'; }
   function curBlocksHTML(blocks) {
     return (blocks || []).map(function (b) {
       if (b.type === "text") {
@@ -324,7 +326,8 @@
   }
   function renderCurTopic(modal) {
     modal.querySelector(".cur-modal-title").textContent = loc(curTopic, "title");
-    modal.querySelector(".cur-modal-author").textContent = curTopic.author || "";
+    var au = curTopic.author || "";
+    modal.querySelector(".cur-modal-author").innerHTML = authorAvatar(au) + "<span>" + esc(au) + "</span>";
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
   }
   function openCurTopic(slug) {
@@ -340,7 +343,7 @@
   }
   function curCardText(t) {
     var desc = loc(t, "desc");
-    return '<div class="cur-author"><span class="cur-avatar" aria-hidden="true"></span> ' + esc(t.author || "") + "</div>"
+    return '<div class="cur-author">' + authorAvatar(t.author || "") + " " + esc(t.author || "") + "</div>"
       + '<h2 class="cur-title">' + esc(loc(t, "title")) + "</h2>"
       + (desc ? '<p class="cur-desc">' + esc(desc) + "</p>" : "")
       + '<button class="cur-open" type="button">' + ui("open") + "</button>";
