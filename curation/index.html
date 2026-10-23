@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=4" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />
-  <link rel="stylesheet" href="/styles.css?v=18" />
+  <link rel="stylesheet" href="/styles.css?v=19" />
 </head>
 <body>
   <div class="frame curation-frame">
@@ -31,12 +31,9 @@
       </div>
     </header>
 
-    <div class="cur-head">
-      <h1 class="cur-large">Curation</h1>
-      <p class="cur-lede">Topics worth remembering.</p>
-    </div>
-
-    <main class="curation" id="curationFeed" data-curation></main>
+    <main class="curation" id="curationFeed" data-curation>
+      <h1 class="sr-only">Curation</h1>
+    </main>
 
     <!-- in-tab reading pop-up (populated by app.js when a card's Open is clicked) -->
     <div class="cur-modal" hidden>
@@ -57,6 +54,6 @@
       </div>
     </div>
   </div>
-  <script src="/app.js?v=6"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>

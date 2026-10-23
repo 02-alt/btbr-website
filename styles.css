@@ -1142,157 +1142,138 @@ a.feedbar-brand:hover { opacity: 0.55; }
 }
 
 /* ===== curation feed (/curation/) ===== */
-/* Apple-style gallery: a large title, then poster cards (3:5 cover + caption)
-   on a centred grid. The whole card is one target; it lifts on hover and
-   presses in on click. Set in the system face (SF on Apple devices). */
-.cur-head,
-.curation {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
-  letter-spacing: 0;
-}
-.cur-head {
-  text-align: center;
-  margin: clamp(28px, 6vh, 64px) auto clamp(32px, 5vh, 56px);
-  padding-inline: 8px;
-}
-.cur-large {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Helvetica Neue", sans-serif;
-  font-size: clamp(34px, 5vw, 52px);
-  font-weight: 700;
-  line-height: 1.04;
-  letter-spacing: -0.025em;
-  color: #1d1d1f;
-}
-.cur-lede {
-  margin-top: 10px;
-  font-size: clamp(17px, 1.6vw, 19px);
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-  color: #6e6e73;
-}
+/* A museum table: a soft grey surface, and each topic laid on it as two white
+   objects side by side — a paper label (author, title, description, date set
+   as one catalogue line) and a tray holding the cover in a recessed well.
+   The whole pair is one target. */
+body:has(.curation-frame) { background: #e6e4e6; }
+.curation-frame { background: #e6e4e6; }
+.curation-frame .icon-btn,
+.curation-frame .lang-btn { border-color: rgba(0, 0, 0, 0.1); color: #6e6e73; }
+.curation-frame .icon-btn:hover,
+.curation-frame .lang-btn:hover { border-color: rgba(0, 0, 0, 0.22); color: var(--fg); }
+.curation-frame .feedbar-brand span { color: #8a888b; }
+
 .curation {
   flex: 1;
   width: 100%;
   max-width: 1040px;
   margin-inline: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-content: start;
-  gap: 48px 32px;
-  padding-bottom: 24px;
+  gap: clamp(72px, 14vh, 160px);
+  padding: clamp(40px, 9vh, 112px) 0 24px;
 }
 .cur-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(28px, 7vw, 96px);
+  width: min(100%, 940px);
+  margin-inline: auto;
   -webkit-tap-highlight-color: transparent;
 }
-.cur-media {
+/* the two white objects: matte, square-cut, lit from above */
+.cur-sheet,
+.cur-tray {
   position: relative;
-  aspect-ratio: 3 / 5;
-  border-radius: 20px;
-  overflow: hidden;
-  background: #f5f5f7;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
-  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-  /* keep the rounded clip crisp while the image scales inside it */
-  isolation: isolate;
+  aspect-ratio: 4 / 4.9;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 1px rgba(40, 30, 40, 0.05),
+    0 3px 6px rgba(40, 30, 40, 0.04),
+    0 14px 28px -10px rgba(40, 30, 40, 0.12);
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
-/* hairline edge, so light covers don't dissolve into the white page */
-.cur-media::after {
-  content: "";
-  position: absolute; inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-  pointer-events: none;
-}
-.cur-media img { transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
-.cur-card:hover .cur-media {
-  transform: translateY(-4px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 18px 40px rgba(0, 0, 0, 0.12);
-}
-.cur-card:hover .cur-media img { transform: scale(1.025); }
-/* press: instant, on pointer-down */
-.cur-card:active .cur-media {
-  transform: scale(0.975);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.08);
-  transition-duration: 0.12s;
-}
+.cur-sheet { container-type: inline-size; overflow: hidden; }
+/* catalogue label: large, regular weight, tight leading */
 .cur-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding-inline: 4px;
+  padding: 5.2cqi 6cqi;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(17px, 7.6cqi, 46px);
+  font-weight: 400;
+  line-height: 1.13;
+  letter-spacing: -0.022em;
+  color: #111;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 9;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.cur-author {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: #86868b;
-}
-.cur-dot { margin: 0 -1px; }
-.cur-avatar {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgb(132, 165, 165), rgb(75, 82, 93), rgb(17, 15, 18));
-  flex: none;
-}
-.cur-title {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: #1d1d1f;
-}
-/* the title is the card's button; its ::after stretches over the whole card */
-.cur-open {
-  all: unset;
-  cursor: pointer;
-}
+.cur-author { display: block; }
+.cur-title { display: inline; font: inherit; letter-spacing: inherit; }
+.cur-desc { color: inherit; }
+/* the title is the card's button; its ::after covers both objects */
+.cur-open { all: unset; cursor: pointer; }
 .cur-open::after {
   content: "";
   position: absolute;
-  inset: -6px;
-  border-radius: 24px;
+  inset: -10px;
+  border-radius: 6px;
+  z-index: 2;
 }
 .cur-open:focus-visible::after {
-  outline: 3px solid rgba(0, 113, 227, 0.6);
-  outline-offset: 2px;
+  outline: 3px solid rgba(0, 113, 227, 0.55);
+  outline-offset: 4px;
 }
-.cur-desc {
-  font-size: 15px;
-  line-height: 1.45;
-  letter-spacing: -0.005em;
-  color: #6e6e73;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+/* the tray: a recessed well with the cover resting in it */
+.cur-well {
+  position: absolute;
+  inset: 3.6%;
+  border-radius: 4.5% / 3.7%;
+  background: #fafafa;
+  box-shadow:
+    inset 0 2px 5px rgba(40, 30, 40, 0.07),
+    inset 0 0 0 1px rgba(40, 30, 40, 0.035);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cur-media {
+  height: 74%;
+  aspect-ratio: 3 / 5;
+  border-radius: 3px;
   overflow: hidden;
-  text-wrap: pretty;
+  background: #ebebef;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.08),
+    0 4px 10px rgba(0, 0, 0, 0.1),
+    0 16px 26px -12px rgba(0, 0, 0, 0.22);
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.cur-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* hover: the cover lifts out of its well; press: everything settles in */
+.cur-card:hover .cur-media {
+  transform: translateY(-6px);
+  box-shadow:
+    0 2px 2px rgba(0, 0, 0, 0.06),
+    0 10px 18px rgba(0, 0, 0, 0.12),
+    0 30px 44px -16px rgba(0, 0, 0, 0.28);
+}
+.cur-card:active .cur-sheet,
+.cur-card:active .cur-tray { transform: scale(0.99); transition-duration: 0.12s; }
+.cur-card:active .cur-media { transform: translateY(-2px); transition-duration: 0.12s; }
+@media (hover: none) {
+  .cur-card:hover .cur-media { transform: none; }
 }
 .cur-ph {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: repeating-linear-gradient(135deg, #f5f5f7, #f5f5f7 12px, #eeeef0 12px, #eeeef0 24px);
   color: #b4b4b4;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-@media (max-width: 560px) {
-  .curation { grid-template-columns: minmax(0, 340px); gap: 40px; }
-}
-@media (hover: none) {
-  .cur-card:hover .cur-media { transform: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06); }
-  .cur-card:hover .cur-media img { transform: none; }
+@media (max-width: 680px) {
+  .curation { padding-top: 24px; gap: 72px; }
+  .cur-card { grid-template-columns: 1fr; gap: 20px; width: min(100%, 420px); }
+  .cur-sheet { aspect-ratio: auto; }
+  .cur-text { font-size: clamp(22px, 7.4cqi, 30px); padding: 20px 22px 26px; }
 }
 
 /* ===== curation reading pop-up (in-tab) ===== */
@@ -1351,13 +1332,11 @@ a.feedbar-brand:hover { opacity: 0.55; }
 /* ===== curation page (/curation/) arrival — same develop-in, sequenced
    top → bottom: the header focuses first, then each card in turn down the page. */
 .curation-frame .feedbar,
-.curation-frame .cur-head,
 .curation-frame .cur-card,
 .curation-frame .feedfoot {
   animation: home-develop 0.95s both cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .curation-frame .feedbar            { animation-delay: 0.05s; }
-.curation-frame .cur-head           { animation-delay: 0.12s; }
 .curation-frame .cur-card:nth-of-type(1) { animation-delay: 0.20s; }
 .curation-frame .cur-card:nth-of-type(2) { animation-delay: 0.34s; }
 .curation-frame .cur-card:nth-of-type(3) { animation-delay: 0.48s; }
@@ -1463,12 +1442,12 @@ a.feedbar-brand:hover { opacity: 0.55; }
 .cur-cap { margin-top: 10px; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); }
 
 /* curation empty state + end-of-list */
-.cur-empty { grid-column: 1 / -1; text-align: center; padding: 24px 0; }
+.cur-empty { text-align: center; padding: 24px 0; }
 /* when the feed is just the empty state, centre it in the page */
-.curation:has(.cur-empty) { align-content: center; }
+.curation:has(.cur-empty) { justify-content: center; }
 .cur-empty-title { font-size: clamp(20px, 3vw, 26px); font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }
 .cur-empty-sub { margin-top: 10px; font-size: 15px; color: var(--muted); }
-.cur-end { text-align: center; color: #86868b; font-size: 13px; padding: 40px 0 8px; font-family: -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", sans-serif; letter-spacing: 0; }
+.cur-end { text-align: center; color: #8a888b; font-size: 13px; padding: 48px 0 8px; }
 
 /* curation "in the works" marker — on hover the word "curation" develops out
    and "soon" develops in (the site's blur→sharp transition), colourless.

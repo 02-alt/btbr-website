@@ -397,28 +397,30 @@
       curTopic = t; renderCurTopic(modal);
     }).catch(function () { content.innerHTML = '<p class="cur-loading">' + ui("failed") + "</p>"; });
   }
-  // "23 Oct 2026" (or "23 oct. 2026") from the topic's YYYY-MM-DD date
+  // "23 October 2026" (or "23 octobre 2026") from the topic's YYYY-MM-DD date
   function curDate(d) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || "");
     if (!m) return "";
     try {
       return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(siteLang() === "fr" ? "fr-FR" : "en-GB",
-        { day: "numeric", month: "short", year: "numeric" });
+        { day: "numeric", month: "long", year: "numeric" });
     } catch (e) { return ""; }
   }
-  // the whole card is the target: the title's button stretches over it
+  // a museum label: "Author, / Title, description, date" — one run of text.
+  // The title is the card's button; its ::after stretches over the whole card.
   function curCardText(t) {
-    var desc = loc(t, "desc"), date = curDate(t.date);
-    return '<div class="cur-author">' + authorAvatar(t.author || "") + "<span>" + esc(t.author || "") + "</span>"
-      + (date ? '<span class="cur-dot" aria-hidden="true">·</span><time datetime="' + esc(t.date) + '">' + date + "</time>" : "") + "</div>"
-      + '<h2 class="cur-title"><button class="cur-open" type="button">' + esc(loc(t, "title")) + "</button></h2>"
-      + (desc ? '<p class="cur-desc">' + esc(desc) + "</p>" : "");
+    var desc = String(loc(t, "desc") || "").trim().replace(/[.,;:]+$/, ""), date = curDate(t.date);
+    var tail = [desc, date].filter(Boolean);
+    return '<span class="cur-author">' + esc(t.author || "") + ",</span> "
+      + '<h2 class="cur-title"><button class="cur-open" type="button">' + esc(loc(t, "title")) + "</button>" + (tail.length ? "," : "") + "</h2> "
+      + (desc ? '<span class="cur-desc">' + esc(desc) + (date ? "," : "") + "</span> " : "")
+      + (date ? '<time datetime="' + esc(t.date) + '">' + date + "</time>" : "");
   }
   function curCard(t) {
     var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
-      + '<div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div>"
-      + '<div class="cur-text">' + curCardText(t) + "</div>"
+      + '<div class="cur-sheet"><div class="cur-text">' + curCardText(t) + "</div></div>"
+      + '<div class="cur-tray"><div class="cur-well"><div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div></div></div>"
       + "</article>";
   }
   function curEmptyHTML() {
