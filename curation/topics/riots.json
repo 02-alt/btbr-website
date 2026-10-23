@@ -29,8 +29,13 @@
       "type": "image",
       "src": "/curation/media/riots/board-1.png",
       "alt": "RIOTS",
-      "caption": "",
+      "caption": "<span style=\"caret-color: rgba(0, 0, 0, 0); color: rgba(0, 0, 0, 0); letter-spacing: -0.16px; -webkit-text-fill-color: rgba(0, 0, 0, 0);\"><span class=\"cap-grad\">No church in the wild - Jay-Z, Kanye West (2012)</span></span>",
       "inset": false
+    },
+    {
+      "type": "video",
+      "src": "https://www.youtube.com/watch?v=FVePZjkZoZI",
+      "caption": "<span class=\"cap-grad\">ATHENA - Romain Gavras (2022)</span>"
     },
     {
       "type": "text",
