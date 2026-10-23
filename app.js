@@ -178,38 +178,24 @@
   });
 
   // ---- soft navigation so the audio never tears down ----
-  function swap(html, opts) {
-    opts = opts || {};
+  function swap(html) {
     var doc = new DOMParser().parseFromString(html, "text/html");
     var next = doc.querySelector(".frame");
     var cur = document.querySelector(".frame");
     if (!next || !cur) return false;
     var incoming = document.importNode(next, true);
-    // the about page carries its own "develop-in" entrance; other pages get the
-    // quick fade+lift — unless a View Transition is driving the swap, which owns
-    // the motion itself.
+    // the about page carries its own "develop-in" entrance, as do home, apps,
+    // curation and the app pages; any other page gets the quick fade+lift.
     var themed = incoming.classList.contains("about-frame") ||
                  incoming.classList.contains("home-frame") ||
                  incoming.classList.contains("curation-frame") ||
-                 incoming.classList.contains("feed-home");
-    var enter = !themed && !opts.noEnter;
+                 incoming.classList.contains("feed-home") ||
+                 incoming.classList.contains("project-frame");
+    var enter = !themed;
     if (enter) incoming.classList.add("frame-enter"); // start faded/lifted
-    // a card morph captures a snapshot of the incoming page — suppress its own
-    // entrance/reveal so that snapshot is fully painted (clean morph, no pop)
-    if (opts.heroName) incoming.classList.add("cf-instant");
     cur.replaceWith(incoming);
     document.title = doc.title;
     window.scrollTo(0, 0);
-    // shared-element morph: tag the destination's first screenshot so it pairs
-    // with the clicked home card during the View Transition
-    if (opts.heroName) {
-      var hero = incoming.querySelector(".shots .shot img") ||
-                 incoming.querySelector(".project-icon");
-      if (hero) {
-        hero.style.viewTransitionName = opts.heroName;
-        window.__btbrHero = hero;
-      }
-    }
     bindPage();
     if (enter) {
       // next frame: drop the class so it eases into place
@@ -220,15 +206,6 @@
       });
     }
     return true;
-  }
-
-  // after a shared-element transition, release the destination's morph name so
-  // it doesn't linger and interfere with later transitions
-  function clearHero() {
-    if (window.__btbrHero) {
-      window.__btbrHero.style.viewTransitionName = "";
-      window.__btbrHero = null;
-    }
   }
 
   function isInternal(link) {
@@ -257,27 +234,15 @@
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var cur = document.querySelector(".frame");
     var fromAbout = !!cur && cur.classList.contains("about-frame");
-    var tile = link.classList.contains("tile")
-      ? link
-      : (link.closest ? link.closest(".tile") : null);
-    if (tile && document.startViewTransition && !reduce) {
-      // clicked a home app card: morph the card into the app page's first
-      // screenshot with a shared-element View Transition
-      var media = tile.querySelector(".tile-img");
-      page.then(function (html) {
-        if (media) media.style.viewTransitionName = "app-hero";
-        try {
-          var vt = document.startViewTransition(function () {
-            if (swap(html, { noEnter: true, heroName: "app-hero" })) {
-              history.pushState(null, "", href);
-            }
-          });
-          vt.finished.then(clearHero, clearHero);
-        } catch (err) {
-          if (media) media.style.viewTransitionName = "";
-          go(html);
-        }
-      }).catch(function () { window.location.href = href; });
+    // apps menu <-> app pages: the current page "un-develops" (its pieces blur
+    // and fade away, top to bottom) before the next one develops in
+    var fromApps = !!cur && (cur.classList.contains("feed-home") ||
+                             cur.classList.contains("project-frame"));
+    if (fromApps && !toAbout && !reduce) {
+      cur.classList.add("develop-out");
+      Promise.all([page, new Promise(function (res) { setTimeout(res, 460); })])
+        .then(function (arr) { go(arr[0]); })
+        .catch(function () { window.location.href = href; });
     } else if (toAbout && cur && !reduce) {
       // "fade to memory": desaturate + dim the current page, then let the about
       // page develop in
@@ -323,7 +288,17 @@
 
   function curBlocksHTML(blocks) {
     return (blocks || []).map(function (b) {
-      if (b.type === "text") return b.head ? '<h3 class="cur-h">' + esc(loc(b, "html")) + "</h3>" : "<p>" + esc(loc(b, "html")) + "</p>";
+      if (b.type === "text") {
+        var raw = loc(b, "html") || "";
+        // the contenteditable bakes in <div>/<br> line breaks; split into clean
+        // paragraphs and drop empty lines so spacing is even
+        var parts = raw.split(/<\/?div[^>]*>|<\/?p[^>]*>|<br\s*\/?>/i);
+        var paras = [];
+        for (var k = 0; k < parts.length; k++) { var s = parts[k].trim(); if (s && s.replace(/<[^>]+>/g, "").replace(/&nbsp;/gi, "").trim()) paras.push(s); }
+        if (!paras.length) return "";
+        if (b.head) return '<h3 class="cur-h">' + paras.join(" ") + "</h3>";
+        return paras.map(function (p) { return "<p>" + p + "</p>"; }).join("");
+      }
       if (b.type === "image") {
         var capT = loc(b, "caption");
         var cap = capT ? '<figcaption class="cur-cap">' + capT + "</figcaption>" : "";
