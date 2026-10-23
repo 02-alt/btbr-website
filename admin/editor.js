@@ -330,7 +330,7 @@
       var c = document.createElement("canvas"); c.width = w; c.height = h;
       var ctx = c.getContext("2d"); ctx.drawImage(im, 0, 0);
       var data; try { data = ctx.getImageData(0, 0, w, h).data; } catch (e) { return src; }
-      var minX = w, minY = h, maxX = -1, maxY = -1, T = 8;
+      var minX = w, minY = h, maxX = -1, maxY = -1, T = 190; // high threshold: crop off the soft drop-shadow too, keeping just the solid window
       for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
         if (data[(y * w + x) * 4 + 3] > T) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
       }
