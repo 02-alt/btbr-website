@@ -1276,33 +1276,107 @@ body:has(.curation-frame) { background: #e6e4e6; }
   .cur-text { font-size: clamp(22px, 7.4cqi, 30px); padding: 20px 22px 26px; }
 }
 
-/* ===== curation reading pop-up (in-tab) ===== */
-.cur-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: clamp(16px, 4vh, 48px); }
+/* ===== the room: a topic, opened out of its cover tray (in-tab) ===== */
+/* Fills the window inside the same 12px margin as the page frame, so the
+   room replaces the curation table. app.js grows it from the card's tray
+   (clip-path + white paper → grey room) and shrinks it back on close. */
+.cur-modal { position: fixed; inset: 0; z-index: 1000; padding: 12px; }
 .cur-modal[hidden] { display: none; }
-.cur-modal-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.35); }
-/* a big white rounded window with the dimmed page showing around it */
+.cur-modal-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(30, 24, 30, 0.22);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  backdrop-filter: blur(8px) saturate(120%);
+}
 .cur-modal-panel {
   position: relative;
-  background: var(--panel);
-  border-radius: 24px;
-  width: 100%;
-  max-width: 1120px;
-  max-height: 92vh;
+  height: 100%;
+  background: #e6e4e6;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.22);
+}
+.cur-modal-body {
+  height: 100%;
   overflow: auto;
-  padding: clamp(32px, 5vw, 64px) clamp(24px, 5vw, 72px);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+  overscroll-behavior: contain;
+  padding: clamp(72px, 11vh, 120px) clamp(20px, 5vw, 72px) clamp(64px, 10vh, 120px);
 }
-/* keep the text itself a readable column centred inside the wide window */
-.cur-modal-author, .cur-modal-title, .cur-modal-content { max-width: 720px; margin-inline: auto; }
+.cur-room-tools {
+  position: absolute; top: 18px; right: 18px; z-index: 6;
+  display: flex; align-items: center; gap: 10px;
+}
 .cur-modal-close {
-  position: absolute; top: 12px; right: 14px;
-  border: 0; background: none;
-  font-size: 26px; line-height: 1;
-  color: var(--muted); cursor: pointer;
+  width: 30px; height: 30px; padding: 0; border: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: #6e6e73; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
-.cur-modal-close:hover { color: var(--fg); }
-.cur-modal-author { font-size: 13px; font-weight: 600; color: var(--muted); }
-.cur-modal-title { font-size: clamp(22px, 3vw, 28px); font-weight: 700; letter-spacing: -0.02em; margin: 0.25em auto 0.7em; }
+.cur-modal-close:hover { background: rgba(0, 0, 0, 0.1); color: #1d1d1f; }
+.cur-modal-close:active { transform: scale(0.92); }
+.cur-modal-close svg { width: 14px; height: 14px; display: block; }
+.cur-modal-lang { border-color: rgba(0, 0, 0, 0.1); color: #6e6e73; }
+@media (prefers-reduced-transparency: reduce) {
+  .cur-modal-backdrop { background: rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (max-width: 560px) {
+  .cur-modal { padding: 0; }
+  .cur-modal-panel { border-radius: 0; }
+}
+
+/* the entrance: the topic's museum label, as a white paper card */
+.cur-label {
+  width: min(100%, 520px);
+  margin-bottom: clamp(48px, 8vh, 88px);
+  padding: 26px 30px 72px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 1px rgba(40, 30, 40, 0.05),
+    0 3px 6px rgba(40, 30, 40, 0.04),
+    0 14px 28px -10px rgba(40, 30, 40, 0.12);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 400;
+  line-height: 1.13;
+  letter-spacing: -0.022em;
+  color: #111;
+  text-wrap: pretty;
+}
+.cur-label:empty { visibility: hidden; }
+.cur-label .cur-author { display: block; }
+.cur-label .cur-title { display: inline; font: inherit; letter-spacing: inherit; }
+
+/* the exit: the inspiration list as the exhibition's closing credits card */
+.cur-sources {
+  margin-top: clamp(64px, 10vh, 112px);
+  width: min(100%, 520px);
+  padding: 24px 28px 30px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 1px rgba(40, 30, 40, 0.05),
+    0 3px 6px rgba(40, 30, 40, 0.04),
+    0 14px 28px -10px rgba(40, 30, 40, 0.12);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #111;
+}
+.cur-sources[hidden] { display: none; }
+.cur-sources-title { font-size: 22px; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 14px; }
+.cur-sources-list { list-style: none; margin: 0; padding: 0; counter-reset: src; }
+.cur-sources-list li {
+  counter-increment: src;
+  display: grid; grid-template-columns: 2.2em 1fr;
+  padding: 9px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 15px; line-height: 1.4; letter-spacing: -0.005em;
+}
+.cur-sources-list li::before { content: counter(src, decimal-leading-zero); color: #8a888b; font-variant-numeric: tabular-nums; }
+.cur-sources-list em { font-style: italic; }
+.cur-sources-list a { color: inherit; text-decoration: underline; text-decoration-color: rgba(0, 0, 0, 0.3); text-underline-offset: 2px; word-break: break-word; }
+
 .cur-modal-content { font-size: 15px; line-height: 1.6; color: #333; }
 .cur-modal-content p { margin-bottom: 0.8em; }
 .cur-modal-content a { color: var(--fg); }
@@ -1493,7 +1567,6 @@ body:has(.curation-frame) { background: #e6e4e6; }
 .lang-btn:hover { color: var(--fg); border-color: #c8c8c8; }
 .lang-btn:active { transform: scale(0.94); }
 .lang-corner { position: absolute; top: 40px; right: 32px; z-index: 5; }
-.cur-modal-lang { position: absolute; top: 14px; right: 52px; }
 @media (max-width: 560px) {
   .lang-corner { top: 32px; right: 18px; }
 }
@@ -1549,29 +1622,16 @@ body:has(.curation-frame) { background: #e6e4e6; }
 .cur-modal-content .cur-h { font-family: Charter, "Iowan Old Style", Georgia, serif; font-size: 25px; margin: 1.5em auto 0.4em; }
 .cur-modal-content .cur-fig2 { max-width: 980px; margin: 30px auto; }
 .cur-cap { font-family: system-ui, -apple-system, sans-serif; }
-/* headline block */
-.cur-modal-author { max-width: 680px; margin-inline: auto; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-.cur-modal-title {
-  font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
-  max-width: 680px; margin: 0.35em auto 0.6em;
-  font-size: clamp(30px, 4vw, 46px); line-height: 1.08; letter-spacing: -0.01em; font-weight: 700;
-  padding-bottom: 0.5em; border-bottom: 1px solid #e8e8e8;
-}
-
 /* headline/byline aligned to the text column; images break out wider than text */
 .cur-modal-content { max-width: 680px; }
 .cur-modal-content > p, .cur-modal-content > ul, .cur-modal-content > .cur-h { max-width: none; margin-left: 0; margin-right: 0; }
-.cur-modal-author, .cur-modal-title { max-width: 680px; }
 .cur-modal-content .cur-fig2 { width: min(940px, 92vw); max-width: none; margin-left: 50%; transform: translateX(-50%); }
-/* author byline + profile picture */
-.cur-modal-author { display: inline-flex; align-items: center; gap: 9px; }
-.cur-modal-author .cur-avatar { width: 26px; height: 26px; }
 img.cur-avatar { object-fit: cover; }
 
 /* ===== A: section table-of-contents beside the article ===== */
 .cur-modal-body { display: flex; gap: clamp(24px, 4vw, 56px); align-items: flex-start; }
 .cur-article { flex: 1; min-width: 0; max-width: 700px; margin-inline: auto; }
-.cur-article .cur-modal-author, .cur-article .cur-modal-title, .cur-article .cur-modal-content { max-width: none; }
+.cur-article .cur-modal-content { max-width: none; }
 .cur-modal-content .cur-fig2 { width: 100%; max-width: none; margin-left: 0; transform: none; }
 .cur-h { scroll-margin-top: 12px; }
 .cur-toc {
@@ -1589,65 +1649,12 @@ img.cur-avatar { object-fit: cover; }
 .cur-toc a.is-active { color: var(--fg); border-left-color: var(--fg); }
 @media (max-width: 820px) { .cur-toc { display: none; } .cur-modal-body { display: block; } }
 
-/* info (inspiration) button + popover in the topic pop-up */
-.cur-modal-info {
-  position: absolute; top: 14px; right: 90px; z-index: 6;
-  width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
-  padding: 0; border: 1px solid #e2e2e2; border-radius: 50%;
-  background: #fff; color: var(--muted); cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-.cur-modal-info[hidden] { display: none; }
-.cur-modal-info:hover { color: var(--fg); border-color: #c8c8c8; }
-.cur-modal-info:active { transform: scale(0.94); }
-.cur-modal-info svg { width: 16px; height: 16px; display: block; }
-.cur-info-pop {
-  position: absolute; top: 52px; right: 20px; z-index: 7;
-  width: min(300px, calc(100% - 40px));
-  background: var(--panel); border: 1px solid var(--hair); border-radius: 14px;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.2);
-  padding: 16px 18px;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-.cur-info-pop[hidden] { display: none; }
-.cur-info-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
-.cur-info-list { list-style: none; margin: 0; padding: 0; }
-.cur-info-list li { font-size: 14px; line-height: 1.5; color: #333; padding: 5px 0; border-top: 1px solid #f0f0f0; }
-.cur-info-list li:first-child { border-top: 0; }
-.cur-info-list a { color: var(--fg); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; word-break: break-word; }
 
-/* ===== curation pop-up: sheet motion + close button ===== */
-/* the sheet rises out of the dimmed page (iOS sheet curve) and sinks back the
-   same way on close (.is-closing, set by app.js) */
-.cur-modal-backdrop {
-  background: rgba(0, 0, 0, 0.32);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-  backdrop-filter: blur(10px) saturate(140%);
-  animation: cur-fade-in 0.32s ease both;
-}
-.cur-modal-panel { animation: cur-sheet-in 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
-.cur-modal.is-closing .cur-modal-backdrop { animation: cur-fade-out 0.24s ease both; }
-.cur-modal.is-closing .cur-modal-panel { animation: cur-sheet-out 0.24s cubic-bezier(0.32, 0, 0.67, 0) both; }
-@keyframes cur-fade-in  { from { opacity: 0; } }
-@keyframes cur-fade-out { to { opacity: 0; } }
-@keyframes cur-sheet-in  { from { opacity: 0; transform: translateY(28px) scale(0.98); } }
-@keyframes cur-sheet-out { to   { opacity: 0; transform: translateY(20px) scale(0.985); } }
-@media (prefers-reduced-motion: reduce) {
-  .cur-modal-panel { animation-name: cur-fade-in; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .cur-modal-backdrop { background: rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: none; backdrop-filter: none; }
-}
-/* close: a filled circular xmark, like a system sheet */
-.cur-modal-close {
-  top: 14px; right: 14px; z-index: 6;
-  width: 30px; height: 30px; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
-  color: #6e6e73;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
-}
-.cur-modal-close:hover { background: rgba(0, 0, 0, 0.09); color: #1d1d1f; }
-.cur-modal-close:active { transform: scale(0.92); }
-.cur-modal-close svg { width: 14px; height: 14px; display: block; }
+/* wall text + exhibits sit on the grey room, not white paper */
+.cur-modal .cur-modal-content { color: #1f1d20; }
+.cur-modal .cur-cap { color: #77757a; }
+.cur-modal .cur-toc-label { color: #8a888b; }
+.cur-modal .cur-toc a { color: #8a888b; border-left-color: rgba(0, 0, 0, 0.1); }
+.cur-modal .cur-toc a:hover, .cur-modal .cur-toc a.is-active { color: #111; }
+.cur-modal .cur-toc a.is-active { border-left-color: #111; }
+.cur-modal .cur-loading { color: #8a888b; }

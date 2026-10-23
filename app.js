@@ -320,22 +320,88 @@
       return "";
     }).join("");
   }
-  // the sheet sinks back the way it rose, then the pop-up hides
-  var curCloseTimer = null;
+  // ---- the room: a topic opens out of its cover tray and closes back into it
+  // (clip-path from the tray's rect to the full room, white paper turning into
+  // the grey room). Each step starts from the live on-screen value, so a
+  // close mid-open just reverses.
+  // critically damped spring (damping 1, `response` s) as a CSS linear() curve,
+  // sampled over `dur` ms; browsers without linear() get a close cubic-bezier
+  var canLinear = window.CSS && CSS.supports && CSS.supports("transition-timing-function", "linear(0, 1)");
+  function springEase(response, dur) {
+    if (!canLinear) return "cubic-bezier(0.25, 0.8, 0.25, 1)";
+    var w = 2 * Math.PI / response, pts = [];
+    for (var i = 0; i <= 40; i++) {
+      var t = (i / 40) * dur / 1000, x = 1 - (1 + w * t) * Math.exp(-w * t);
+      pts.push(i === 40 ? 1 : +x.toFixed(4));
+    }
+    return "linear(" + pts.join(", ") + ")";
+  }
+  function trayFor(slug) {
+    return slug ? document.querySelector('.cur-card[data-slug="' + slug + '"] .cur-tray') : null;
+  }
+  function trayClip(panel, tray) {
+    var p = panel.getBoundingClientRect(), r = tray.getBoundingClientRect();
+    return "inset(" + (r.top - p.top) + "px " + (p.right - r.right) + "px " + (p.bottom - r.bottom) + "px " + (r.left - p.left) + "px round 2px)";
+  }
+  function stopRoom(modal) {
+    var live = null, panel = modal.querySelector(".cur-modal-panel");
+    if (modal.__anims && modal.__anims.length) {
+      var cs = getComputedStyle(panel);
+      live = { clipPath: cs.clipPath, backgroundColor: cs.backgroundColor };
+      modal.__anims.forEach(function (an) { an.cancel(); });
+    }
+    modal.__anims = [];
+    return live;
+  }
+  function roomAnimate(modal, opening, onDone) {
+    var panel = modal.querySelector(".cur-modal-panel");
+    var inner = [].slice.call(modal.querySelectorAll(".cur-modal-body, .cur-room-tools"));
+    var back = modal.querySelector(".cur-modal-backdrop");
+    var live = stopRoom(modal);
+    var tray = trayFor(modal.dataset.slug);
+    if (!panel.animate || reduceMotion || !tray) {
+      // no tray to grow from (or less motion asked for): a plain cross-fade
+      var f = panel.animate ? panel.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }],
+        { duration: reduceMotion ? 180 : 260, easing: "ease", fill: "both" }) : null;
+      if (!f) { if (onDone) onDone(); return; }
+      modal.__anims = [f];
+      f.onfinish = function () { if (onDone) onDone(); };
+      return;
+    }
+    var shut = { clipPath: trayClip(panel, tray), backgroundColor: "#ffffff" };
+    var open = { clipPath: "inset(0px 0px 0px 0px round 26px)", backgroundColor: "#e6e4e6" };
+    var from = live || (opening ? shut : open), to = opening ? open : shut;
+    var dur = opening ? 720 : 560;
+    var anims = [panel.animate([from, to], { duration: dur, easing: springEase(opening ? 0.5 : 0.4, dur), fill: "both" })];
+    // closing: the paper dissolves into the tray as it lands
+    if (!opening) anims.push(panel.animate([{ opacity: 1 }, { opacity: 1, offset: 0.55 }, { opacity: 0 }], { duration: dur, easing: "linear", fill: "both" }));
+    inner.forEach(function (el) {
+      anims.push(el.animate(opening
+        ? [{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }]
+        : [{ opacity: 1 }, { opacity: 0 }],
+        opening ? { duration: 420, delay: 220, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)", fill: "both" }
+                : { duration: 160, easing: "ease-out", fill: "both" }));
+    });
+    if (back) anims.push(back.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }], { duration: dur, easing: "ease", fill: "both" }));
+    modal.__anims = anims;
+    anims[0].onfinish = function () {
+      if (opening) stopRoom(modal);  // settle: drop the fills, the CSS state takes over
+      if (onDone) onDone();
+    };
+  }
   function closeCurModal() {
     var m = document.querySelector(".cur-modal");
     if (!m || m.hidden || m.classList.contains("is-closing")) return;
-    var ip = m.querySelector(".cur-info-pop"); if (ip) ip.hidden = true;
-    function done() {
-      curCloseTimer = null;
+    m.classList.add("is-closing");
+    curTopic = null;
+    roomAnimate(m, false, function () {
+      stopRoom(m);
       m.classList.remove("is-closing");
       m.hidden = true; document.body.style.overflow = "";
       var c = m.querySelector(".cur-modal-content"); if (c) c.innerHTML = "";
-    }
-    curTopic = null;
-    if (reduceMotion) { done(); return; }
-    m.classList.add("is-closing");
-    curCloseTimer = setTimeout(done, 240);
+      var lb = m.querySelector(".cur-label"); if (lb) lb.innerHTML = "";
+      var so = m.querySelector(".cur-sources"); if (so) so.hidden = true;
+    });
   }
   function buildTOC(modal) {
     var toc = modal.querySelector(".cur-toc"); if (!toc) return;
@@ -349,51 +415,58 @@
     [].forEach.call(toc.querySelectorAll("a"), function (a) {
       a.addEventListener("click", function (e) { e.preventDefault(); var t = document.getElementById(a.dataset.sec); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); });
     });
-    var panel = modal.querySelector(".cur-modal-panel");
-    if (panel && "IntersectionObserver" in window) {
+    var scroller = modal.querySelector(".cur-modal-body");
+    if (scroller && "IntersectionObserver" in window) {
       if (modal.__tocObs) modal.__tocObs.disconnect();
       var obs = new IntersectionObserver(function (entries) {
         entries.forEach(function (en) {
           if (en.isIntersecting) { var id = en.target.id; [].forEach.call(toc.querySelectorAll("a"), function (a) { a.classList.toggle("is-active", a.dataset.sec === id); }); }
         });
-      }, { root: panel, rootMargin: "0px 0px -72% 0px", threshold: 0 });
+      }, { root: scroller, rootMargin: "0px 0px -72% 0px", threshold: 0 });
       heads.forEach(function (h) { obs.observe(h); });
       modal.__tocObs = obs;
     }
   }
   function renderCurTopic(modal) {
-    modal.querySelector(".cur-modal-title").textContent = loc(curTopic, "title");
-    var au = curTopic.author || "";
-    modal.querySelector(".cur-modal-author").innerHTML = authorAvatar(au) + "<span>" + esc(au) + "</span>";
+    modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false);
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
     buildTOC(modal);
-    setupInspiration(modal, curTopic.inspiration);
+    renderSources(modal, curTopic.inspiration);
   }
-  function setupInspiration(modal, text) {
-    var btn = modal.querySelector(".cur-modal-info"), pop = modal.querySelector(".cur-info-pop");
-    if (!btn || !pop) return;
-    var lines = String(text || "").split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
-    if (!lines.length) { btn.hidden = true; pop.hidden = true; return; }
-    btn.hidden = false; pop.hidden = true;
-    pop.querySelector(".cur-info-list").innerHTML = lines.map(function (l) {
-      return "<li>" + esc(l).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>') + "</li>";
+  function htmlEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  // the inspiration list, as the exhibition's closing credits card. A line
+  // written "Title : Author - Year" reads as a catalogue entry
+  // ("Author, Title, Year"); anything else is shown as written.
+  function renderSources(modal, text) {
+    var box = modal.querySelector(".cur-sources"); if (!box) return;
+    var lines = String(text || "").split(/\n+/).map(function (l) { return l.trim(); })
+      .filter(function (l) { return l && !/^(inspirations?|sources?)\s*:?$/i.test(l); });
+    if (!lines.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.querySelector(".cur-sources-list").innerHTML = lines.map(function (l) {
+      var m = /^(.+?)\s+:\s+(.+?)\s+[-–—]\s+(\d{4})$/.exec(l), out;
+      if (m) out = htmlEsc(m[2]) + ", <em>" + htmlEsc(m[1]) + "</em>, " + m[3];
+      else out = htmlEsc(l).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+      return "<li><span>" + out + "</span></li>";
     }).join("");
-    btn.onclick = function (e) { e.stopPropagation(); pop.hidden = !pop.hidden; };
-    if (!window.__btbrInfoClose) {
-      window.__btbrInfoClose = true;
-      document.addEventListener("click", function (e) { var p = document.querySelector(".cur-info-pop"); if (p && !p.hidden && !e.target.closest(".cur-info-pop") && !e.target.closest(".cur-modal-info")) p.hidden = true; });
-      document.addEventListener("keydown", function (e) { if (e.key === "Escape") { var p = document.querySelector(".cur-info-pop"); if (p && !p.hidden) p.hidden = true; } });
-    }
   }
   function openCurTopic(slug) {
     var modal = document.querySelector(".cur-modal"); if (!modal) return;
-    if (curCloseTimer) { clearTimeout(curCloseTimer); curCloseTimer = null; modal.classList.remove("is-closing"); }
+    var reopening = modal.classList.contains("is-closing");
+    modal.classList.remove("is-closing");
+    modal.dataset.slug = slug;
     var content = modal.querySelector(".cur-modal-content");
-    modal.querySelector(".cur-modal-title").textContent = "";
-    modal.querySelector(".cur-modal-author").textContent = "";
-    content.innerHTML = '<p class="cur-loading">' + ui("loading") + "</p>";
+    if (!reopening || !content.innerHTML) {
+      modal.querySelector(".cur-label").innerHTML = "";
+      modal.querySelector(".cur-sources").hidden = true;
+      content.innerHTML = '<p class="cur-loading">' + ui("loading") + "</p>";
+      modal.querySelector(".cur-modal-body").scrollTop = 0;
+    }
     modal.hidden = false; document.body.style.overflow = "hidden";
+    roomAnimate(modal, true);
+    var close = modal.querySelector(".cur-modal-close"); if (close) close.focus({ preventScroll: true });
     fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
+      if (modal.dataset.slug !== slug || modal.hidden) return;
       curTopic = t; renderCurTopic(modal);
     }).catch(function () { content.innerHTML = '<p class="cur-loading">' + ui("failed") + "</p>"; });
   }
@@ -407,15 +480,19 @@
     } catch (e) { return ""; }
   }
   // a museum label: "Author, / Title, description, date" — one run of text.
-  // The title is the card's button; its ::after stretches over the whole card.
-  function curCardText(t) {
+  // On the feed the title is the card's button (its ::after stretches over the
+  // whole card); in the room it's the dialog's heading.
+  function curLabelHTML(t, asButton) {
     var desc = String(loc(t, "desc") || "").trim().replace(/[.,;:]+$/, ""), date = curDate(t.date);
-    var tail = [desc, date].filter(Boolean);
+    var tail = [desc, date].filter(Boolean), title = esc(loc(t, "title"));
     return '<span class="cur-author">' + esc(t.author || "") + ",</span> "
-      + '<h2 class="cur-title"><button class="cur-open" type="button">' + esc(loc(t, "title")) + "</button>" + (tail.length ? "," : "") + "</h2> "
+      + (asButton ? '<h2 class="cur-title"><button class="cur-open" type="button">' + title + "</button>"
+                  : '<h2 class="cur-title" id="curRoomTitle">' + title)
+      + (tail.length ? "," : "") + "</h2> "
       + (desc ? '<span class="cur-desc">' + esc(desc) + (date ? "," : "") + "</span> " : "")
       + (date ? '<time datetime="' + esc(t.date) + '">' + date + "</time>" : "");
   }
+  function curCardText(t) { return curLabelHTML(t, true); }
   function curCard(t) {
     var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
