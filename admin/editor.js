@@ -86,6 +86,32 @@
     return el;
   }
 
+  // pasted rich text keeps only its structure (bold, italic, links, line
+  // breaks) — never the source page's fonts, sizes or colours
+  var PASTE_KEEP = { B: 1, STRONG: 1, I: 1, EM: 1, A: 1, BR: 1, P: 1, DIV: 1, MARK: 1 };
+  var PASTE_DROP = { STYLE: 1, SCRIPT: 1, META: 1, TITLE: 1, LINK: 1 };
+  function cleanRich(html) {
+    var t = document.createElement("template"); t.innerHTML = html;
+    (function walk(n) {
+      Array.prototype.slice.call(n.childNodes).forEach(function (c) {
+        if (c.nodeType === 3) return;
+        if (c.nodeType !== 1 || PASTE_DROP[c.tagName]) { c.remove(); return; }
+        walk(c);
+        if (!PASTE_KEEP[c.tagName]) { while (c.firstChild) c.parentNode.insertBefore(c.firstChild, c); c.remove(); return; }
+        Array.prototype.slice.call(c.attributes).forEach(function (a) { if (!(c.tagName === "A" && a.name === "href")) c.removeAttribute(a.name); });
+      });
+    })(t.content);
+    return t.innerHTML;
+  }
+  document.addEventListener("paste", function (e) {
+    var box = e.target && e.target.closest && e.target.closest(".b-text, .b-cap");
+    if (!box || !e.clipboardData) return;
+    var html = e.clipboardData.getData("text/html");
+    if (!html) return;
+    e.preventDefault();
+    document.execCommand("insertHTML", false, cleanRich(html));
+  });
+
   function renderContent(b) {
     if (b.type === "text") {
       var t = document.createElement("div");
@@ -1363,6 +1389,12 @@
     }
     var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
     var desc = (state.desc || "").trim() || (firstText ? plain(firstText.html).slice(0, 160) : "");
+    // belt and braces: no inline styles in published text, whatever got in
+    outBlocks.forEach(function (ob) {
+      if (ob.type !== "text") return;
+      ob.html = cleanRich(ob.html || "");
+      if (ob.fr && ob.fr.html) ob.fr.html = cleanRich(ob.fr.html);
+    });
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
     var frTitle = (state.fr && state.fr.title || "").trim();
     var langs = ["en"];

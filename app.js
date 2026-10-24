@@ -292,7 +292,8 @@
     var hc = 0;
     return (blocks || []).map(function (b) {
       if (b.type === "text") {
-        var raw = loc(b, "html") || "";
+        // pasted text can carry the source page's inline fonts/sizes: drop them
+        var raw = String(loc(b, "html") || "").replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, "").replace(/<\/?(?:font|span)\b[^>]*>/gi, "");
         // the contenteditable bakes in <div>/<br> line breaks; split into clean
         // paragraphs and drop empty lines so spacing is even
         var parts = raw.split(/<\/?div[^>]*>|<\/?p[^>]*>|<br\s*\/?>/i);

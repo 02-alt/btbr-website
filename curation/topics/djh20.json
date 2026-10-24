@@ -10,7 +10,7 @@
     {
       "type": "text",
       "head": false,
-      "html": "<span style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: -webkit-standard; font-size: medium; letter-spacing: normal;\">Some houses feel like they were built to disappear. This one, completed in 2004 on the banks of the Enz in Bietigheim, Germany, calls to mind&nbsp;</span><em style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-size: medium; letter-spacing: normal;\">Ex Machina</em><span style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: -webkit-standard; font-size: medium; letter-spacing: normal;\">, shot at the Juvet Landscape Hotel near Ålesund, and the white room at Kojima Productions in Tokyo, where Hideo Kojima photographs the guests who visit his studio: glowing ceiling, glass walls, a floor that mirrors everything. There’s something serene and raw about it, as if it exists only to complement the nature around it, the person living in it, and what they create.</span><br>"
+      "html": "Some houses feel like they were built to disappear. This one, completed in 2004 on the banks of the Enz in Bietigheim, Germany, calls to mind&nbsp;<em>Ex Machina</em>, shot at the Juvet Landscape Hotel near Ålesund, and the white room at Kojima Productions in Tokyo, where Hideo Kojima photographs the guests who visit his studio: glowing ceiling, glass walls, a floor that mirrors everything. There’s something serene and raw about it, as if it exists only to complement the nature around it, the person living in it, and what they create.<br>"
     },
     {
       "type": "image",
@@ -106,7 +106,7 @@
     {
       "type": "text",
       "head": false,
-      "html": "<span style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: -webkit-standard; font-size: medium; letter-spacing: normal;\">It was designed by Kohlmayer Oberst, an architecture studio known for its minimalism and its respect for the landscape. Raw materials and clean lines, spaces that settle into their context instead of fighting it.</span>"
+      "html": "It was designed by Kohlmayer Oberst, an architecture studio known for its minimalism and its respect for the landscape. Raw materials and clean lines, spaces that settle into their context instead of fighting it."
     },
     {
       "type": "image",
@@ -207,7 +207,7 @@
     {
       "type": "text",
       "head": false,
-      "html": "<p style=\"margin-bottom: 1.05em; max-width: none; caret-color: rgb(31, 29, 32); color: rgb(31, 29, 32); font-family: Charter, Iowan Old Style, Georgia, Times New Roman, serif; font-size: 18px; letter-spacing: -0.16px; background-color: rgb(230, 228, 230);\"></p><p style=\"margin-bottom: 1.05em; max-width: none;\">Thanks for reading,</p><p style=\"margin-bottom: 1.05em; max-width: none;\">See you on the next one,</p><p style=\"margin-bottom: 1.05em; max-width: none;\">btbr</p><p style=\"margin-bottom: 1.05em; max-width: none; caret-color: rgb(31, 29, 32); color: rgb(31, 29, 32); font-family: Charter, Iowan Old Style, Georgia, Times New Roman, serif; font-size: 18px; letter-spacing: -0.16px; background-color: rgb(230, 228, 230);\"></p>"
+      "html": "<p></p><p>Thanks for reading,</p><p>See you on the next one,</p><p>btbr</p><p></p>"
     }
   ],
   "langs": [
