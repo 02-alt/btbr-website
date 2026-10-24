@@ -1215,9 +1215,9 @@ body:has(.curation-frame) { background: #e6e4e6; }
   box-sizing: content-box;
   fill: #fff;
   filter:
-    drop-shadow(0 -0.5px 0 rgba(40, 30, 40, 0.05))
-    drop-shadow(0 0.75px 0.6px rgba(40, 30, 40, 0.16))
-    drop-shadow(0 1.5px 2px rgba(40, 30, 40, 0.07));
+    drop-shadow(0 -0.5px 0 rgba(40, 30, 40, 0.06))
+    drop-shadow(0 0.75px 0.6px rgba(40, 30, 40, 0.19))
+    drop-shadow(0 1.5px 2px rgba(40, 30, 40, 0.085));
   pointer-events: none;
 }
 .cur-author { display: block; }
