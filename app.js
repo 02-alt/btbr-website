@@ -412,13 +412,17 @@
   // pull dismisses (momentum projected like a scroll), anything else springs
   // back. Every step starts from the image's live position.
   var focusState = null;
-  function focusTarget(img, noteEl) {
+  // `from` set (a picture on a board): grow it to ~1.7× its size on the board (580–860px),
+  // centred, rather than filling the window — enough to read the detail
+  function focusTarget(img, noteEl, from) {
     var vw = window.innerWidth, vh = window.innerHeight, m = vw < 600 ? 16 : 48;
     var nw = img.naturalWidth || img.width, nh = img.naturalHeight || img.height;
     var noteW = Math.min(560, vw - 2 * m);
     if (noteEl) noteEl.style.width = noteW + "px";
     var capH = noteEl ? noteEl.offsetHeight + 20 : 0;
-    var tw = Math.min(vw - 2 * m, (vh - 2 * m - capH) * nw / nh), th = tw * nh / nw;
+    var maxW = vw - 2 * m;
+    if (from) maxW = Math.min(maxW, Math.max(from.width * 1.7, Math.min(580, maxW)), 860);
+    var tw = Math.min(maxW, (vh - 2 * m - capH) * nw / nh), th = tw * nh / nw;
     return { l: (vw - tw) / 2, t: (vh - capH - th) / 2, w: tw, h: th, noteW: noteW, vw: vw };
   }
   function lift(f, r) { return "translate(" + (r.left - f.t.l) + "px, " + (r.top - f.t.t) + "px) scale(" + (r.width / f.t.w) + ")"; }
@@ -449,20 +453,22 @@
     big.src = img.currentSrc || img.src; big.alt = hot ? el.getAttribute("aria-label") || "" : img.alt || "";
     if (noteEl) noteEl.textContent = note;
     room.appendChild(ov);
-    var t = focusTarget(img, noteEl);
+    var t = focusTarget(img, noteEl, hot ? r : null);
+    if (hot) big.classList.add("is-window");
     ov.setAttribute("aria-label", big.alt || "Image");
     big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
     if (noteEl) { noteEl.style.left = (t.vw - t.noteW) / 2 + "px"; noteEl.style.top = (t.t + t.h + 18) + "px"; }
     // `img` = the picture to show, `src` = what it grows out of (and returns to)
     var f = focusState = { ov: ov, big: big, img: el, note: noteEl, back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
     // a window on a board keeps its Preview-window corner (16pt at 726pt wide)
-    f.srcR = hot ? r.width * 16 / 726 : parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
+    f.srcR = hot ? 0 : parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
+    f.toR = hot ? 0 : 14;
     if (!hot) el.style.visibility = "hidden";
     var k = r.width / t.w, chrome = [f.close].concat(noteEl ? [noteEl] : []);
     if (reduceMotion || !big.animate) {
       f.anims = [ov.animate ? ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "both" }) : null].filter(Boolean);
     } else {
-      f.anims.push(big.animate([{ transform: lift(f, r), borderRadius: f.srcR / k + "px" }, { transform: "none", borderRadius: "14px" }],
+      f.anims.push(big.animate([{ transform: lift(f, r), borderRadius: f.srcR / k + "px" }, { transform: "none", borderRadius: f.toR + "px" }],
         { duration: 620, easing: springEase(0.42, 620), fill: "both" }));
       f.anims.push(f.back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: "ease", fill: "both" }));
       chrome.forEach(function (el) { f.anims.push(el.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 360, delay: 220, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)", fill: "both" })); });
@@ -481,7 +487,7 @@
     function done() { f.img.style.visibility = ""; f.ov.remove(); if (focusState === f) focusState = null; try { f.img.focus({ preventScroll: true }); } catch (e) {} }
     if (reduceMotion || !f.big.animate) { done(); return true; }
     var k = r.width / f.t.w;
-    var to = onScreen ? { transform: lift(f, r), borderRadius: f.srcR / k + "px", opacity: 1 } : { transform: "translateY(48px) scale(0.94)", borderRadius: "14px", opacity: 0 };
+    var to = onScreen ? { transform: lift(f, r), borderRadius: f.srcR / k + "px", opacity: 1 } : { transform: "translateY(48px) scale(0.94)", borderRadius: f.toR + "px", opacity: 0 };
     var a = f.big.animate([from, to], { duration: 480, easing: springEase(0.36, 480), fill: "both" });
     f.back.animate([{ opacity: backFrom }, { opacity: 0 }], { duration: 300, easing: "ease", fill: "both" });
     [f.close].concat(f.note ? [f.note] : []).forEach(function (el) { el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 140, fill: "both" }); });
