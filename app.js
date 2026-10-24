@@ -308,14 +308,18 @@
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + cap + "</figure>";
       }
       if (b.type === "video") {
-        if (/youtu\.?be/.test(b.src)) {
-          var m = b.src.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
-          return '<figure class="cur-fig2 cur-vid"><iframe src="https://www.youtube.com/embed/' + (m ? m[1] : "") + '" allowfullscreen></iframe></figure>';
-        }
-        var at = b.loop ? "autoplay muted loop playsinline" : "controls playsinline";
+        // videos sit in a dark Preview window (framed by MacWin once rendered)
+        // unless the author turned it off; board videos already carry theirs
+        var win = b.frame !== false && !b.board;
+        var wattr = win ? ' data-win="' + htmlEsc(b.wtitle || String(loc(b, "caption") || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() || "Video").replace(/"/g, "&quot;") + '"' : "";
         var capV = loc(b, "caption");
         var cap2 = capV ? '<figcaption class="cur-cap">' + capV + "</figcaption>" : "";
-        return '<figure class="cur-fig2"><video src="' + esc(b.src) + '" ' + at + "></video>" + cap2 + "</figure>";
+        if (/youtu\.?be/.test(b.src)) {
+          var m = b.src.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
+          return '<figure class="cur-fig2 cur-vid"' + wattr + '><iframe src="https://www.youtube.com/embed/' + (m ? m[1] : "") + '" allowfullscreen></iframe></figure>';
+        }
+        var at = b.loop ? "autoplay muted loop playsinline" : "controls playsinline";
+        return '<figure class="cur-fig2"' + wattr + '><video src="' + esc(b.src) + '" ' + at + "></video>" + cap2 + "</figure>";
       }
       return "";
     }).join("");
@@ -427,9 +431,44 @@
       modal.__tocObs = obs;
     }
   }
+  // Mac window chrome, shared with Studio — fetched the first time a topic
+  // has a video to frame
+  var macwinLoading = null;
+  function loadMacWin() {
+    if (window.MacWin) return Promise.resolve();
+    if (!macwinLoading) macwinLoading = new Promise(function (res, rej) {
+      var sc = document.createElement("script"); sc.src = "/assets/macwin.js?v=4";
+      sc.onload = res; sc.onerror = function () { macwinLoading = null; rej(); };
+      document.head.appendChild(sc);
+    });
+    return macwinLoading;
+  }
+  function frameVideos(root) {
+    var figs = [].slice.call(root.querySelectorAll("figure[data-win]:not(.is-framed)"));
+    if (!figs.length) return;
+    loadMacWin().then(function () {
+      figs.forEach(function (fig) {
+        var media = fig.querySelector("iframe, video"); if (!media || !root.contains(fig)) return;
+        fig.classList.add("is-framed");
+        function wrap(w, h) {
+          var f = MacWin.frameDOM(media.cloneNode(true), { ratio: "orig", fit: "fill", title: fig.getAttribute("data-win") }, w, h);
+          media.replaceWith(f);
+          fig.classList.remove("cur-vid"); fig.classList.add("cur-win");
+          var v = f.querySelector("video"); if (v && v.autoplay) v.play().catch(function () {});
+        }
+        if (media.tagName === "IFRAME") wrap(16, 9);
+        else if (media.videoWidth) wrap(media.videoWidth, media.videoHeight);
+        else {
+          var done = false, go = function () { if (!done) { done = true; wrap(media.videoWidth || 16, media.videoHeight || 9); } };
+          media.addEventListener("loadedmetadata", go, { once: true }); setTimeout(go, 4000);
+        }
+      });
+    }, function () {});
+  }
   function renderCurTopic(modal) {
     modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false);
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
+    frameVideos(modal);
     buildTOC(modal);
     renderSources(modal, curTopic.inspiration);
   }

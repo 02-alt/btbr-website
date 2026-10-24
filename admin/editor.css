@@ -519,3 +519,37 @@ body.view-topics .studio-inspector { display: none; }
 .cover-item:hover .cover-resize, .cover-item:hover .cover-del { opacity: 1; }
 
 .insp-textarea { resize: vertical; min-height: 58px; line-height: 1.45; }
+
+/* ===== Mac windows (assets/macwin.js): framed board items + video frames ===== */
+.board-item.is-win { container-type: inline-size; }
+.board-item.is-win img,
+.board-item.is-win .macwin {
+  box-shadow: none; border-radius: 0;
+  filter: drop-shadow(0 2.2cqw 3cqw rgba(0, 0, 0, 0.3));
+}
+.board-item.is-win:hover img, .board-item.is-win.is-sel img,
+.board-item.is-win.is-dragging img { box-shadow: none; }
+.board-item.is-sel.is-win { outline-offset: 4px; border-radius: 10px; }
+.macwin { position: relative; width: 100%; }
+.macwin-hole { position: absolute; overflow: hidden; background: #000; }
+.macwin-hole > iframe, .macwin-hole > video, .macwin-hole > img {
+  position: absolute; inset: 0; width: 100% !important; height: 100% !important;
+  border: 0; border-radius: 0 !important; box-shadow: none !important; transform: none !important;
+  object-fit: cover; display: block;
+}
+.macwin-chrome { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }
+.board-item .macwin-chrome { box-shadow: none !important; transform: none !important; border-radius: 0 !important; }
+.b-media.has-win { background: none; aspect-ratio: auto; height: auto; padding: 4px 0 14px; }
+.b-media.has-win .macwin { filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28)); }
+.insp-sub { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hair); }
+.insp-subtitle { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin-bottom: 8px; }
+.insp-seg-wrap { flex-wrap: wrap; }
+.insp-seg-wrap button { flex: 0 0 auto; }
+.insp-item { cursor: pointer; }
+.insp-item.is-sel { background: rgba(10, 132, 255, 0.1); }
+.b-image .b-media.is-framed { aspect-ratio: auto; background: none; overflow: visible; padding: 4px 0 14px; }
+.b-media.is-framed img { height: auto; object-fit: contain; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28)); }
+.insp-seg-wrap button { padding-left: 10px; padding-right: 10px; }
+.cover-item.is-win { container-type: inline-size; }
+.cover-item.is-win img { box-shadow: none; border-radius: 0; filter: drop-shadow(0 2.2cqw 3cqw rgba(0, 0, 0, 0.3)); }
+.insp-check { display: flex; align-items: center; gap: 6px; margin: -4px 0 12px; font-size: 13px; color: var(--ink-soft); }

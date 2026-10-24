@@ -103,7 +103,7 @@
     }
     if (b.type === "image") {
       var iw = document.createElement("div");
-      iw.className = "b-media" + (b.src ? " has-src" : "");
+      iw.className = "b-media" + (b.src ? " has-src" : "") + (b.win ? " is-framed" : "");
       if (b.src) { var img = document.createElement("img"); img.src = b.src; img.alt = tr(b, "alt") || b.alt || ""; iw.appendChild(img); }
       else { iw.innerHTML = "<span>click or drop an image</span>"; iw.addEventListener("click", function () { pickImage(b); }); }
       wireMediaDrop(iw, b);
@@ -114,8 +114,14 @@
       vw.className = "b-media" + (b.src ? " has-src" : "");
       if (b.src) {
         var yt = youtubeId(b.src);
-        if (yt) { var f = document.createElement("iframe"); f.src = "https://www.youtube.com/embed/" + yt; f.allowFullscreen = true; vw.appendChild(f); }
-        else { var v = document.createElement("video"); v.src = b.src; v.controls = true; vw.appendChild(v); }
+        var vm;
+        if (yt) { vm = document.createElement("iframe"); vm.src = "https://www.youtube.com/embed/" + yt; vm.allowFullscreen = true; }
+        else {
+          vm = document.createElement("video"); vm.src = b.src; vm.controls = true;
+          if (!b.nat) vm.addEventListener("loadedmetadata", function () { if (!b.nat && vm.videoWidth) { b.nat = { w: vm.videoWidth, h: vm.videoHeight }; rerenderBlock(b.id); } }, { once: true });
+        }
+        if (b.frame !== false && window.MacWin) { vw.classList.add("has-win"); vw.appendChild(MacWin.frameDOM(vm, { ratio: "orig", fit: "fill", title: videoWinTitle(b) }, yt ? 16 : b.nat && b.nat.w, yt ? 9 : b.nat && b.nat.h)); }
+        else vw.appendChild(vm);
       } else { vw.innerHTML = "<span>click or drop a video</span>"; vw.addEventListener("click", function () { pickVideo(b); }); }
       wireMediaDrop(vw, b);
       return withCaption(vw, b);
@@ -171,8 +177,9 @@
         var y = clamp((e.clientY - brd.top) / brd.height * 100 - 21 + i * 4, 0, 58);
         var kind = f.type.indexOf("video/") === 0 ? "video" : "image";
         var item = { id: uid(), kind: kind, src: URL.createObjectURL(f), name: f.name, x: x, y: y, w: 42, z: ++b.zc };
+        if (kind === "video") item.win = newWin(f.name);
         b.items.push(item);
-        if (kind === "image") autoTrim(item, b.id);
+        if (kind === "image") prepImage(item, b.id);
       });
       render(); select(b.id);
     });
@@ -185,6 +192,7 @@
     wrap.style.top = it.y + "%";
     wrap.style.width = it.w + "%";
     wrap.style.zIndex = it.z || 1;
+    if (b.sel === it.id && selectedId === b.id) wrap.classList.add("is-sel");
     var media;
     if (it.kind === "video") {
       media = document.createElement("video");
@@ -192,10 +200,24 @@
       media.playsInline = true; media.setAttribute("playsinline", "");
       media.play().catch(function () {});
     } else {
-      media = document.createElement("img"); media.src = it.src;
+      media = document.createElement("img"); if (it.src) media.src = it.src;
     }
-    media.draggable = false; wrap.appendChild(media);
+    media.draggable = false;
+    if (it.win) wrap.classList.add("is-win");
+    if (it.kind === "video" && it.win && window.MacWin) {
+      // a live Preview window; learn the video's size first for "Original"
+      if (!it.nat) media.addEventListener("loadedmetadata", function () { if (!it.nat && media.videoWidth) { it.nat = { w: media.videoWidth, h: media.videoHeight }; rerenderBlock(b.id); } }, { once: true });
+      media.style.objectFit = it.win.fit === "fit" ? "contain" : "cover";
+      wrap.appendChild(MacWin.frameDOM(media, it.win, it.nat && it.nat.w, it.nat && it.nat.h));
+    } else wrap.appendChild(media);
     var rs = document.createElement("div"); rs.className = "board-resize"; rs.textContent = "⤡"; wrap.appendChild(rs);
+    // double-click a window → jump to its title field
+    wrap.addEventListener("dblclick", function () {
+      if (document.body.classList.contains("is-preview") || !it.win) return;
+      b.sel = it.id; renderInspector();
+      var t = inspectorEl.querySelector(".js-wtitle");
+      if (t) { t.scrollIntoView({ block: "center" }); t.focus({ preventScroll: true }); t.select(); }
+    });
     wrap.addEventListener("pointerdown", function (e) {
       if (document.body.classList.contains("is-preview")) return;
       select(b.id);
@@ -204,8 +226,9 @@
     });
     return wrap;
   }
-  function selItem(board, id) {
+  function selItem(board, id, b) {
     board.querySelectorAll(".board-item").forEach(function (el) { el.classList.toggle("is-sel", el.dataset.iid === id); });
+    if (b && b.sel !== id) { b.sel = id; renderInspector(); }
   }
   /* ---------- smart guides: snap to the board's edges/centre and to other items (Figma-style) ---------- */
   var SNAP_PX = 6; // hold ⌘ while dragging to place freely
@@ -257,7 +280,7 @@
 
   function boardMove(e, b, board, it, wrap) {
     e.preventDefault(); e.stopPropagation();
-    selItem(board, it.id);
+    selItem(board, it.id, b);
     it.z = ++b.zc; wrap.style.zIndex = it.z;
     wrap.classList.add("is-dragging");
     board.classList.add("is-arranging");
@@ -287,7 +310,7 @@
   }
   function boardResize(e, b, board, it, wrap) {
     e.preventDefault(); e.stopPropagation();
-    selItem(board, it.id);
+    selItem(board, it.id, b);
     wrap.setPointerCapture(e.pointerId);
     var brd = board.getBoundingClientRect();
     var W = board.clientWidth, H = board.clientHeight;
@@ -318,8 +341,9 @@
       var f = inp.files && inp.files[0]; if (!f) return;
       var n = b.items.length;
       var item = { id: uid(), kind: kind, src: URL.createObjectURL(f), name: f.name, x: 8 + n * 6, y: 8 + n * 6, w: 42, z: ++b.zc };
-      b.items.push(item);
-      if (kind === "image") autoTrim(item, b.id);
+      if (kind === "video") item.win = newWin(f.name);
+      b.items.push(item); b.sel = item.id;
+      if (kind === "image") prepImage(item, b.id);
       render(); select(b.id);
     });
     inp.click();
@@ -368,6 +392,165 @@
     });
   }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  /* ---------- Mac windows (assets/macwin.js) ----------
+     A dropped image is shown inside a dark Preview window, baked to a PNG:
+     `orig` keeps the raw image, `src` the framed result, `win` the settings
+     (ratio, fill/fit, title) so changing them re-bakes from the original.
+     A window screenshot (transparent margin) is left as it is. Text windows
+     bake from `win.text`; video windows are drawn live (Studio + exports). */
+  var TEXT_WIDTHS = { narrow: 480, regular: 640, wide: 800 };
+  function newWin(name) { return { type: "preview", ratio: "orig", fit: "fill", title: name || "Untitled.jpg" }; }
+  function revoke(u) { if (u && u.indexOf("blob:") === 0) try { URL.revokeObjectURL(u); } catch (e) {} }
+  function bakeWin(holder, rerenderId) {
+    var w = holder.win;
+    if (!w || holder.kind === "video" || !window.MacWin) { if (rerenderId) rerenderBlock(rerenderId); return; }
+    var token = holder._bake = (holder._bake || 0) + 1;
+    var job = w.type === "text" ? MacWin.bakeText({ title: w.title, text: w.text, look: w.look, edited: w.edited, width: TEXT_WIDTHS[w.width] || 640 }) : MacWin.bakePreview(holder.orig, w);
+    job.then(function (url) {
+      if (token !== holder._bake || !url) { revoke(url); return; }
+      var old = holder.src; holder.src = url;
+      if (old !== holder.orig) revoke(old);
+      if (rerenderId) { rerenderBlock(rerenderId); keepInBoard(holder, rerenderId); }
+      var th = inspectorEl.querySelector('.insp-item[data-iid="' + holder.id + '"] .thumb'); if (th) th.src = url;
+    }).catch(function () {});
+  }
+  // a window that grew taller than the room left below it slides back up
+  function keepInBoard(it, blockId) {
+    var wrap = blocksEl.querySelector('.block[data-id="' + blockId + '"] .board-item[data-iid="' + it.id + '"]');
+    if (!wrap) return;
+    var img = wrap.querySelector("img");
+    function fit() {
+      var bd = wrap.parentNode; if (!bd || !bd.clientHeight) return;
+      var hP = wrap.offsetHeight / bd.clientHeight * 100;
+      if (it.y + hP > 100) { it.y = Math.max(0, 100 - hP); wrap.style.top = it.y + "%"; }
+    }
+    if (img && !img.complete) img.addEventListener("load", fit, { once: true }); else fit();
+  }
+  // a freshly added image: trim a window screenshot, otherwise frame it
+  function prepImage(holder, rerenderId) {
+    var url = holder.src;
+    trimTransparentURL(url).then(function (t) {
+      if (t && t !== url) { holder.src = t; revoke(url); holder.win = null; holder.orig = null; if (rerenderId) rerenderBlock(rerenderId); return; }
+      holder.orig = url; holder.win = newWin(holder.name); bakeWin(holder, rerenderId);
+    });
+  }
+  function setWinOn(holder, on, rerenderId) {
+    if (on) { holder.win = holder._winOff || newWin(holder.name); holder._winOff = null; bakeWin(holder, rerenderId); }
+    else { holder._winOff = holder.win; holder.win = null; if (holder.kind !== "video" && holder.orig) { if (holder.src !== holder.orig) revoke(holder.src); holder.src = holder.orig; } if (rerenderId) rerenderBlock(rerenderId); }
+  }
+  function videoWinTitle(b) { return b.wtitle || b.name || plain(tr(b, "caption") || b.caption) || "Video"; }
+  // window settings UI (shared by board items and image blocks)
+  function winControls(sec, holder, rerenderId) {
+    var w = holder.win, isText = w && w.type === "text";
+    if (!isText) {
+      var on = document.createElement("div"); on.className = "insp-seg";
+      ["Window", "Plain"].forEach(function (name, i) {
+        var btn = document.createElement("button"); btn.type = "button"; btn.textContent = name;
+        btn.setAttribute("aria-pressed", (w ? 0 : 1) === i ? "true" : "false");
+        btn.addEventListener("click", function () { setWinOn(holder, i === 0, rerenderId); renderInspector(); });
+        on.appendChild(btn);
+      });
+      sec.appendChild(field("Frame", on));
+    }
+    if (!w) return;
+    var tdeb;
+    var tIn = textInput(w.title, isText ? "Untitled" : "photo.jpg", function (v) {
+      w.title = v; clearTimeout(tdeb); tdeb = setTimeout(function () { bakeWin(holder, rerenderId); }, 200);
+    });
+    tIn.classList.add("js-wtitle");
+    sec.appendChild(field("Window title", tIn));
+    if (isText) {
+      var ed = document.createElement("label"); ed.className = "pub-remember insp-check";
+      var cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = w.edited !== false;
+      cb.addEventListener("change", function () { w.edited = cb.checked; bakeWin(holder, rerenderId); });
+      ed.appendChild(cb); ed.appendChild(document.createTextNode(" Show “— Edited” after the title"));
+      sec.appendChild(ed);
+    }
+    if (isText) {
+      var ta = document.createElement("textarea"); ta.className = "insp-input insp-textarea"; ta.rows = 7; ta.value = w.text || "";
+      ta.placeholder = "Type the text shown in the window — an empty line starts a new paragraph";
+      var deb; ta.addEventListener("input", function () { w.text = ta.value; clearTimeout(deb); deb = setTimeout(function () { bakeWin(holder, rerenderId); }, 250); });
+      sec.appendChild(field("Text", ta));
+      var hintT = document.createElement("div"); hintT.className = "insp-empty"; hintT.style.margin = "-4px 0 10px";
+      hintT.textContent = "Emphasis: **bold words** · ==highlighted words==";
+      sec.appendChild(hintT);
+      var ls = document.createElement("div"); ls.className = "insp-seg insp-seg-wrap";
+      [["note", "Note"], ["large", "Statement"], ["paper", "Paper"], ["lead", "Lead-in"], ["serif", "Serif"]].forEach(function (l) {
+        var btn = document.createElement("button"); btn.type = "button"; btn.textContent = l[1];
+        btn.setAttribute("aria-pressed", (w.look || "note") === l[0] ? "true" : "false");
+        btn.addEventListener("click", function () { w.look = l[0]; bakeWin(holder, rerenderId); renderInspector(); });
+        ls.appendChild(btn);
+      });
+      sec.appendChild(field("Style", ls));
+      var ws = document.createElement("div"); ws.className = "insp-seg";
+      ["narrow", "regular", "wide"].forEach(function (k) {
+        var btn = document.createElement("button"); btn.type = "button"; btn.textContent = k.charAt(0).toUpperCase() + k.slice(1);
+        btn.setAttribute("aria-pressed", (w.width || "regular") === k ? "true" : "false");
+        btn.addEventListener("click", function () { w.width = k; bakeWin(holder, rerenderId); renderInspector(); });
+        ws.appendChild(btn);
+      });
+      sec.appendChild(field("Width", ws));
+      return;
+    }
+    var rs = document.createElement("div"); rs.className = "insp-seg insp-seg-wrap";
+    MacWin.RATIOS.forEach(function (r) {
+      var btn = document.createElement("button"); btn.type = "button"; btn.textContent = r.label;
+      btn.setAttribute("aria-pressed", (w.ratio || "orig") === r.id ? "true" : "false");
+      btn.addEventListener("click", function () { w.ratio = r.id; bakeWin(holder, rerenderId); renderInspector(); });
+      rs.appendChild(btn);
+    });
+    sec.appendChild(field("Ratio", rs));
+    var fs = document.createElement("div"); fs.className = "insp-seg";
+    [["fill", "Fill"], ["fit", "Fit"]].forEach(function (f) {
+      var btn = document.createElement("button"); btn.type = "button"; btn.textContent = f[1];
+      btn.setAttribute("aria-pressed", (w.fit || "fill") === f[0] ? "true" : "false");
+      btn.addEventListener("click", function () { w.fit = f[0]; bakeWin(holder, rerenderId); renderInspector(); });
+      fs.appendChild(btn);
+    });
+    sec.appendChild(field("Picture", fs));
+  }
+  function addTextWindow(b) {
+    if (b.items.length >= 6) return;
+    var n = b.items.length;
+    var item = { id: uid(), kind: "image", src: "", name: "Text", x: 10 + n * 5, y: 52 + n * 3, w: 64, z: ++b.zc,
+      win: { type: "text", title: "Untitled", text: "Write your text in the inspector — **bold** or ==highlight== the words that matter.", width: "regular", look: "note" } };
+    b.items.push(item); b.sel = item.id;
+    bakeWin(item, b.id); render(); select(b.id);
+  }
+
+  /* ---------- board rendering for exports: framed items + shadows ---------- */
+  function loadBoardMedia(items) {
+    return Promise.all(items.map(function (it) {
+      return new Promise(function (r) {
+        if (it.kind === "video") {
+          var v = document.createElement("video"); v.src = it.src; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", "");
+          v.addEventListener("loadeddata", function () {
+            if (!it.win || !window.MacWin) { r({ it: it, el: v, vid: true }); return; }
+            MacWin.videoChrome(it.win, v.videoWidth, v.videoHeight).then(function (ch) { r({ it: it, el: v, vid: true, ch: ch }); }, function () { r({ it: it, el: v, vid: true }); });
+          }, { once: true });
+          v.addEventListener("error", function () { r(null); }, { once: true }); v.load();
+        } else { var im = new Image(); im.onload = function () { r({ it: it, el: im, vid: false }); }; im.onerror = function () { r(null); }; im.src = it.src; }
+      });
+    })).then(function (m) { return m.filter(Boolean); });
+  }
+  function itemShadow(ctx, dw) { ctx.shadowColor = "rgba(0, 0, 0, 0.3)"; ctx.shadowBlur = dw * 0.06; ctx.shadowOffsetY = dw * 0.022; }
+  function drawBoardMedia(ctx, m, SIZE) {
+    var it = m.it, el = m.el, X = it.x / 100 * SIZE, Y = it.y / 100 * SIZE, dw = it.w / 100 * SIZE;
+    if (m.ch) {
+      var k = dw / m.ch.w;
+      ctx.save(); itemShadow(ctx, dw); ctx.fillStyle = "#1c1c1e"; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(X, Y, dw, m.ch.h * k, 12 * k); else ctx.rect(X, Y, dw, m.ch.h * k);
+      ctx.fill(); ctx.restore();
+      try { MacWin.drawVideoFrame(ctx, m.ch, el, it.win, X, Y, dw); } catch (e) {}
+      return;
+    }
+    var nw = m.vid ? el.videoWidth : el.naturalWidth, nh = m.vid ? el.videoHeight : el.naturalHeight;
+    if (!nw || !nh) return;
+    ctx.save(); if (it.win) itemShadow(ctx, dw);
+    try { ctx.drawImage(el, X, Y, dw, dw * (nh / nw)); } catch (e) {}
+    ctx.restore();
+  }
   function wireMediaDrop(el, b) {
     el.addEventListener("dragover", function (e) {
       if (document.body.classList.contains("is-preview")) return;
@@ -379,7 +562,7 @@
       e.preventDefault(); el.classList.remove("is-dropping");
       var want = b.type === "video" ? "video/" : "image/";
       var f = [].slice.call(e.dataTransfer.files).filter(function (x) { return x.type.indexOf(want) === 0; })[0];
-      if (f) { b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id); if (b.type === "image") autoTrim(b, b.id); }
+      if (f) { b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id); if (b.type === "image") prepImage(b, b.id); }
     });
   }
 
@@ -390,99 +573,26 @@
     return base + "-board-" + (i + 1) + ".png";
   }
   function exportBoardToPNG(b) {
-    var SIZE = 2048; // 1:1 board → crisp 2048×2048 export
-    var canvas = document.createElement("canvas"); canvas.width = SIZE; canvas.height = SIZE;
-    var ctx = canvas.getContext("2d");
-    ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
-    var items = b.items.slice().sort(function (a, c) { return (a.z || 0) - (c.z || 0); });
-    Promise.all(items.map(function (it) {
-      return new Promise(function (res) {
-        var im = new Image();
-        im.onload = function () { res({ it: it, im: im }); };
-        im.onerror = function () { res(null); };
-        im.src = it.src;
-      });
-    })).then(function (arr) {
-      arr.forEach(function (o) {
-        if (!o) return;
-        var dw = o.it.w / 100 * SIZE;
-        var dh = dw * (o.im.naturalHeight / o.im.naturalWidth);
-        ctx.drawImage(o.im, o.it.x / 100 * SIZE, o.it.y / 100 * SIZE, dw, dh);
-      });
-      canvas.toBlob(function (blob) {
-        var a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = boardFilename(boardIndex(b));
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-      }, "image/png");
+    boardToPNGBlob(b).then(function (blob) {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = boardFilename(boardIndex(b));
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
     });
   }
 
   /* ---------- export a board with video → looping WebM (native capture) ---------- */
   function exportBoardToWebM(b, btn) {
-    if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) {
-      alert("This browser can't record WebM — try Chrome or a recent Safari.");
-      return;
-    }
-    var SIZE = 1080;
-    var canvas = document.createElement("canvas"); canvas.width = SIZE; canvas.height = SIZE;
-    var ctx = canvas.getContext("2d");
-    var items = b.items.slice().sort(function (a, c) { return (a.z || 0) - (c.z || 0); });
     var label = btn ? btn.textContent : "";
-    if (btn) { btn.disabled = true; btn.textContent = "Preparing…"; }
-    Promise.all(items.map(function (it) {
-      return new Promise(function (res) {
-        if (it.kind === "video") {
-          var v = document.createElement("video");
-          v.src = it.src; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", "");
-          v.addEventListener("loadeddata", function () { res({ it: it, el: v, vid: true }); }, { once: true });
-          v.addEventListener("error", function () { res(null); }, { once: true });
-          v.load();
-        } else {
-          var im = new Image();
-          im.onload = function () { res({ it: it, el: im, vid: false }); };
-          im.onerror = function () { res(null); };
-          im.src = it.src;
-        }
-      });
-    })).then(function (media) {
-      media = media.filter(Boolean);
-      var durs = media.filter(function (m) { return m.vid; }).map(function (m) { return m.el.duration; }).filter(function (d) { return isFinite(d) && d > 0; });
-      var loopMs = Math.min(15000, (durs.length ? Math.max.apply(null, durs) : 3) * 1000);
-      var stream = canvas.captureStream(30);
-      var mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9"
-               : MediaRecorder.isTypeSupported("video/webm;codecs=vp8") ? "video/webm;codecs=vp8"
-               : "video/webm";
-      var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 12000000 });
-      var chunks = [];
-      rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-      rec.onstop = function () {
-        var blob = new Blob(chunks, { type: "video/webm" });
-        var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-        a.download = boardFilename(boardIndex(b)).replace(/\.png$/, ".webm");
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-        media.forEach(function (m) { if (m.vid) m.el.pause(); });
-        if (btn) { btn.disabled = false; btn.textContent = label; }
-      };
-      media.forEach(function (m) { if (m.vid) { try { m.el.currentTime = 0; } catch (e) {} m.el.play().catch(function () {}); } });
-      var raf;
-      function frame() {
-        ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
-        media.forEach(function (m) {
-          var it = m.it, el = m.el;
-          var nw = m.vid ? el.videoWidth : el.naturalWidth, nh = m.vid ? el.videoHeight : el.naturalHeight;
-          if (!nw || !nh) return;
-          var dw = it.w / 100 * SIZE, dh = dw * (nh / nw);
-          try { ctx.drawImage(el, it.x / 100 * SIZE, it.y / 100 * SIZE, dw, dh); } catch (e) {}
-        });
-        raf = requestAnimationFrame(frame);
-      }
-      frame(); rec.start();
-      if (btn) btn.textContent = "Recording…";
-      setTimeout(function () { cancelAnimationFrame(raf); if (rec.state !== "inactive") rec.stop(); }, loopMs + 120);
-    });
+    if (btn) { btn.disabled = true; btn.textContent = "Recording…"; }
+    boardToWebMBlob(b).then(function (blob) {
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = boardFilename(boardIndex(b)).replace(/\.png$/, ".webm");
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+    }, function (e) { alert(e && e.message || "This browser can't record WebM — try Chrome or a recent Safari."); })
+      .then(function () { if (btn) { btn.disabled = false; btn.textContent = label; } });
   }
 
   /* ---------- selection + inspector ---------- */
@@ -534,13 +644,19 @@
       var n = state.cover.items.length;
       var item = { id: uid(), src: URL.createObjectURL(f), x: 6 + n * 5, y: 6 + n * 5, w: 55, z: (state.cover.zc = (state.cover.zc || 0) + 1) };
       state.cover.items.push(item);
-      trimTransparentURL(item.src).then(function (t) { if (t && t !== item.src) { try { URL.revokeObjectURL(item.src); } catch (e) {} item.src = t; renderInspector(); } });
+      // a window screenshot is trimmed; any other picture goes in a Preview window
+      trimTransparentURL(item.src).then(function (t) {
+        if (t && t !== item.src) { revoke(item.src); item.src = t; renderInspector(); return; }
+        if (!window.MacWin) return;
+        var raw = item.src;
+        MacWin.bakePreview(raw, newWin(f.name)).then(function (u) { if (u) { item.src = u; item.win = true; revoke(raw); renderInspector(); } });
+      });
       renderInspector();
     });
     inp.click();
   }
   function renderCoverItem(it, box) {
-    var wrap = document.createElement("div"); wrap.className = "cover-item"; wrap.dataset.iid = it.id;
+    var wrap = document.createElement("div"); wrap.className = "cover-item" + (it.win ? " is-win" : ""); wrap.dataset.iid = it.id;
     wrap.style.left = it.x + "%"; wrap.style.top = it.y + "%"; wrap.style.width = it.w + "%"; wrap.style.zIndex = it.z || 1;
     var img = document.createElement("img"); img.src = it.src; img.draggable = false; wrap.appendChild(img);
     var rs = document.createElement("div"); rs.className = "cover-resize"; rs.textContent = "⤡"; wrap.appendChild(rs);
@@ -572,7 +688,7 @@
       ctx.fillStyle = cover.bg || "#ebebef"; ctx.fillRect(0, 0, W, H);
       var items = cover.items.slice().sort(function (a, b) { return (a.z || 0) - (b.z || 0); });
       Promise.all(items.map(function (it) { return new Promise(function (r) { var im = new Image(); im.onload = function () { r({ it: it, im: im }); }; im.onerror = function () { r(null); }; im.src = it.src; }); }))
-        .then(function (arr) { arr.forEach(function (o) { if (!o) return; var dw = o.it.w / 100 * W, dh = dw * (o.im.naturalHeight / o.im.naturalWidth); ctx.drawImage(o.im, o.it.x / 100 * W, o.it.y / 100 * H, dw, dh); }); c.toBlob(resolve, "image/png"); });
+        .then(function (arr) { arr.forEach(function (o) { if (!o) return; var dw = o.it.w / 100 * W, dh = dw * (o.im.naturalHeight / o.im.naturalWidth); ctx.save(); if (o.it.win) itemShadow(ctx, dw); ctx.drawImage(o.im, o.it.x / 100 * W, o.it.y / 100 * H, dw, dh); ctx.restore(); }); c.toBlob(resolve, "image/png"); });
     });
   }
   function coverField() {
@@ -673,10 +789,25 @@
       var pick = document.createElement("button"); pick.className = "sbtn"; pick.type = "button"; pick.textContent = "Choose file…";
       pick.addEventListener("click", function () { pickImage(b); });
       sec.appendChild(pick);
+      if (b.orig) { var wsec = document.createElement("div"); wsec.className = "insp-sub"; winControls(wsec, b, b.id); sec.appendChild(wsec); }
     } else if (b.type === "video") {
       sec.appendChild(field("Video URL", textInput(b.src, "YouTube link or .mp4", function (v) { b.src = v; rerenderBlock(b.id); })));
-      var hint = document.createElement("div"); hint.className = "insp-empty"; hint.textContent = "YouTube links embed automatically; direct .mp4 files get a player. Caption: type under the video; select text to format it.";
-      sec.appendChild(hint);
+      var vhint = document.createElement("div"); vhint.className = "insp-empty"; vhint.textContent = "YouTube links embed automatically; direct .mp4 files get a player. Caption: type under the video; select text to format it.";
+      sec.appendChild(vhint);
+      var vf = document.createElement("div"); vf.className = "insp-seg"; vf.style.marginTop = "12px";
+      ["Window", "Plain"].forEach(function (name, i) {
+        var btn = document.createElement("button"); btn.type = "button"; btn.textContent = name;
+        btn.setAttribute("aria-pressed", (b.frame === false ? 1 : 0) === i ? "true" : "false");
+        btn.addEventListener("click", function () { b.frame = i === 0; rerenderBlock(b.id); renderInspector(); });
+        vf.appendChild(btn);
+      });
+      sec.appendChild(field("Frame", vf));
+      if (b.frame !== false) {
+        var vdeb;
+        sec.appendChild(field("Window title", textInput(b.wtitle || "", videoWinTitle(Object.assign({}, b, { wtitle: "" })), function (v) {
+          b.wtitle = v; clearTimeout(vdeb); vdeb = setTimeout(function () { rerenderBlock(b.id); }, 250);
+        })));
+      }
     } else if (b.type === "board") {
       // background: swatches + colour picker
       var colorRow = document.createElement("div"); colorRow.className = "insp-color";
@@ -694,14 +825,27 @@
       if (b.items.length) {
         var list = document.createElement("div"); list.className = "insp-items";
         b.items.forEach(function (it) {
-          var row = document.createElement("div"); row.className = "insp-item";
-          var th = document.createElement("img"); th.className = "thumb"; th.src = it.src; row.appendChild(th);
-          var nm = document.createElement("span"); nm.className = "iname"; nm.textContent = it.name || "image"; row.appendChild(nm);
+          var row = document.createElement("div"); row.className = "insp-item" + (b.sel === it.id ? " is-sel" : ""); row.dataset.iid = it.id;
+          row.addEventListener("click", function (e) {
+            if (e.target.closest(".irm")) return;
+            b.sel = it.id; var bd = blocksEl.querySelector('.block[data-id="' + b.id + '"] .b-board'); if (bd) selItem(bd, it.id); renderInspector();
+          });
+          var th = document.createElement(it.kind === "video" ? "video" : "img"); th.className = "thumb"; if (it.src) th.src = it.src; th.muted = true; row.appendChild(th);
+          var nm = document.createElement("span"); nm.className = "iname"; nm.textContent = (it.win && it.win.type === "text") ? "Text window" : (it.name || "image"); row.appendChild(nm);
           var rm = document.createElement("button"); rm.type = "button"; rm.className = "irm"; rm.innerHTML = "&times;"; rm.title = "Remove";
           rm.addEventListener("click", function () { b.items = b.items.filter(function (x) { return x.id !== it.id; }); render(); select(b.id); });
           row.appendChild(rm); list.appendChild(row);
         });
         sec.appendChild(field("Media (" + b.items.length + "/6)", list));
+        var selIt = b.items.filter(function (x) { return x.id === b.sel; })[0];
+        if (selIt) {
+          var isub = document.createElement("div"); isub.className = "insp-sub";
+          var ih = document.createElement("div"); ih.className = "insp-subtitle"; ih.textContent = (selIt.win && selIt.win.type === "text") ? "Text window" : (selIt.kind === "video" ? "Video" : "Image");
+          isub.appendChild(ih);
+          if (selIt.kind === "video" || selIt.win || selIt.orig) winControls(isub, selIt, b.id);
+          else { var nx = document.createElement("div"); nx.className = "insp-empty"; nx.textContent = "A window screenshot — used as it is."; isub.appendChild(nx); }
+          sec.appendChild(isub);
+        }
       }
       var full = b.items.length >= 6;
       var addRow = document.createElement("div"); addRow.className = "insp-seg";
@@ -709,11 +853,13 @@
       addImg.addEventListener("click", function () { addBoardMedia(b, "image"); });
       var addVid = document.createElement("button"); addVid.type = "button"; addVid.textContent = "Add video"; addVid.disabled = full;
       addVid.addEventListener("click", function () { addBoardMedia(b, "video"); });
-      addRow.appendChild(addImg); addRow.appendChild(addVid);
+      var addTxt = document.createElement("button"); addTxt.type = "button"; addTxt.textContent = "Add text"; addTxt.disabled = full;
+      addTxt.addEventListener("click", function () { addTextWindow(b); });
+      addRow.appendChild(addImg); addRow.appendChild(addVid); addRow.appendChild(addTxt);
       sec.appendChild(addRow);
       if (full) { var mx = document.createElement("div"); mx.className = "insp-empty"; mx.style.marginTop = "6px"; mx.textContent = "Maximum 6 items."; sec.appendChild(mx); }
       var bh = document.createElement("div"); bh.className = "insp-empty"; bh.style.marginTop = "10px";
-      bh.textContent = "Drop or add images and videos; drag to place, drag the ⤡ corner to resize. Ratios are kept.";
+      bh.textContent = "Drop or add images and videos — they arrive in a Preview window (pick a ratio; Fill crops the picture into it). Add text makes a TextEdit window. Drag to place, drag the ⤡ corner to resize.";
       sec.appendChild(bh);
       var hasVid = boardHasVideo(b);
       var bexp = document.createElement("button"); bexp.className = "sbtn primary"; bexp.type = "button"; bexp.style.marginTop = "12px";
@@ -751,7 +897,7 @@
     var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
     inp.addEventListener("change", function () {
       var f = inp.files && inp.files[0]; if (!f) return;
-      b.src = URL.createObjectURL(f); render(); select(b.id); autoTrim(b, b.id);
+      b.src = URL.createObjectURL(f); b.name = f.name; render(); select(b.id); prepImage(b, b.id);
     });
     inp.click();
   }
@@ -863,13 +1009,7 @@
     return new Promise(function (resolve) {
       var SIZE = 720, c = document.createElement("canvas"); c.width = c.height = SIZE; var ctx = c.getContext("2d");
       var items = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
-      Promise.all(items.map(function (it) {
-        return new Promise(function (r) {
-          if (it.kind === "video") { var v = document.createElement("video"); v.src = it.src; v.muted = true; v.loop = true; v.playsInline = true; v.addEventListener("loadeddata", function () { r({ it: it, el: v, vid: true }); }, { once: true }); v.addEventListener("error", function () { r(null); }, { once: true }); v.load(); }
-          else { var im = new Image(); im.onload = function () { r({ it: it, el: im, vid: false }); }; im.onerror = function () { r(null); }; im.src = it.src; }
-        });
-      })).then(function (media) {
-        media = media.filter(Boolean);
+      loadBoardMedia(items).then(function (media) {
         var durs = media.filter(function (m) { return m.vid; }).map(function (m) { return m.el.duration; }).filter(function (d) { return isFinite(d) && d > 0; });
         var dur = Math.min(6, durs.length ? Math.max.apply(null, durs) : 3), fps = 10, delay = Math.round(1000 / fps);
         var gif = new GIF({ workers: 2, quality: 10, width: SIZE, height: SIZE, workerScript: worker });
@@ -878,7 +1018,7 @@
         function tick(ts) { if (start === null) start = ts; var t = (ts - start) / 1000;
           if (t - last >= 1 / fps - 0.001) {
             ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
-            media.forEach(function (m) { var it = m.it, el = m.el, nw = m.vid ? el.videoWidth : el.naturalWidth, nh = m.vid ? el.videoHeight : el.naturalHeight; if (!nw || !nh) return; var dw = it.w / 100 * SIZE, dh = dw * (nh / nw); try { ctx.drawImage(el, it.x / 100 * SIZE, it.y / 100 * SIZE, dw, dh); } catch (e) {} });
+            media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); });
             gif.addFrame(ctx, { copy: true, delay: delay }); last = t;
           }
           if (t < dur) requestAnimationFrame(tick); else { media.forEach(function (m) { if (m.vid) m.el.pause(); }); gif.on("finished", resolve); gif.render(); }
@@ -1106,12 +1246,12 @@
     });
   }
   function boardToPNGBlob(b) {
-    return new Promise(function (resolve) {
-      var SIZE = 2048; var c = document.createElement("canvas"); c.width = c.height = SIZE; var ctx = c.getContext("2d");
-      ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
-      var items = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
-      Promise.all(items.map(function (it) { return new Promise(function (r) { var im = new Image(); im.onload = function () { r({ it: it, im: im }); }; im.onerror = function () { r(null); }; im.src = it.src; }); }))
-        .then(function (arr) { arr.forEach(function (o) { if (!o) return; var dw = o.it.w / 100 * SIZE, dh = dw * (o.im.naturalHeight / o.im.naturalWidth); ctx.drawImage(o.im, o.it.x / 100 * SIZE, o.it.y / 100 * SIZE, dw, dh); }); c.toBlob(resolve, "image/png"); });
+    var SIZE = 2048; var c = document.createElement("canvas"); c.width = c.height = SIZE; var ctx = c.getContext("2d");
+    ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
+    var items = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
+    return loadBoardMedia(items).then(function (media) {
+      media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); });
+      return new Promise(function (resolve) { c.toBlob(resolve, "image/png"); });
     });
   }
   function boardToWebMBlob(b) {
@@ -1119,13 +1259,7 @@
       if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) { reject(new Error("This browser can't record WebM")); return; }
       var SIZE = 1080; var c = document.createElement("canvas"); c.width = c.height = SIZE; var ctx = c.getContext("2d");
       var items = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
-      Promise.all(items.map(function (it) {
-        return new Promise(function (r) {
-          if (it.kind === "video") { var v = document.createElement("video"); v.src = it.src; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.addEventListener("loadeddata", function () { r({ it: it, el: v, vid: true }); }, { once: true }); v.addEventListener("error", function () { r(null); }, { once: true }); v.load(); }
-          else { var im = new Image(); im.onload = function () { r({ it: it, el: im, vid: false }); }; im.onerror = function () { r(null); }; im.src = it.src; }
-        });
-      })).then(function (media) {
-        media = media.filter(Boolean);
+      loadBoardMedia(items).then(function (media) {
         var durs = media.filter(function (m) { return m.vid; }).map(function (m) { return m.el.duration; }).filter(function (d) { return isFinite(d) && d > 0; });
         var loopMs = Math.min(15000, (durs.length ? Math.max.apply(null, durs) : 3) * 1000);
         var mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : MediaRecorder.isTypeSupported("video/webm;codecs=vp8") ? "video/webm;codecs=vp8" : "video/webm";
@@ -1133,7 +1267,7 @@
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         rec.onstop = function () { media.forEach(function (m) { if (m.vid) m.el.pause(); }); resolve(new Blob(chunks, { type: "video/webm" })); };
         media.forEach(function (m) { if (m.vid) { try { m.el.currentTime = 0; } catch (e) {} m.el.play().catch(function () {}); } });
-        var raf; function frame() { ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE); media.forEach(function (m) { var it = m.it, el = m.el, nw = m.vid ? el.videoWidth : el.naturalWidth, nh = m.vid ? el.videoHeight : el.naturalHeight; if (!nw || !nh) return; var dw = it.w / 100 * SIZE, dh = dw * (nh / nw); try { ctx.drawImage(el, it.x / 100 * SIZE, it.y / 100 * SIZE, dw, dh); } catch (e) {} }); raf = requestAnimationFrame(frame); }
+        var raf; function frame() { ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE); media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); }); raf = requestAnimationFrame(frame); }
         frame(); rec.start(); setTimeout(function () { cancelAnimationFrame(raf); if (rec.state !== "inactive") rec.stop(); }, loopMs + 120);
       });
     });
@@ -1154,16 +1288,17 @@
         outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset }, b, ["alt", "caption"]));
       } else if (b.type === "video") {
         if (!b.src) continue;
-        if (/youtu\.?be/.test(b.src)) { outBlocks.push(withFr({ type: "video", src: b.src, caption: b.caption || "" }, b, ["caption"])); }
-        else if (b.src.indexOf("/curation/media/") === 0) { outBlocks.push(withFr({ type: "video", src: b.src, caption: b.caption || "", loop: true }, b, ["caption"])); }
-        else { var bl2 = await blobFromSrc(b.src), ext2 = extFromType(bl2.type), p2 = "curation/media/" + slug + "/vid-" + (++mi) + "." + ext2; files.push({ path: p2, base64: await blobToBase64(bl2) }); outBlocks.push(withFr({ type: "video", src: "/" + p2, caption: b.caption || "", loop: true }, b, ["caption"])); }
+        var vwin = function (o) { if (b.frame === false) o.frame = false; else if (b.wtitle) o.wtitle = b.wtitle; else if (b.name) o.wtitle = b.name; if (b.board) o.board = true; return o; };
+        if (/youtu\.?be/.test(b.src)) { outBlocks.push(withFr(vwin({ type: "video", src: b.src, caption: b.caption || "" }), b, ["caption"])); }
+        else if (b.src.indexOf("/curation/media/") === 0) { outBlocks.push(withFr(vwin({ type: "video", src: b.src, caption: b.caption || "", loop: true }), b, ["caption"])); }
+        else { var bl2 = await blobFromSrc(b.src), ext2 = extFromType(bl2.type), p2 = "curation/media/" + slug + "/vid-" + (++mi) + "." + ext2; files.push({ path: p2, base64: await blobToBase64(bl2) }); outBlocks.push(withFr(vwin({ type: "video", src: "/" + p2, caption: b.caption || "", loop: true }), b, ["caption"])); }
       } else if (b.type === "board") {
         if (!b.items.length) continue; var vid = boardHasVideo(b);
         log("Rendering board (" + (vid ? "WebM" : "PNG") + ")…");
         var bb = vid ? await boardToWebMBlob(b) : await boardToPNGBlob(b);
         var ext3 = vid ? "webm" : "png", p3 = "curation/media/" + slug + "/board-" + (++mi) + "." + ext3;
         files.push({ path: p3, base64: await blobToBase64(bb) });
-        if (vid) outBlocks.push({ type: "video", src: "/" + p3, caption: "", loop: true });
+        if (vid) outBlocks.push({ type: "video", src: "/" + p3, caption: "", loop: true, board: true });
         else { if (!cover) cover = "/" + p3; outBlocks.push({ type: "image", src: "/" + p3, alt: state.title || "", caption: "", inset: false }); }
       }
     }
@@ -1265,7 +1400,7 @@
     var nb = { id: uid(), type: pb.type };
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.inset = !!pb.inset; }
-    else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; }
+    else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;
   }
@@ -1340,7 +1475,8 @@
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i], nb = Object.assign({}, b);
       if ((b.type === "image" || b.type === "video") && b.src && b.src.indexOf("blob:") === 0) nb.src = await toDataURL(b.src);
-      if (b.type === "board") { nb.items = []; for (var j = 0; j < b.items.length; j++) { var it = b.items[j], ni = Object.assign({}, it); if (it.src && it.src.indexOf("blob:") === 0) ni.src = await toDataURL(it.src); nb.items.push(ni); } }
+      if (b.orig && b.orig.indexOf("blob:") === 0) nb.orig = await toDataURL(b.orig);
+      if (b.type === "board") { nb.items = []; for (var j = 0; j < b.items.length; j++) { var it = b.items[j], ni = Object.assign({}, it); if (it.src && it.src.indexOf("blob:") === 0) ni.src = await toDataURL(it.src); if (it.orig && it.orig.indexOf("blob:") === 0) ni.orig = await toDataURL(it.orig); nb.items.push(ni); } }
       copy.blocks.push(nb);
     }
     return copy;
