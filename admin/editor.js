@@ -672,6 +672,16 @@
     });
     inp.click();
   }
+  // one picture filling the whole cover (cropped to 3:5) instead of a board
+  function coverSetFull() {
+    var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      if (typeof state.cover === "string") revoke(state.cover);
+      state.cover = URL.createObjectURL(f); renderInspector();
+    });
+    inp.click();
+  }
   function renderCoverItem(it, box) {
     var wrap = document.createElement("div"); wrap.className = "cover-item" + (it.win ? " is-win" : ""); wrap.dataset.iid = it.id;
     wrap.style.left = it.x + "%"; wrap.style.top = it.y + "%"; wrap.style.width = it.w + "%"; wrap.style.zIndex = it.z || 1;
@@ -721,6 +731,7 @@
     var btns = document.createElement("div"); btns.className = "cover-btns";
     var count = coverIsBoard() ? state.cover.items.length : 0;
     var add = document.createElement("button"); add.className = "sbtn"; add.type = "button"; add.textContent = count >= 4 ? "Max 4 images" : "Add image"; add.disabled = count >= 4; add.addEventListener("click", coverAddImage); btns.appendChild(add);
+    var full = document.createElement("button"); full.className = "sbtn"; full.type = "button"; full.textContent = "Full image"; full.title = "One picture filling the whole cover"; full.addEventListener("click", coverSetFull); btns.appendChild(full);
     if (state.cover) { var rm = document.createElement("button"); rm.className = "sbtn"; rm.type = "button"; rm.textContent = "Clear"; rm.addEventListener("click", function () { state.cover = null; renderInspector(); }); btns.appendChild(rm); }
     wrap.appendChild(btns);
     if (coverIsBoard()) {
@@ -728,7 +739,7 @@
       ["#ebebef", "#111113", "#f4ece2", "#dfe7e4", "#ffffff"].forEach(function (col) { var s = document.createElement("button"); s.type = "button"; s.style.background = col; s.addEventListener("click", function () { state.cover.bg = col; renderInspector(); }); sw.appendChild(s); });
       wrap.appendChild(sw);
     }
-    var hint = document.createElement("div"); hint.className = "insp-empty"; hint.style.marginTop = "8px"; hint.textContent = "The card thumbnail (3:5). Add up to 4 images, drag to place, drag the ⤡ corner to resize.";
+    var hint = document.createElement("div"); hint.className = "insp-empty"; hint.style.marginTop = "8px"; hint.textContent = "The card thumbnail (3:5). Add up to 4 images, drag to place, drag the ⤡ corner to resize — or pick one Full image to fill it.";
     wrap.appendChild(hint);
     return wrap;
   }
