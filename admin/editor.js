@@ -829,7 +829,6 @@
       cp.addEventListener("input", function () { b.bg = cp.value; render(); select(b.id); });
       colorRow.appendChild(cp); colorRow.appendChild(sw);
       sec.appendChild(field("Background", colorRow));
-      focusNoteField(sec, b);
       // image list
       if (b.items.length) {
         var list = document.createElement("div"); list.className = "insp-items";
@@ -852,6 +851,7 @@
           var ih = document.createElement("div"); ih.className = "insp-subtitle"; ih.textContent = (selIt.win && selIt.win.type === "text") ? "Text window" : (selIt.kind === "video" ? "Video" : "Image");
           isub.appendChild(ih);
           if (selIt.kind === "video" || selIt.win || selIt.orig) winControls(isub, selIt, b.id);
+          if (selIt.kind !== "video") focusNoteField(isub, selIt);
           else { var nx = document.createElement("div"); nx.className = "insp-empty"; nx.textContent = "A window screenshot — used as it is."; isub.appendChild(nx); }
           sec.appendChild(isub);
         }
@@ -1308,7 +1308,27 @@
         var ext3 = vid ? "webm" : "png", p3 = "curation/media/" + slug + "/board-" + (++mi) + "." + ext3;
         files.push({ path: p3, base64: await blobToBase64(bb) });
         if (vid) outBlocks.push({ type: "video", src: "/" + p3, caption: "", loop: true, board: true });
-        else { if (!cover) cover = "/" + p3; outBlocks.push(withFr({ type: "image", src: "/" + p3, alt: state.title || "", caption: "", note: b.note || "", inset: false }, b, ["note"])); }
+        else {
+          if (!cover) cover = "/" + p3;
+          // each picture on the board is kept too (its own file + where it sits),
+          // so the site can open them one by one and Studio can re-edit the board
+          var bitems = [], bsorted = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
+          for (var bi = 0; bi < bsorted.length; bi++) {
+            var it = bsorted[bi]; if (it.kind === "video" || !it.src) continue;
+            var ipath = it.src;
+            if (it.src.indexOf("/curation/media/") !== 0) {
+              var ibl = await blobFromSrc(it.src), iext = extFromType(ibl.type);
+              ipath = "/curation/media/" + slug + "/board-" + mi + "-" + (bi + 1) + "." + iext;
+              files.push({ path: ipath.slice(1), base64: await blobToBase64(ibl) });
+            }
+            var dim = await new Promise(function (res) { var im = new Image(); im.onload = function () { res({ w: im.naturalWidth, h: im.naturalHeight }); }; im.onerror = function () { res({ w: 1, h: 1 }); }; im.src = it.src; });
+            var bo = { src: ipath, x: +it.x.toFixed(3), y: +it.y.toFixed(3), w: +it.w.toFixed(3), h: +(it.w * dim.h / dim.w).toFixed(3), name: (it.win && it.win.title) || it.name || "" };
+            if (it.note) bo.note = it.note;
+            if (it.fr && it.fr.note) bo.fr = { note: it.fr.note };
+            bitems.push(bo);
+          }
+          outBlocks.push({ type: "image", src: "/" + p3, alt: state.title || "", caption: "", inset: false, board: { bg: b.bg || "#ebebef", items: bitems } });
+        }
       }
     }
     if (state.cover) {
@@ -1406,6 +1426,10 @@
     }).catch(function () { listEl.innerHTML = '<p class="topics-empty">Couldn’t load topics.</p>'; });
   }
   function blockFromPublished(pb) {
+    if (pb.type === "image" && pb.board && pb.board.items && pb.board.items.length) {
+      return { id: uid(), type: "board", bg: pb.board.bg || "#ebebef", zc: pb.board.items.length,
+        items: pb.board.items.map(function (it, i) { var o = { id: uid(), kind: "image", src: it.src, name: it.name || "", x: it.x, y: it.y, w: it.w, z: i + 1 }; if (it.note) o.note = it.note; if (it.fr) o.fr = it.fr; return o; }) };
+    }
     var nb = { id: uid(), type: pb.type };
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
@@ -1445,7 +1469,10 @@
       var t = { blocks: [] };
       try { t = await fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }); } catch (e) {}
       var mediaPaths = [];
-      (t.blocks || []).forEach(function (b) { if (b.src && b.src.indexOf("/curation/media/") === 0) mediaPaths.push(b.src.replace(/^\//, "")); });
+      (t.blocks || []).forEach(function (b) {
+        if (b.src && b.src.indexOf("/curation/media/") === 0) mediaPaths.push(b.src.replace(/^\//, ""));
+        ((b.board && b.board.items) || []).forEach(function (it) { if (it.src && it.src.indexOf("/curation/media/") === 0 && mediaPaths.indexOf(it.src.slice(1)) < 0) mediaPaths.push(it.src.slice(1)); });
+      });
       var index = [];
       try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
       index = index.filter(function (x) { return x.slug !== slug; });

@@ -305,9 +305,19 @@
       if (b.type === "image") {
         var capT = loc(b, "caption");
         var cap = capT ? '<figcaption class="cur-cap">' + capT + "</figcaption>" : "";
-        var note = String(loc(b, "note") || "").trim();
+        var note = String(loc(b, "note") || "").trim(), q = function (v) { return htmlEsc(v).replace(/"/g, "&quot;"); };
+        var items = b.board && b.board.items || [];
+        if (items.length) {
+          // a board: every picture on it is its own target (stacked in board order)
+          var hots = items.map(function (it) {
+            var n = String(loc(it, "note") || "").trim();
+            return '<button class="cur-hot" type="button" data-src="' + q(it.src) + '"' + (n ? ' data-note="' + q(n) + '"' : "")
+              + ' aria-label="' + q(it.name || "View picture") + '" style="left:' + it.x + "%;top:" + it.y + "%;width:" + it.w + "%;height:" + it.h + '%"></button>';
+          }).join("");
+          return '<figure class="cur-fig2 cur-board"><div class="cur-board-art"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + hots + "</div>" + cap + "</figure>";
+        }
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
-          + (note ? ' data-note="' + htmlEsc(note).replace(/"/g, "&quot;") + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
+          + (note ? ' data-note="' + q(note) + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
       }
       if (b.type === "video") {
         // videos sit in a dark Preview window (framed by MacWin once rendered)
@@ -412,26 +422,42 @@
     return { l: (vw - tw) / 2, t: (vh - capH - th) / 2, w: tw, h: th, noteW: noteW, vw: vw };
   }
   function lift(f, r) { return "translate(" + (r.left - f.t.l) + "px, " + (r.top - f.t.t) + "px) scale(" + (r.width / f.t.w) + ")"; }
-  function openFocus(img) {
-    if (focusState || !img.complete || !img.naturalWidth) return;
-    var room = img.closest(".cur-modal"); if (!room) return;
-    var r = img.getBoundingClientRect();
-    var note = img.getAttribute("data-note") || "";
+  function openFocus(el) {
+    if (focusState) return;
+    var hot = el.classList.contains("cur-hot");
+    var img = hot ? new Image() : el;
+    if (hot) {
+      if (el.__loading) return;
+      img.src = el.getAttribute("data-src");
+      if (!img.complete || !img.naturalWidth) {
+        el.__loading = true;
+        img.onload = function () { el.__loading = false; openFocus(el); };
+        img.onerror = function () { el.__loading = false; };
+        return;
+      }
+    }
+    if (!img.complete || !img.naturalWidth) return;
+    var room = el.closest(".cur-modal"); if (!room) return;
+    var r = el.getBoundingClientRect();
+    var note = el.getAttribute("data-note") || "";
     var ov = document.createElement("div");
     ov.className = "cur-focus"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", img.alt || "Image");
     ov.innerHTML = '<div class="cur-focus-back"></div><img class="cur-focus-img" alt="" draggable="false">'
       + (note ? '<p class="cur-focus-note"></p>' : "")
       + '<button class="cur-focus-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>';
     var big = ov.querySelector(".cur-focus-img"), noteEl = ov.querySelector(".cur-focus-note");
-    big.src = img.currentSrc || img.src; big.alt = img.alt || "";
+    big.src = img.currentSrc || img.src; big.alt = hot ? el.getAttribute("aria-label") || "" : img.alt || "";
     if (noteEl) noteEl.textContent = note;
     room.appendChild(ov);
     var t = focusTarget(img, noteEl);
+    ov.setAttribute("aria-label", big.alt || "Image");
     big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
     if (noteEl) { noteEl.style.left = (t.vw - t.noteW) / 2 + "px"; noteEl.style.top = (t.t + t.h + 18) + "px"; }
-    var f = focusState = { ov: ov, big: big, img: img, note: noteEl, back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
-    f.srcR = parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
-    img.style.visibility = "hidden";
+    // `img` = the picture to show, `src` = what it grows out of (and returns to)
+    var f = focusState = { ov: ov, big: big, img: el, note: noteEl, back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
+    // a window on a board keeps its Preview-window corner (16pt at 726pt wide)
+    f.srcR = hot ? r.width * 16 / 726 : parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
+    if (!hot) el.style.visibility = "hidden";
     var k = r.width / t.w, chrome = [f.close].concat(noteEl ? [noteEl] : []);
     if (reduceMotion || !big.animate) {
       f.anims = [ov.animate ? ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "both" }) : null].filter(Boolean);
@@ -812,8 +838,13 @@
     if (t.closest(".lang-btn")) { toggleLang(); return; }
     var openBtn = t.closest(".cur-open");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
-    if (t.classList.contains("cur-zoomable")) { openFocus(t); return; }
+    var zt = t.closest(".cur-zoomable, .cur-hot");
+    if (zt && zt.closest(".cur-modal-content")) { openFocus(zt); return; }
     if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();
+  });
+  document.addEventListener("pointerover", function (e) {
+    var h = e.target && e.target.closest && e.target.closest(".cur-hot");
+    if (h && !h.__pre) { h.__pre = new Image(); h.__pre.src = h.getAttribute("data-src"); }
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { if (!closeFocus()) closeCurModal(); return; }
