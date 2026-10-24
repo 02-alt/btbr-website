@@ -19,7 +19,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "#ebebef",
+        "bg": "none",
         "items": [
           {
             "src": "/curation/media/djh20/board-1-1.png",
@@ -58,7 +58,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "#ebebef",
+        "bg": "none",
         "items": [
           {
             "src": "/curation/media/djh20/board-2-1.png",
@@ -115,7 +115,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "#ebebef",
+        "bg": "none",
         "items": [
           {
             "src": "/curation/media/djh20/board-3-1.png",
@@ -163,7 +163,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "#ebebef",
+        "bg": "none",
         "items": [
           {
             "src": "/curation/media/djh20/board-4-1.png",
