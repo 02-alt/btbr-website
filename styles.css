@@ -1187,7 +1187,8 @@ body:has(.curation-frame) { background: #e6e4e6; }
     0 14px 28px -10px rgba(40, 30, 40, 0.12);
   transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
-.cur-sheet { container-type: inline-size; overflow: hidden; }
+.cur-sheet { container-type: inline-size; overflow: hidden; display: flex; flex-direction: column; }
+.cur-tray { cursor: pointer; }
 /* catalogue label: large, regular weight, tight leading */
 .cur-text {
   padding: 5.2cqi 6cqi;
@@ -1202,6 +1203,22 @@ body:has(.curation-frame) { background: #e6e4e6; }
   -webkit-line-clamp: 9;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+/* the btbr mark, blind-embossed: white on the white sheet, only its soft
+   relief shows — a lit top edge and a faint shadow falling below */
+.cur-mark {
+  flex: none;
+  width: 13cqi;
+  height: auto;
+  margin: auto 0 0;
+  padding: 0 6cqi 6cqi;
+  box-sizing: content-box;
+  fill: #fff;
+  filter:
+    drop-shadow(0 -0.5px 0 rgba(40, 30, 40, 0.05))
+    drop-shadow(0 0.75px 0.6px rgba(40, 30, 40, 0.16))
+    drop-shadow(0 1.5px 2px rgba(40, 30, 40, 0.07));
+  pointer-events: none;
 }
 .cur-author { display: block; }
 .cur-title { display: inline; font: inherit; letter-spacing: inherit; }
@@ -1274,6 +1291,7 @@ body:has(.curation-frame) { background: #e6e4e6; }
   .cur-card { grid-template-columns: 1fr; gap: 20px; width: min(100%, 420px); }
   .cur-sheet { aspect-ratio: auto; }
   .cur-text { font-size: clamp(22px, 7.4cqi, 30px); padding: 20px 22px 26px; }
+  .cur-mark { width: 40px; padding: 4px 22px 22px; }
 }
 
 /* ===== the room: a topic, opened out of its cover tray (in-tab) ===== */

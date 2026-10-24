@@ -672,10 +672,14 @@
       + (date ? '<time datetime="' + esc(t.date) + '">' + date + "</time>" : "");
   }
   function curCardText(t) { return curLabelHTML(t, true); }
+  // the btbr mark, blind-embossed into the label's bottom-left corner
+  var CUR_MARK = '<svg class="cur-mark" viewBox="0 0 266 274" aria-hidden="true" focusable="false"><path d="'
+    + "M0 0h126v10H0zM0 38h10v126H0zM256 148h10v126h-10zM68 132h10v126H68zM10 194h122v10H10zM104 248h126v10H104z"
+    + '"/></svg>';
   function curCard(t) {
     var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
-      + '<div class="cur-sheet"><div class="cur-text">' + curCardText(t) + "</div></div>"
+      + '<div class="cur-sheet"><div class="cur-text">' + curCardText(t) + "</div>" + CUR_MARK + "</div>"
       + '<div class="cur-tray"><div class="cur-well"><div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div></div></div>"
       + "</article>";
   }
@@ -842,7 +846,8 @@
     var t = e.target;
     if (!t || !t.closest) return;
     if (t.closest(".lang-btn")) { toggleLang(); return; }
-    var openBtn = t.closest(".cur-open");
+    // the label's title button and the cover tray both open the topic
+    var openBtn = t.closest(".cur-open, .cur-card .cur-tray");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
     var zt = t.closest(".cur-zoomable, .cur-hot");
     if (zt && zt.closest(".cur-modal-content")) { openFocus(zt); return; }
