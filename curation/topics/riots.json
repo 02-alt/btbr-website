@@ -34,7 +34,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "#ebebef",
+        "bg": "none",
         "items": [
           {
             "src": "/curation/media/riots/board-1-1.png",

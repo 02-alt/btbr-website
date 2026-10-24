@@ -151,7 +151,9 @@
   function renderBoard(b) {
     var board = document.createElement("div");
     board.className = "b-board";
-    board.style.background = b.bg;
+    // "none": no backdrop — the pictures sit straight on the room's grey
+    board.classList.toggle("is-clear", boardClear(b));
+    board.style.background = boardClear(b) ? "" : b.bg;
     if (!b.items.length) { var e = document.createElement("div"); e.className = "board-empty"; e.textContent = "drop images here, or add them in the inspector →"; board.appendChild(e); }
     b.items.forEach(function (it) { board.appendChild(renderBoardItem(b, board, it)); });
     wireBoardDrop(board, b);
@@ -541,6 +543,14 @@
       });
     })).then(function (m) { return m.filter(Boolean); });
   }
+  // a board's backdrop: "none" leaves the PNG transparent; GIF/WebM can't
+  // carry alpha, so they fall back to the room's grey
+  var ROOM_GREY = "#e6e4e6";
+  function boardClear(b) { return b.bg === "none"; }
+  function fillBoard(ctx, b, SIZE, solid) {
+    if (boardClear(b) && !solid) return;
+    ctx.fillStyle = boardClear(b) ? ROOM_GREY : (b.bg || "#ebebef"); ctx.fillRect(0, 0, SIZE, SIZE);
+  }
   function itemShadow(ctx, dw) { ctx.shadowColor = "rgba(0, 0, 0, 0.3)"; ctx.shadowBlur = dw * 0.06; ctx.shadowOffsetY = dw * 0.022; }
   function drawBoardMedia(ctx, m, SIZE) {
     var it = m.it, el = m.el, X = it.x / 100 * SIZE, Y = it.y / 100 * SIZE, dw = it.w / 100 * SIZE;
@@ -820,8 +830,9 @@
       // background: swatches + colour picker
       var colorRow = document.createElement("div"); colorRow.className = "insp-color";
       var sw = document.createElement("div"); sw.className = "insp-swatches";
-      ["#ebebef", "#111113", "#f4ece2", "#dfe7e4", "#ffffff"].forEach(function (c) {
-        var s = document.createElement("button"); s.type = "button"; s.style.background = c;
+      ["none", "#ebebef", "#111113", "#f4ece2", "#dfe7e4", "#ffffff"].forEach(function (c) {
+        var s = document.createElement("button"); s.type = "button";
+        if (c === "none") { s.className = "sw-none"; s.title = "No background"; } else s.style.background = c;
         s.addEventListener("click", function () { b.bg = c; render(); select(b.id); });
         sw.appendChild(s);
       });
@@ -892,7 +903,7 @@
     var b = type === "text" ? { id: uid(), type: "text", head: false, html: "" }
           : type === "image" ? { id: uid(), type: "image", src: "", alt: "", caption: "", inset: false }
           : type === "video" ? { id: uid(), type: "video", src: "", caption: "" }
-          : { id: uid(), type: "board", bg: "#ebebef", items: [], zc: 0 };
+          : { id: uid(), type: "board", bg: "none", items: [], zc: 0 };
     var i = selectedId ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
     state.blocks.splice(i + 1, 0, b);
     render(); select(b.id);
@@ -1026,7 +1037,7 @@
         var start = null, last = -1;
         function tick(ts) { if (start === null) start = ts; var t = (ts - start) / 1000;
           if (t - last >= 1 / fps - 0.001) {
-            ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
+            fillBoard(ctx, b, SIZE, true);
             media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); });
             gif.addFrame(ctx, { copy: true, delay: delay }); last = t;
           }
@@ -1256,7 +1267,7 @@
   }
   function boardToPNGBlob(b) {
     var SIZE = 2048; var c = document.createElement("canvas"); c.width = c.height = SIZE; var ctx = c.getContext("2d");
-    ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE);
+    fillBoard(ctx, b, SIZE, false);
     var items = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
     return loadBoardMedia(items).then(function (media) {
       media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); });
@@ -1276,7 +1287,7 @@
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         rec.onstop = function () { media.forEach(function (m) { if (m.vid) m.el.pause(); }); resolve(new Blob(chunks, { type: "video/webm" })); };
         media.forEach(function (m) { if (m.vid) { try { m.el.currentTime = 0; } catch (e) {} m.el.play().catch(function () {}); } });
-        var raf; function frame() { ctx.fillStyle = b.bg || "#ebebef"; ctx.fillRect(0, 0, SIZE, SIZE); media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); }); raf = requestAnimationFrame(frame); }
+        var raf; function frame() { fillBoard(ctx, b, SIZE, true); media.forEach(function (m) { drawBoardMedia(ctx, m, SIZE); }); raf = requestAnimationFrame(frame); }
         frame(); rec.start(); setTimeout(function () { cancelAnimationFrame(raf); if (rec.state !== "inactive") rec.stop(); }, loopMs + 120);
       });
     });

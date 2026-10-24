@@ -314,7 +314,7 @@
             return '<button class="cur-hot" type="button" data-src="' + q(it.src) + '"' + (n ? ' data-note="' + q(n) + '"' : "")
               + ' aria-label="' + q(it.name || "View picture") + '" style="left:' + it.x + "%;top:" + it.y + "%;width:" + it.w + "%;height:" + it.h + '%"></button>';
           }).join("");
-          return '<figure class="cur-fig2 cur-board"><div class="cur-board-art"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + hots + "</div>" + cap + "</figure>";
+          return '<figure class="cur-fig2 cur-board' + (b.board.bg === "none" ? " is-clear" : "") + '"><div class="cur-board-art"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + hots + "</div>" + cap + "</figure>";
         }
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
           + (note ? ' data-note="' + q(note) + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";

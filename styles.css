@@ -1747,6 +1747,8 @@ img.cur-avatar { object-fit: cover; }
 /* boards: each picture on the board is its own focus target */
 .cur-board-art { position: relative; }
 .cur-board-art > img { width: 100%; display: block; border-radius: var(--media-r); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.07); }
+/* a board with no backdrop: its windows rest straight on the room */
+.cur-board.is-clear .cur-board-art > img { border-radius: 0; box-shadow: none; }
 .cur-hot {
   position: absolute; padding: 0; border: 0; margin: 0;
   background: none; cursor: zoom-in;

@@ -314,6 +314,11 @@ body.is-preview .board-item.is-sel { outline: none; }
 .insp-color input[type="color"] { width: 40px; height: 30px; border: 1px solid var(--hair); border-radius: 8px; background: #fff; cursor: pointer; padding: 2px; }
 .insp-swatches { display: flex; gap: 6px; }
 .insp-swatches button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--hair); cursor: pointer; }
+/* "no background": white with a red slash */
+.insp-swatches .sw-none { background: linear-gradient(to top right, #fff calc(50% - 1px), #ff3b30 calc(50% - 1px), #ff3b30 calc(50% + 1px), #fff calc(50% + 1px)); }
+/* a board with no backdrop shows the room's grey, its bounds dashed */
+.b-board.is-clear { background: #e6e4e6; outline: 1px dashed rgba(0, 0, 0, 0.14); outline-offset: -1px; }
+body.is-preview .b-board.is-clear { outline: none; }
 
 /* board drag affordances: hover lift, "picked up" state, active board ring */
 .board-item img { transition: transform 150ms cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 150ms ease; }
