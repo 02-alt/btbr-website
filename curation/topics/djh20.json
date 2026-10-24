@@ -1,0 +1,216 @@
+{
+  "slug": "djh20",
+  "title": "DJH20",
+  "author": "Isaaaaaaaac",
+  "date": "2026-10-24",
+  "cover": "/curation/media/djh20/cover.png",
+  "desc": "Built to Disappear",
+  "inspiration": "https://kohlmayer-oberst-architekten.de/projekte/\n\nhttps://www.thisispaper.com/mag/house-djh2o-kohlmayer-oberst\n\nEx Machina (Alex Garland, 2014), filmed at the Juvet Landscape Hotel near Ålesund, Norway\n\nThe white photo room at Kojima Productions, Tokyo, where Hideo Kojima photographs his guests",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<span style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: -webkit-standard; font-size: medium; letter-spacing: normal;\">Some houses feel like they were built to disappear. This one, completed in 2004 on the banks of the Enz in Bietigheim, Germany, calls to mind&nbsp;</span><em style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-size: medium; letter-spacing: normal;\">Ex Machina</em><span style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: -webkit-standard; font-size: medium; letter-spacing: normal;\">, shot at the Juvet Landscape Hotel near Ålesund, and the white room at Kojima Productions in Tokyo, where Hideo Kojima photographs the guests who visit his studio: glowing ceiling, glass walls, a floor that mirrors everything. There’s something serene and raw about it, as if it exists only to complement the nature around it, the person living in it, and what they create.</span><br>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/djh20/board-1.png",
+      "alt": "DJH20",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "#ebebef",
+        "items": [
+          {
+            "src": "/curation/media/djh20/board-1-1.png",
+            "x": 28.971,
+            "y": 60.735,
+            "w": 42,
+            "h": 30.025,
+            "name": "Juvet Hotel Ex Machina_01.jpg",
+            "note": "Domhnall Gleeson and Oscar Isaac at the Juvet Hotel in the movie \"Ex Machina\"."
+          },
+          {
+            "src": "/curation/media/djh20/board-1-2.png",
+            "x": 23.529,
+            "y": 33.75,
+            "w": 53.015,
+            "h": 32.495,
+            "name": "Kojima Studio.jpg",
+            "note": "Photo room at the Kojima studio."
+          },
+          {
+            "src": "/curation/media/djh20/board-1-3.png",
+            "x": 18.235,
+            "y": 7.059,
+            "w": 63.563,
+            "h": 29.636,
+            "name": "Juvet Hotel Ex Machina_02.jpg",
+            "note": "juvet landscape hotel in Valldal, Norway."
+          }
+        ]
+      }
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/djh20/board-2.png",
+      "alt": "DJH20",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "#ebebef",
+        "items": [
+          {
+            "src": "/curation/media/djh20/board-2-1.png",
+            "x": 6.397,
+            "y": 64.412,
+            "w": 50.956,
+            "h": 23.653,
+            "name": "Juvet Hotel_04.jpg",
+            "note": "juvet landscape hotel in Valldal, Norway."
+          },
+          {
+            "src": "/curation/media/djh20/board-2-2.png",
+            "x": 4.853,
+            "y": 14.338,
+            "w": 49.338,
+            "h": 39.382,
+            "name": "Juvet Hotel_02.jpg",
+            "note": "juvet landscape hotel in Valldal, Norway."
+          },
+          {
+            "src": "/curation/media/djh20/board-2-3.png",
+            "x": 47.426,
+            "y": 5.368,
+            "w": 42,
+            "h": 33.496,
+            "name": "Juvet Hotel_01.jpg"
+          },
+          {
+            "src": "/curation/media/djh20/board-2-4.png",
+            "x": 50,
+            "y": 43.456,
+            "w": 47.206,
+            "h": 33.779,
+            "name": "Juvet Hotel_03.jpg",
+            "note": "juvet landscape hotel in Valldal, Norway."
+          }
+        ]
+      }
+    },
+    {
+      "type": "video",
+      "src": "https://www.youtube.com/watch?v=fS00Z-FMApE",
+      "caption": ""
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<span style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: -webkit-standard; font-size: medium; letter-spacing: normal;\">It was designed by Kohlmayer Oberst, an architecture studio known for its minimalism and its respect for the landscape. Raw materials and clean lines, spaces that settle into their context instead of fighting it.</span>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/djh20/board-3.png",
+      "alt": "DJH20",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "#ebebef",
+        "items": [
+          {
+            "src": "/curation/media/djh20/board-3-1.png",
+            "x": 43.162,
+            "y": 36.765,
+            "w": 42,
+            "h": 56.848,
+            "name": "JH20_09.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          },
+          {
+            "src": "/curation/media/djh20/board-3-2.png",
+            "x": 7.941,
+            "y": 3.971,
+            "w": 42,
+            "h": 35.231,
+            "name": "69c78093c29b04eb80f82ae4_672c97c7e2740edb5e656d09_thisispaper-germany-family-house-djh2o-kohlmayer-oberst-11.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          },
+          {
+            "src": "/curation/media/djh20/board-3-3.png",
+            "x": 48.897,
+            "y": 9.338,
+            "w": 42,
+            "h": 33.554,
+            "name": "JH20_03.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          },
+          {
+            "src": "/curation/media/djh20/board-3-4.png",
+            "x": 5.515,
+            "y": 51.103,
+            "w": 42,
+            "h": 34.711,
+            "name": "JH20_11.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          }
+        ]
+      }
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/djh20/board-4.png",
+      "alt": "DJH20",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "#ebebef",
+        "items": [
+          {
+            "src": "/curation/media/djh20/board-4-1.png",
+            "x": 9.926,
+            "y": 5.515,
+            "w": 42,
+            "h": 34.624,
+            "name": "JH20_04.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          },
+          {
+            "src": "/curation/media/djh20/board-4-2.png",
+            "x": 50,
+            "y": 12.206,
+            "w": 42,
+            "h": 55.707,
+            "name": "JH20_01.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          },
+          {
+            "src": "/curation/media/djh20/board-4-3.png",
+            "x": 3.015,
+            "y": 40.294,
+            "w": 42,
+            "h": 55.369,
+            "name": "JH20_02.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          },
+          {
+            "src": "/curation/media/djh20/board-4-4.png",
+            "x": 37.721,
+            "y": 60.735,
+            "w": 42,
+            "h": 34.798,
+            "name": "JH20_05.jpeg",
+            "note": "Kohlmayer Oberst - JH20."
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p style=\"margin-bottom: 1.05em; max-width: none; caret-color: rgb(31, 29, 32); color: rgb(31, 29, 32); font-family: Charter, Iowan Old Style, Georgia, Times New Roman, serif; font-size: 18px; letter-spacing: -0.16px; background-color: rgb(230, 228, 230);\"></p><p style=\"margin-bottom: 1.05em; max-width: none;\">Thanks for reading,</p><p style=\"margin-bottom: 1.05em; max-width: none;\">See you on the next one,</p><p style=\"margin-bottom: 1.05em; max-width: none;\">btbr</p><p style=\"margin-bottom: 1.05em; max-width: none; caret-color: rgb(31, 29, 32); color: rgb(31, 29, 32); font-family: Charter, Iowan Old Style, Georgia, Times New Roman, serif; font-size: 18px; letter-spacing: -0.16px; background-color: rgb(230, 228, 230);\"></p>"
+    }
+  ],
+  "langs": [
+    "en"
+  ]
+}
