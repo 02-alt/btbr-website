@@ -673,7 +673,7 @@
   }
   function curCardText(t) { return curLabelHTML(t, true); }
   // the btbr mark, blind-embossed into the label's bottom-left corner
-  var CUR_MARK = '<svg class="cur-mark" viewBox="0 0 266 274" aria-hidden="true" focusable="false"><path d="'
+  var CUR_MARK = '<svg class="cur-mark" viewBox="-3 -3 272 280" aria-hidden="true" focusable="false"><path d="'
     + "M0 0h126v10H0zM0 38h10v126H0zM256 148h10v126h-10zM68 132h10v126H68zM10 194h122v10H10zM104 248h126v10H104z"
     + '"/></svg>';
   function curCard(t) {

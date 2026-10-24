@@ -1208,16 +1208,20 @@ body:has(.curation-frame) { background: #e6e4e6; }
    relief shows — a lit top edge and a faint shadow falling below */
 .cur-mark {
   flex: none;
-  width: 13cqi;
+  width: 16cqi;
   height: auto;
   margin: auto 0 0;
   padding: 0 6cqi 6cqi;
   box-sizing: content-box;
   fill: #fff;
+  /* the drawn bars are hairlines at this size; a white stroke gives the
+     relief enough edge to catch the light */
+  stroke: #fff;
+  stroke-width: 6;
   filter:
-    drop-shadow(0 -0.5px 0 rgba(40, 30, 40, 0.06))
-    drop-shadow(0 0.75px 0.6px rgba(40, 30, 40, 0.19))
-    drop-shadow(0 1.5px 2px rgba(40, 30, 40, 0.085));
+    drop-shadow(0 -0.5px 0 rgba(40, 30, 40, 0.09))
+    drop-shadow(0 1px 0.5px rgba(40, 30, 40, 0.24))
+    drop-shadow(0 2px 3px rgba(40, 30, 40, 0.12));
   pointer-events: none;
 }
 .cur-author { display: block; }
