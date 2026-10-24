@@ -1509,10 +1509,10 @@ body:has(.curation-frame) { background: #e6e4e6; }
 .cur-modal-content .cur-h { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 1.1em 0 0.5em; color: var(--fg); }
 .cur-modal-content .cur-fig2 { margin: 18px 0; }
 .cur-modal-content .cur-fig2 img,
-.cur-modal-content .cur-fig2 video { width: 100%; display: block; border-radius: 6px; }
+.cur-modal-content .cur-fig2 video { width: 100%; display: block; border-radius: var(--media-r); }
 .cur-modal-content .cur-fig2.inset img { max-width: 420px; margin-inline: auto; }
 .cur-modal-content .cur-fig2.cur-vid { position: relative; aspect-ratio: 16 / 9; }
-.cur-modal-content .cur-fig2.cur-vid iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 6px; }
+.cur-modal-content .cur-fig2.cur-vid iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: var(--media-r); }
 .cur-cap { margin-top: 10px; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); }
 
 /* curation empty state + end-of-list */
@@ -1672,3 +1672,52 @@ img.cur-avatar { object-fit: cover; }
 }
 .cur-modal-content .cur-fig2 img.macwin-chrome,
 .macwin-chrome { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 0; pointer-events: none; user-select: none; }
+
+/* ===== media corners in a topic: one concentric family =====
+   Apple's rule: a corner sits concentric with what holds it. The Preview
+   window (16pt at its native 726pt width) lands at ~12px in the reading
+   column, so pictures, boards and plain videos share that radius, and the
+   window's hole (radius − inset) nests inside it. */
+.cur-modal { --media-r: 12px; }
+.cur-modal-content .cur-fig2 > img,
+.cur-modal-content .cur-fig2 > video { box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.07); }
+/* Safari doesn't clip an iframe to a rounded parent unless it's composited */
+.macwin-hole { isolation: isolate; -webkit-mask-image: -webkit-radial-gradient(white, black); }
+
+/* ===== focus mode: click a picture to see it large ===== */
+.cur-modal-content .cur-zoomable { cursor: zoom-in; transition: filter 0.2s ease; }
+.cur-modal-content .cur-zoomable:hover { filter: brightness(0.97); }
+.cur-modal-content .cur-zoomable:focus-visible { outline: 3px solid rgba(0, 113, 227, 0.6); outline-offset: 3px; }
+.cur-focus { position: fixed; inset: 0; z-index: 30; touch-action: none; cursor: zoom-out; }
+.cur-focus-back {
+  position: absolute; inset: 0;
+  background: rgba(22, 20, 22, 0.8);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  backdrop-filter: blur(30px) saturate(140%);
+}
+.cur-focus-img {
+  position: fixed; display: block; transform-origin: 0 0;
+  border-radius: 14px; object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 30px 80px rgba(0, 0, 0, 0.45);
+  user-select: none; -webkit-user-drag: none; will-change: transform;
+}
+.cur-focus-note {
+  position: fixed; margin: 0; text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
+  font-size: 15px; line-height: 1.45; letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.86); text-wrap: balance;
+}
+.cur-focus-close {
+  position: fixed; top: 22px; right: 22px;
+  width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  cursor: pointer; transition: background 0.15s ease, transform 0.12s ease;
+}
+.cur-focus-close:hover { background: rgba(255, 255, 255, 0.22); }
+.cur-focus-close:active { transform: scale(0.92); }
+.cur-focus-close svg { width: 15px; height: 15px; display: block; }
+@media (prefers-reduced-transparency: reduce) {
+  .cur-focus-back { background: rgba(14, 12, 14, 0.94); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

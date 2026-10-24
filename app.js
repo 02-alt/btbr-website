@@ -305,7 +305,9 @@
       if (b.type === "image") {
         var capT = loc(b, "caption");
         var cap = capT ? '<figcaption class="cur-cap">' + capT + "</figcaption>" : "";
-        return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + cap + "</figure>";
+        var note = String(loc(b, "note") || "").trim();
+        return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
+          + (note ? ' data-note="' + htmlEsc(note).replace(/"/g, "&quot;") + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
       }
       if (b.type === "video") {
         // videos sit in a dark Preview window (framed by MacWin once rendered)
@@ -393,9 +395,115 @@
       if (onDone) onDone();
     };
   }
+  // ---- focus mode: an image in a topic lifts off the page and grows to fill
+  // the window (a shared-element zoom on a critically damped spring) over the
+  // dimmed, blurred room, with its focus note underneath. Click, Esc or ✕
+  // closes it back into place; drag it (1:1) and let go — a throw or a long
+  // pull dismisses (momentum projected like a scroll), anything else springs
+  // back. Every step starts from the image's live position.
+  var focusState = null;
+  function focusTarget(img, noteEl) {
+    var vw = window.innerWidth, vh = window.innerHeight, m = vw < 600 ? 16 : 48;
+    var nw = img.naturalWidth || img.width, nh = img.naturalHeight || img.height;
+    var noteW = Math.min(560, vw - 2 * m);
+    if (noteEl) noteEl.style.width = noteW + "px";
+    var capH = noteEl ? noteEl.offsetHeight + 20 : 0;
+    var tw = Math.min(vw - 2 * m, (vh - 2 * m - capH) * nw / nh), th = tw * nh / nw;
+    return { l: (vw - tw) / 2, t: (vh - capH - th) / 2, w: tw, h: th, noteW: noteW, vw: vw };
+  }
+  function lift(f, r) { return "translate(" + (r.left - f.t.l) + "px, " + (r.top - f.t.t) + "px) scale(" + (r.width / f.t.w) + ")"; }
+  function openFocus(img) {
+    if (focusState || !img.complete || !img.naturalWidth) return;
+    var room = img.closest(".cur-modal"); if (!room) return;
+    var r = img.getBoundingClientRect();
+    var note = img.getAttribute("data-note") || "";
+    var ov = document.createElement("div");
+    ov.className = "cur-focus"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", img.alt || "Image");
+    ov.innerHTML = '<div class="cur-focus-back"></div><img class="cur-focus-img" alt="" draggable="false">'
+      + (note ? '<p class="cur-focus-note"></p>' : "")
+      + '<button class="cur-focus-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>';
+    var big = ov.querySelector(".cur-focus-img"), noteEl = ov.querySelector(".cur-focus-note");
+    big.src = img.currentSrc || img.src; big.alt = img.alt || "";
+    if (noteEl) noteEl.textContent = note;
+    room.appendChild(ov);
+    var t = focusTarget(img, noteEl);
+    big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
+    if (noteEl) { noteEl.style.left = (t.vw - t.noteW) / 2 + "px"; noteEl.style.top = (t.t + t.h + 18) + "px"; }
+    var f = focusState = { ov: ov, big: big, img: img, note: noteEl, back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
+    f.srcR = parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
+    img.style.visibility = "hidden";
+    var k = r.width / t.w, chrome = [f.close].concat(noteEl ? [noteEl] : []);
+    if (reduceMotion || !big.animate) {
+      f.anims = [ov.animate ? ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "both" }) : null].filter(Boolean);
+    } else {
+      f.anims.push(big.animate([{ transform: lift(f, r), borderRadius: f.srcR / k + "px" }, { transform: "none", borderRadius: "14px" }],
+        { duration: 620, easing: springEase(0.42, 620), fill: "both" }));
+      f.anims.push(f.back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: "ease", fill: "both" }));
+      chrome.forEach(function (el) { f.anims.push(el.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 360, delay: 220, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)", fill: "both" })); });
+    }
+    f.close.focus({ preventScroll: true });
+    wireFocusDrag(f);
+  }
+  function settleFocus(f) { f.anims.forEach(function (a) { try { a.finish(); } catch (e) {} }); f.anims = []; }
+  function closeFocus() {
+    var f = focusState; if (!f) return false;
+    if (f.closing) return true; f.closing = true;
+    var live = getComputedStyle(f.big), from = { transform: live.transform === "none" ? "none" : live.transform, borderRadius: live.borderTopLeftRadius, opacity: live.opacity };
+    var backFrom = getComputedStyle(f.back).opacity;
+    f.anims.forEach(function (a) { a.cancel(); }); f.anims = [];
+    var r = f.img.getBoundingClientRect(), onScreen = r.width && r.bottom > 0 && r.top < window.innerHeight;
+    function done() { f.img.style.visibility = ""; f.ov.remove(); if (focusState === f) focusState = null; try { f.img.focus({ preventScroll: true }); } catch (e) {} }
+    if (reduceMotion || !f.big.animate) { done(); return true; }
+    var k = r.width / f.t.w;
+    var to = onScreen ? { transform: lift(f, r), borderRadius: f.srcR / k + "px", opacity: 1 } : { transform: "translateY(48px) scale(0.94)", borderRadius: "14px", opacity: 0 };
+    var a = f.big.animate([from, to], { duration: 480, easing: springEase(0.36, 480), fill: "both" });
+    f.back.animate([{ opacity: backFrom }, { opacity: 0 }], { duration: 300, easing: "ease", fill: "both" });
+    [f.close].concat(f.note ? [f.note] : []).forEach(function (el) { el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 140, fill: "both" }); });
+    a.onfinish = done;
+    return true;
+  }
+  // drag to dismiss: 1:1 tracking, velocity from the last few moves
+  function wireFocusDrag(f) {
+    var start = null, hist = [], dragging = false;
+    f.ov.addEventListener("pointerdown", function (e) {
+      if (f.closing || e.target.closest(".cur-focus-close")) return;
+      settleFocus(f);
+      start = { x: e.clientX, y: e.clientY }; hist = [{ y: e.clientY, t: e.timeStamp }]; dragging = false;
+      f.ov.setPointerCapture(e.pointerId);
+    });
+    f.ov.addEventListener("pointermove", function (e) {
+      if (!start || f.closing) return;
+      var dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (!dragging && Math.hypot(dx, dy) < 8) return;
+      dragging = true;
+      hist.push({ y: e.clientY, t: e.timeStamp }); if (hist.length > 5) hist.shift();
+      var p = Math.min(1, Math.abs(dy) / (window.innerHeight * 0.5));
+      f.big.style.transform = "translate(" + dx + "px, " + dy + "px) scale(" + (1 - p * 0.18) + ")";
+      f.back.style.opacity = String(1 - p * 0.85);
+      if (f.note) f.note.style.opacity = String(1 - Math.min(1, p * 3));
+    });
+    function end(e) {
+      if (!start) return;
+      var was = dragging; start = null; dragging = false;
+      if (!was) { if (e.type === "pointerup") closeFocus(); return; }
+      var a = hist[0], b = hist[hist.length - 1], vy = b.t > a.t ? (b.y - a.y) / (b.t - a.t) * 1000 : 0;
+      var cur = new DOMMatrixReadOnly(getComputedStyle(f.big).transform);
+      var projected = cur.m42 + (vy / 1000) * 0.998 / (1 - 0.998); // where the throw would come to rest
+      if (Math.abs(projected) > window.innerHeight * 0.22) { closeFocus(); return; }
+      // not far enough: spring home from where it is
+      var from = getComputedStyle(f.big).transform;
+      f.big.style.transform = ""; f.back.style.opacity = ""; if (f.note) f.note.style.opacity = "";
+      f.anims = [f.big.animate([{ transform: from }, { transform: "none" }], { duration: 520, easing: springEase(0.4, 520) })];
+    }
+    f.ov.addEventListener("pointerup", end);
+    f.ov.addEventListener("pointercancel", end);
+    f.close.addEventListener("click", function () { closeFocus(); });
+  }
+
   function closeCurModal() {
     var m = document.querySelector(".cur-modal");
     if (!m || m.hidden || m.classList.contains("is-closing")) return;
+    if (focusState) { focusState.img.style.visibility = ""; focusState.ov.remove(); focusState = null; }
     m.classList.add("is-closing");
     curTopic = null;
     roomAnimate(m, false, function () {
@@ -704,9 +812,14 @@
     if (t.closest(".lang-btn")) { toggleLang(); return; }
     var openBtn = t.closest(".cur-open");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
+    if (t.classList.contains("cur-zoomable")) { openFocus(t); return; }
     if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();
   });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeCurModal(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { if (!closeFocus()) closeCurModal(); return; }
+    var z = e.target && e.target.classList && e.target.classList.contains("cur-zoomable");
+    if (z && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openFocus(e.target); }
+  });
 
   bindPage();
 })();

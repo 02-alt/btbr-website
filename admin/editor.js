@@ -510,6 +510,13 @@
     });
     sec.appendChild(field("Picture", fs));
   }
+  // the short text shown under a picture when it's opened in focus mode
+  function focusNoteField(sec, b) {
+    var ta = document.createElement("textarea"); ta.className = "insp-input insp-textarea"; ta.rows = 3;
+    ta.value = tr(b, "note"); ta.placeholder = hint(b, "note", "Shown under the picture when someone clicks it to see it large");
+    ta.addEventListener("input", function () { setTr(b, "note", ta.value); });
+    sec.appendChild(field(lang === "en" ? "Focus note" : "Focus note (FR)", ta));
+  }
   function addTextWindow(b) {
     if (b.items.length >= 6) return;
     var n = b.items.length;
@@ -778,6 +785,7 @@
     } else if (b.type === "image") {
       sec.appendChild(field("Image URL", textInput(b.src, "https://… or use the picker", function (v) { b.src = v; rerenderBlock(b.id); })));
       sec.appendChild(field(lang === "en" ? "Alt text" : "Alt text (FR)", textInput(tr(b, "alt"), hint(b, "alt", "Describe the image"), function (v) { setTr(b, "alt", v); })));
+      focusNoteField(sec, b);
       var wseg = document.createElement("div"); wseg.className = "insp-seg";
       ["Full", "Inset"].forEach(function (name, i) {
         var btn = document.createElement("button"); btn.type = "button"; btn.textContent = name;
@@ -821,6 +829,7 @@
       cp.addEventListener("input", function () { b.bg = cp.value; render(); select(b.id); });
       colorRow.appendChild(cp); colorRow.appendChild(sw);
       sec.appendChild(field("Background", colorRow));
+      focusNoteField(sec, b);
       // image list
       if (b.items.length) {
         var list = document.createElement("div"); list.className = "insp-items";
@@ -1282,10 +1291,10 @@
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
-        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) cover = b.src; outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset }, b, ["alt", "caption"])); continue; }
+        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) cover = b.src; outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"])); continue; }
         var bl = await blobFromSrc(b.src), ext = extFromType(bl.type), p = "curation/media/" + slug + "/img-" + (++mi) + "." + ext;
         files.push({ path: p, base64: await blobToBase64(bl) }); if (!cover) cover = "/" + p;
-        outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", inset: !!b.inset }, b, ["alt", "caption"]));
+        outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"]));
       } else if (b.type === "video") {
         if (!b.src) continue;
         var vwin = function (o) { if (b.frame === false) o.frame = false; else if (b.wtitle) o.wtitle = b.wtitle; else if (b.name) o.wtitle = b.name; if (b.board) o.board = true; return o; };
@@ -1299,7 +1308,7 @@
         var ext3 = vid ? "webm" : "png", p3 = "curation/media/" + slug + "/board-" + (++mi) + "." + ext3;
         files.push({ path: p3, base64: await blobToBase64(bb) });
         if (vid) outBlocks.push({ type: "video", src: "/" + p3, caption: "", loop: true, board: true });
-        else { if (!cover) cover = "/" + p3; outBlocks.push({ type: "image", src: "/" + p3, alt: state.title || "", caption: "", inset: false }); }
+        else { if (!cover) cover = "/" + p3; outBlocks.push(withFr({ type: "image", src: "/" + p3, alt: state.title || "", caption: "", note: b.note || "", inset: false }, b, ["note"])); }
       }
     }
     if (state.cover) {
@@ -1399,7 +1408,7 @@
   function blockFromPublished(pb) {
     var nb = { id: uid(), type: pb.type };
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
-    else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.inset = !!pb.inset; }
+    else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
     else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;
