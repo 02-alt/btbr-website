@@ -4,7 +4,7 @@
   "author": "Isaaaaaaaac",
   "date": "2026-10-23",
   "cover": "/curation/media/riots/cover.png",
-  "desc": "Riots, seen through art",
+  "desc": "Riots seen through art",
   "inspiration": "Inspiration : \nAthena : Romain Gavras - 2022\nGosh : Jamie XX - 2015\nNo church in the wild : Kanye West, Jay-Z - 2012\nStress : Justice - 2007\nThis is What Democracy Looks Like : Jill Friedberg - 2000\nBalaclava \"PUSSY RIOT\" : Nadya Tolokonnikova - 2012\n\"PROTECT THE DOLLS\" Tee : Connor Ives - 2025\nNorthside Needs Me : Blackhaine - 2026",
   "blocks": [
     {
@@ -31,7 +31,7 @@
       "type": "image",
       "src": "/curation/media/riots/board-1.png",
       "alt": "RIOTS",
-      "caption": "<span style=\"caret-color: rgba(0, 0, 0, 0); color: rgba(0, 0, 0, 0); letter-spacing: -0.16px; -webkit-text-fill-color: rgba(0, 0, 0, 0);\"><span class=\"cap-grad\">No church in the wild - Jay-Z, Kanye West (2012)</span></span>",
+      "caption": "",
       "inset": false
     },
     {
