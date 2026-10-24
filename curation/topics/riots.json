@@ -32,8 +32,48 @@
       "src": "/curation/media/riots/board-1.png",
       "alt": "RIOTS",
       "caption": "",
-      "note": "Images from the No church in the wild video clip.",
-      "inset": false
+      "inset": false,
+      "board": {
+        "bg": "#ebebef",
+        "items": [
+          {
+            "src": "/curation/media/riots/board-1-1.png",
+            "x": 54.926,
+            "y": 33.015,
+            "w": 42,
+            "h": 30.025,
+            "name": "NCITW_2.jpg",
+            "note": "Pictures of the No church in the wild vide clip."
+          },
+          {
+            "src": "/curation/media/riots/board-1-2.png",
+            "x": 15.662,
+            "y": 57.059,
+            "w": 70.882,
+            "h": 33.586,
+            "name": "NCITW_4.jpg",
+            "note": "Pictures of the No church in the wild vide clip."
+          },
+          {
+            "src": "/curation/media/riots/board-1-3.png",
+            "x": 3.897,
+            "y": 31.324,
+            "w": 42,
+            "h": 30.025,
+            "name": "NCITW_3.jpg",
+            "note": "Pictures of the No church in the wild vide clip."
+          },
+          {
+            "src": "/curation/media/riots/board-1-4.png",
+            "x": 28.971,
+            "y": 11.397,
+            "w": 42,
+            "h": 25.975,
+            "name": "NCITW_5.gif",
+            "note": "Pictures of the No church in the wild vide clip."
+          }
+        ]
+      }
     },
     {
       "type": "video",
