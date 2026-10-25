@@ -572,11 +572,12 @@ body.view-topics .studio-inspector { display: none; }
 /* room tone: the chosen swatch */
 .insp-swatches button.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--accent, #0a84ff); }
 
-/* song block: the same quiet now-playing card as the site */
-.bs-card { display: flex; align-items: center; gap: 14px; width: min(100%, 400px); padding: 10px 14px 10px 10px; background: #fff; border-radius: 14px; box-shadow: 0 0 0 0.5px rgba(40, 30, 40, 0.06), 0 6px 18px -8px rgba(40, 30, 40, 0.18); font-family: -apple-system, system-ui, sans-serif; }
-.bs-art { width: 52px; height: 52px; border-radius: 7px; object-fit: cover; flex: none; }
-.bs-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.bs-title { font-size: 15px; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bs-artist { font-size: 13px; color: #8a888b; }
-.bs-play { width: 34px; height: 34px; border-radius: 50%; background: #111; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; flex: none; padding-left: 2px; }
+/* song block: the same paper card as the site */
+.bs-card { display: flex; align-items: stretch; justify-content: space-between; gap: 20px; width: min(100%, 520px); padding: 18px 18px 18px 22px; background: #fff; border-radius: 2px; box-shadow: 0 1px 1px rgba(40, 30, 40, 0.05), 0 3px 6px rgba(40, 30, 40, 0.04), 0 14px 28px -10px rgba(40, 30, 40, 0.12); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.bs-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bs-kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9a989b; margin-bottom: 8px; }
+.bs-title { font-size: 26px; line-height: 1.1; letter-spacing: -0.022em; color: #111; }
+.bs-by { margin-top: 6px; font-size: 14px; color: #77757a; }
+.bs-play { align-self: flex-start; margin-top: auto; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.16); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; padding-left: 2px; color: #111; }
+.bs-art { width: 116px; height: 116px; object-fit: cover; border-radius: 2px; align-self: center; flex: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 18px -8px rgba(0, 0, 0, 0.3); }
 .bs-empty { padding: 18px 8px; color: #b4b4b8; font-size: 12px; }

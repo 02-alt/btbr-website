@@ -320,6 +320,7 @@
     if (s.frame) s.frame.remove();
     s.card.classList.remove("is-playing", "is-loading");
     var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = "0";
+    var tm = s.card.querySelector(".cur-song-time"); if (tm) tm.textContent = "";
   }
   function songCmd(s, func) { try { s.frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: [] }), "*"); } catch (e) {} }
   function songToggle(card) {
@@ -347,7 +348,11 @@
     if (info.playerState === 1) s.card.classList.remove("is-loading");
     if (info.playerState === 0) { songStop(); return; } // ended
     if (info.duration) s.dur = info.duration;
-    if (info.currentTime != null && s.dur) { var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = Math.min(100, info.currentTime / s.dur * 100) + "%"; }
+    if (info.currentTime != null && s.dur) {
+      var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = Math.min(100, info.currentTime / s.dur * 100) + "%";
+      var tm = s.card.querySelector(".cur-song-time"), sec = Math.floor(info.currentTime);
+      if (tm) tm.textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+    }
   });
   // ---- share: each topic has a page of its own (/curation/<slug>/) whose
   // link preview is the topic's label + cover; the share sheet on phones,
@@ -406,14 +411,21 @@
         return '<figure class="cur-quote"><blockquote>' + qt + "</blockquote>" + (cite ? "<figcaption>" + htmlEsc(cite) + "</figcaption>" : "") + "</figure>";
       }
       if (b.type === "song") {
+        // a paper card, like the labels: "Listening", the track large, who
+        // made it, the sleeve on the right; ▶ plays it from YouTube
         var sid = youtubeId(b.src); if (!sid) return "";
-        var st = String(b.title || "").trim() || "Untitled", sa = String(b.artist || "").trim();
+        var st = String(b.title || "").trim() || "Untitled", sa = String(b.artist || "").trim(), sb = String(b.album || "").trim();
+        var art = /^https:\/\//.test(b.art || "") ? b.art : "https://i.ytimg.com/vi/" + sid + "/mqdefault.jpg";
+        var by = [sa, sb].filter(Boolean).map(htmlEsc).join('<span class="cur-song-dot"> · </span>');
+        var fr = siteLang() === "fr";
         return '<figure class="cur-song" data-yt="' + sid + '" data-start="' + (+b.start || 0) + '">'
-          + '<img class="cur-song-art" src="https://i.ytimg.com/vi/' + sid + '/mqdefault.jpg" alt="" loading="lazy">'
-          + '<span class="cur-song-meta"><span class="cur-song-title">' + htmlEsc(st) + "</span>" + (sa ? '<span class="cur-song-artist">' + htmlEsc(sa) + "</span>" : "") + "</span>"
-          + '<button class="cur-song-play" type="button" aria-label="' + htmlEsc("Play " + st + (sa ? " by " + sa : "")).replace(/"/g, "&quot;") + '">'
+          + '<div class="cur-song-text"><span class="cur-song-kicker">' + (fr ? "À l’écoute" : "Listening") + "</span>"
+          + '<span class="cur-song-title">' + htmlEsc(st) + "</span>" + (by ? '<span class="cur-song-by">' + by + "</span>" : "")
+          + '<span class="cur-song-ctl"><button class="cur-song-play" type="button" aria-label="' + htmlEsc((fr ? "Écouter " : "Play ") + st + (sa ? " — " + sa : "")).replace(/"/g, "&quot;") + '">'
           + '<svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4c.6-.4.6-1.3 0-1.7l-10-6.4c-.7-.5-1.6 0-1.6.8z"/></svg>'
-          + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg></button>'
+          + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg></button>'
+          + '<span class="cur-song-time" aria-hidden="true"></span></span></div>'
+          + '<img class="cur-song-art' + (b.art ? "" : " is-yt") + '" src="' + htmlEsc(art) + '" alt="" loading="lazy">'
           + '<span class="cur-song-bar" aria-hidden="true"><span></span></span></figure>';
       }
       if (b.type === "video") {

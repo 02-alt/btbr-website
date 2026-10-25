@@ -157,9 +157,10 @@
       var sw = document.createElement("div"); sw.className = "bs-card";
       var sid = youtubeId(b.src);
       if (sid) {
-        sw.innerHTML = '<img class="bs-art" alt="" src="https://i.ytimg.com/vi/' + sid + '/mqdefault.jpg"><span class="bs-meta"><span class="bs-title"></span><span class="bs-artist"></span></span><span class="bs-play">▶</span>';
+        sw.innerHTML = '<span class="bs-text"><span class="bs-kicker">Listening</span><span class="bs-title"></span><span class="bs-by"></span><span class="bs-play">▶</span></span><img class="bs-art" alt="">';
         sw.querySelector(".bs-title").textContent = b.title || "Untitled";
-        sw.querySelector(".bs-artist").textContent = b.artist || "";
+        sw.querySelector(".bs-by").textContent = [b.artist, b.album].filter(Boolean).join(" · ");
+        sw.querySelector(".bs-art").src = b.art || ("https://i.ytimg.com/vi/" + sid + "/mqdefault.jpg");
       } else sw.innerHTML = '<span class="bs-empty">Paste a YouTube link in the inspector →</span>';
       return sw;
     }
@@ -171,18 +172,45 @@
     }
     return renderBoard(b);
   }
-  // fill a song's title + artist from YouTube ("Artist - Title (Official Video)")
+  // fill a song from its YouTube link: read the video's name, then find the
+  // real track in Apple's catalogue (proper title, artist, album, sleeve);
+  // if it isn't there, make the best of the video's name
+  function songClean(t) {
+    return String(t || "")
+      .replace(/\s*[\(\[][^\)\]]*(official|video|audio|lyric|visuali[sz]er|clip|hd|4k|remaster|soundtrack|ost|score)[^\)\]]*[\)\]]/gi, "")
+      .replace(/^\s*\d{1,2}\s*[.)\-–]\s*/, "")            // "10. Track"
+      .replace(/\s*[\/|]\s*(ost|soundtrack|score)\b.*$/i, "") // "Album / OST"
+      .replace(/\s+(ost|soundtrack)$/i, "")
+      .replace(/\s{2,}/g, " ").trim();
+  }
+  function norm(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
   function songLookup(b) {
-    if (!youtubeId(b.src)) return;
-    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + youtubeId(b.src)))
+    var id = youtubeId(b.src); if (!id) return;
+    var src = b.src;
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (o) {
-        if (!o) return;
-        var t = String(o.title || "").replace(/\s*[\(\[][^\)\]]*(official|video|audio|lyric|visuali[sz]er|clip|hd|4k|remaster)[^\)\]]*[\)\]]/gi, "").trim();
-        var artist = String(o.author_name || "").replace(/\s*-\s*Topic$/i, "").replace(/VEVO$/i, "").trim(), title = t;
-        var m = t.match(/^(.+?)\s+[-–—]\s+(.+)$/); if (m) { artist = m[1].trim(); title = m[2].trim(); }
-        if (!b.title) b.title = title; if (!b.artist) b.artist = artist;
-        rerenderBlock(b.id); if (selectedId === b.id) renderInspector();
+        if (!o || b.src !== src) return;
+        var raw = String(o.title || ""), channel = String(o.author_name || "").replace(/\s*-\s*Topic$/i, "").replace(/VEVO$/i, "").trim();
+        var parts = raw.split(/\s+[-–—]\s+/), a = songClean(parts[0]), c = parts.length > 1 ? songClean(parts.slice(1).join(" - ")) : "";
+        // a soundtrack upload reads "Track - Film / OST": the track comes first
+        var ostish = /\b(ost|soundtrack|score)\b/i.test(raw) || /^\s*\d{1,2}\s*[.)]/.test(raw);
+        var guess = !c ? { title: a, artist: channel } : ostish ? { title: a, artist: "", album: c } : { title: c, artist: a };
+        var term = [guess.title, guess.artist || guess.album || channel].filter(Boolean).join(" ");
+        return fetch("https://itunes.apple.com/search?entity=song&limit=8&term=" + encodeURIComponent(term))
+          .then(function (r) { return r.ok ? r.json() : { results: [] }; }, function () { return { results: [] }; })
+          .then(function (res) {
+            if (b.src !== src) return;
+            var want = norm(guess.title), hit = (res.results || []).filter(function (x) { var n = norm(x.trackName); return n && (n === want || want.indexOf(n) >= 0 || n.indexOf(want) >= 0); })[0];
+            if (hit) {
+              b.title = hit.trackName; b.artist = hit.artistName;
+              b.album = songClean(String(hit.collectionName || "").replace(/\s*[\(\[][^\)\]]*[\)\]]/g, ""));
+              b.art = String(hit.artworkUrl100 || "").replace(/\/\d+x\d+bb\./, "/600x600bb.") || "";
+            } else {
+              b.title = guess.title; b.artist = guess.artist || channel; b.album = guess.album || ""; b.art = "";
+            }
+            rerenderBlock(b.id); if (selectedId === b.id) renderInspector();
+          });
       }).catch(function () {});
   }
   // a one-line contenteditable bound to b[key] (EN) / b.fr[key] (FR)
@@ -927,15 +955,24 @@
     } else if (b.type === "song") {
       var sdeb;
       sec.appendChild(field("YouTube link", textInput(b.src, "https://youtube.com/watch?v=…", function (v) {
-        b.src = v.trim(); clearTimeout(sdeb);
+        v = v.trim(); if (v === b.src) return;
+        b.src = v; b.title = b.artist = b.album = b.art = ""; clearTimeout(sdeb);
         sdeb = setTimeout(function () { rerenderBlock(b.id); songLookup(b); }, 400);
       })));
-      sec.appendChild(field("Title", textInput(b.title, "Song title", function (v) { b.title = v; rerenderBlock(b.id); })));
+      sec.appendChild(field("Title", textInput(b.title, "Track", function (v) { b.title = v; rerenderBlock(b.id); })));
       sec.appendChild(field("Artist", textInput(b.artist, "Artist", function (v) { b.artist = v; rerenderBlock(b.id); })));
+      sec.appendChild(field("Album", textInput(b.album, "Album (optional)", function (v) { b.album = v; rerenderBlock(b.id); })));
+      var srow = document.createElement("div"); srow.className = "cover-btns";
+      var swp = document.createElement("button"); swp.type = "button"; swp.className = "sbtn"; swp.textContent = "⇄ Swap title / artist";
+      swp.addEventListener("click", function () { var t = b.title; b.title = b.artist; b.artist = t; rerenderBlock(b.id); renderInspector(); });
+      var rl = document.createElement("button"); rl.type = "button"; rl.className = "sbtn"; rl.textContent = "Look up again";
+      rl.addEventListener("click", function () { songLookup(b); });
+      srow.appendChild(swp); srow.appendChild(rl); sec.appendChild(srow);
       sec.appendChild(field("Start at", textInput(b.start ? Math.floor(b.start / 60) + ":" + ("0" + (b.start % 60)).slice(-2) : "", "0:00", function (v) {
         var m = String(v).trim().match(/^(?:(\d+):)?(\d{1,2})$/); b.start = m ? (+(m[1] || 0)) * 60 + (+m[2]) : 0;
       })));
-      var sh = document.createElement("div"); sh.className = "insp-empty"; sh.textContent = "Title and artist fill in from YouTube — edit them if the video's name is messy.";
+      var sh = document.createElement("div"); sh.className = "insp-empty";
+      sh.textContent = b.art ? "Found in Apple Music — the sleeve and names come from there." : "Names come from the YouTube video — edit them if they're messy.";
       sec.appendChild(sh);
     } else if (b.type === "quote") {
       var qh = document.createElement("div"); qh.className = "insp-empty";
@@ -1439,7 +1476,7 @@
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
-      else if (b.type === "song") { if (youtubeId(b.src)) outBlocks.push({ type: "song", src: b.src, title: (b.title || "").trim(), artist: (b.artist || "").trim(), start: +b.start || 0 }); }
+      else if (b.type === "song") { if (youtubeId(b.src)) { var so = { type: "song", src: b.src, title: (b.title || "").trim(), artist: (b.artist || "").trim(), start: +b.start || 0 }; if ((b.album || "").trim()) so.album = b.album.trim(); if (b.art) so.art = b.art; outBlocks.push(so); } }
       else if (b.type === "quote") { if (plain(b.text)) outBlocks.push(withFr({ type: "quote", text: cleanRich(b.text || ""), cite: (b.cite || "").trim() }, b, ["text", "cite"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
@@ -1608,7 +1645,7 @@
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
     else if (pb.type === "quote") { nb.text = pb.text || ""; nb.cite = pb.cite || ""; }
-    else if (pb.type === "song") { nb.src = pb.src || ""; nb.title = pb.title || ""; nb.artist = pb.artist || ""; nb.start = +pb.start || 0; }
+    else if (pb.type === "song") { nb.src = pb.src || ""; nb.title = pb.title || ""; nb.artist = pb.artist || ""; nb.album = pb.album || ""; nb.art = pb.art || ""; nb.start = +pb.start || 0; }
     else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;
