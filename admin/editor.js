@@ -52,6 +52,7 @@
     setByline(state.author);
     blocksEl.innerHTML = "";
     state.blocks.forEach(function (b) { blocksEl.appendChild(renderBlock(b)); });
+    paintRoom(state.tone);
     renderInspector();
   }
 
@@ -848,15 +849,36 @@
     ["", "#e6e4e6", "Grey"], ["#e9e4dc", "#e9e4dc", "Sand"], ["#dcd8d2", "#dcd8d2", "Stone"], ["#dfe2e5", "#dfe2e5", "Mist"],
     ["#2c2b2d", "#2c2b2d", "Graphite"], ["#26292c", "#26292c", "Slate"], ["#332c27", "#332c27", "Umber"], ["#221d1a", "#221d1a", "Espresso"]
   ];
+  // the canvas wears the room's tone, so what you write is seen on its real
+  // wall (dark tones flip the text, as on the site); hovering a swatch tries it on
+  var canvasEl = document.querySelector(".studio-canvas");
+  function toneDark(hex) {
+    var n = parseInt(String(hex).slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45;
+  }
+  function paintRoom(tone) {
+    if (!canvasEl) return;
+    var c = tone || "#e6e4e6";
+    canvasEl.style.backgroundColor = c;
+    canvasEl.classList.toggle("is-dark-room", toneDark(c));
+  }
+  function toneName(tone) { var t = TONES.filter(function (x) { return x[0] === (tone || ""); })[0]; return t ? t[2] : "Custom"; }
   function toneField() {
+    var wrap = document.createElement("div");
     var sw = document.createElement("div"); sw.className = "insp-swatches";
+    var note = document.createElement("div"); note.className = "insp-empty"; note.style.marginTop = "8px";
+    function say(tone, trying) { note.textContent = toneName(tone) + (toneDark(tone || "#e6e4e6") ? " (dark)" : "") + (trying ? " — previewing on the canvas" : " — the canvas shows the room"); }
     TONES.forEach(function (t) {
       var s = document.createElement("button"); s.type = "button"; s.style.background = t[1]; s.title = t[2];
       if ((state.tone || "") === t[0]) s.classList.add("is-on");
-      s.addEventListener("click", function () { state.tone = t[0]; renderInspector(); });
+      s.addEventListener("click", function () { state.tone = t[0]; paintRoom(state.tone); renderInspector(); });
+      s.addEventListener("mouseenter", function () { paintRoom(t[0]); say(t[0], true); });
+      s.addEventListener("mouseleave", function () { paintRoom(state.tone); say(state.tone, false); });
       sw.appendChild(s);
     });
-    return sw;
+    say(state.tone, false);
+    wrap.appendChild(sw); wrap.appendChild(note);
+    return wrap;
   }
   function renderInspector() {
     inspectorEl.innerHTML = "";

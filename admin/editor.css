@@ -581,3 +581,22 @@ body.view-topics .studio-inspector { display: none; }
 .bs-play { align-self: flex-start; margin-top: auto; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.16); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; padding-left: 2px; color: #111; }
 .bs-art { width: 116px; height: 116px; object-fit: cover; border-radius: 2px; align-self: center; flex: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 18px -8px rgba(0, 0, 0, 0.3); }
 .bs-empty { padding: 18px 8px; color: #b4b4b8; font-size: 12px; }
+
+/* the canvas wears the topic's room tone; dark tones flip the writing to light */
+.studio-canvas { transition: background-color 0.35s ease; }
+.studio-canvas .b-board.is-clear { background: rgba(255, 255, 255, 0.3); }
+.studio-canvas.is-dark-room .doc-title { color: #f4f1ed; }
+.studio-canvas.is-dark-room .doc-title::placeholder { color: rgba(255, 255, 255, 0.25); }
+.studio-canvas.is-dark-room .doc-byline { color: #9c968f; }
+.studio-canvas.is-dark-room .b-text { color: #dedad5; }
+.studio-canvas.is-dark-room .b-text.b-head,
+.studio-canvas.is-dark-room .bq-text { color: #f4f1ed; }
+.studio-canvas.is-dark-room .b-cap,
+.studio-canvas.is-dark-room .bq-cite { color: #9c968f; }
+.studio-canvas.is-dark-room .b-text.is-empty::before,
+.studio-canvas.is-dark-room .b-cap.is-empty::before,
+.studio-canvas.is-dark-room .bq-text.is-empty::before,
+.studio-canvas.is-dark-room .bq-cite.is-empty::before { color: rgba(255, 255, 255, 0.25); }
+.studio-canvas.is-dark-room .b-board.is-clear { background: rgba(255, 255, 255, 0.035); outline-color: rgba(255, 255, 255, 0.14); }
+.studio-canvas.is-dark-room .block-handle,
+.studio-canvas.is-dark-room .block-del { color: rgba(255, 255, 255, 0.5); }
