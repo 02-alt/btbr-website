@@ -571,3 +571,12 @@ body.view-topics .studio-inspector { display: none; }
 
 /* room tone: the chosen swatch */
 .insp-swatches button.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--accent, #0a84ff); }
+
+/* song block: the same quiet now-playing card as the site */
+.bs-card { display: flex; align-items: center; gap: 14px; width: min(100%, 400px); padding: 10px 14px 10px 10px; background: #fff; border-radius: 14px; box-shadow: 0 0 0 0.5px rgba(40, 30, 40, 0.06), 0 6px 18px -8px rgba(40, 30, 40, 0.18); font-family: -apple-system, system-ui, sans-serif; }
+.bs-art { width: 52px; height: 52px; border-radius: 7px; object-fit: cover; flex: none; }
+.bs-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bs-title { font-size: 15px; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-artist { font-size: 13px; color: #8a888b; }
+.bs-play { width: 34px; height: 34px; border-radius: 50%; background: #111; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; flex: none; padding-left: 2px; }
+.bs-empty { padding: 18px 8px; color: #b4b4b8; font-size: 12px; }

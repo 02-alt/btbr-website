@@ -194,6 +194,7 @@
     var enter = !themed;
     if (enter) incoming.classList.add("frame-enter"); // start faded/lifted
     cur.replaceWith(incoming);
+    songStop();
     document.title = doc.title;
     window.scrollTo(0, 0);
     bindPage();
@@ -310,6 +311,61 @@
     modal.style.setProperty("--room", tone);
     modal.classList.toggle("is-dark", toneIsDark(tone));
   }
+  function youtubeId(url) { var m = String(url || "").match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
+  // ---- song cards: a YouTube track played by a hidden player, one at a time,
+  // with a hairline progress bar fed by the player's own updates ----
+  var songNow = null;
+  function songStop() {
+    var s = songNow; if (!s) return; songNow = null;
+    if (s.frame) s.frame.remove();
+    s.card.classList.remove("is-playing", "is-loading");
+    var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = "0";
+  }
+  function songCmd(s, func) { try { s.frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: [] }), "*"); } catch (e) {} }
+  function songToggle(card) {
+    if (songNow && songNow.card === card) {
+      var on = !card.classList.contains("is-playing");
+      songCmd(songNow, on ? "playVideo" : "pauseVideo");
+      card.classList.toggle("is-playing", on);
+      return;
+    }
+    songStop();
+    if (window.__btbrAudio && !window.__btbrAudio.paused) window.__btbrAudio.pause();
+    var f = document.createElement("iframe");
+    f.allow = "autoplay; encrypted-media";
+    f.className = "cur-song-player"; f.title = "Song player"; f.setAttribute("aria-hidden", "true"); f.tabIndex = -1;
+    f.src = "https://www.youtube-nocookie.com/embed/" + card.getAttribute("data-yt") + "?enablejsapi=1&autoplay=1&playsinline=1&controls=0&start=" + (+card.getAttribute("data-start") || 0) + "&origin=" + encodeURIComponent(location.origin);
+    var s = songNow = { card: card, frame: f };
+    f.addEventListener("load", function () { try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*"); } catch (e) {} });
+    document.body.appendChild(f);
+    card.classList.add("is-playing", "is-loading");
+  }
+  window.addEventListener("message", function (e) {
+    var s = songNow; if (!s || e.source !== s.frame.contentWindow) return;
+    var d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (x) { return; }
+    var info = d && d.info; if (!info) return;
+    if (info.playerState === 1) s.card.classList.remove("is-loading");
+    if (info.playerState === 0) { songStop(); return; } // ended
+    if (info.duration) s.dur = info.duration;
+    if (info.currentTime != null && s.dur) { var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = Math.min(100, info.currentTime / s.dur * 100) + "%"; }
+  });
+  // ---- share: each topic has a page of its own (/curation/<slug>/) whose
+  // link preview is the topic's label + cover; the share sheet on phones,
+  // a copied link elsewhere ----
+  function shareTopic(btn) {
+    var m = document.querySelector(".cur-modal"); var slug = m && m.dataset.slug; if (!slug) return;
+    var url = location.origin + "/curation/" + encodeURIComponent(slug) + "/";
+    var t = curTopic && curTopic.slug === slug ? curTopic : null;
+    var tip = btn.querySelector(".cur-share-tip");
+    function said(msg) { if (!tip) return; tip.textContent = msg; btn.classList.add("is-tip"); clearTimeout(btn.__tip); btn.__tip = setTimeout(function () { btn.classList.remove("is-tip"); }, 1600); }
+    if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+      navigator.share({ title: t ? loc(t, "title") : "builtoberemembered", url: url }).catch(function () {});
+      return;
+    }
+    var fr = siteLang() === "fr";
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(function () { said(fr ? "Lien copié" : "Link copied"); }, function () { window.prompt(fr ? "Copier le lien" : "Copy the link", url); });
+  }
   function authorAvatar(name) { var pp = authorPP(name); return pp ? '<img class="cur-avatar" src="' + pp + '" alt="" loading="lazy">' : '<span class="cur-avatar" aria-hidden="true"></span>'; }
   function curBlocksHTML(blocks) {
     var hc = 0;
@@ -348,6 +404,17 @@
         if (!qt) return "";
         var cite = String(loc(b, "cite") || "").trim();
         return '<figure class="cur-quote"><blockquote>' + qt + "</blockquote>" + (cite ? "<figcaption>" + htmlEsc(cite) + "</figcaption>" : "") + "</figure>";
+      }
+      if (b.type === "song") {
+        var sid = youtubeId(b.src); if (!sid) return "";
+        var st = String(b.title || "").trim() || "Untitled", sa = String(b.artist || "").trim();
+        return '<figure class="cur-song" data-yt="' + sid + '" data-start="' + (+b.start || 0) + '">'
+          + '<img class="cur-song-art" src="https://i.ytimg.com/vi/' + sid + '/mqdefault.jpg" alt="" loading="lazy">'
+          + '<span class="cur-song-meta"><span class="cur-song-title">' + htmlEsc(st) + "</span>" + (sa ? '<span class="cur-song-artist">' + htmlEsc(sa) + "</span>" : "") + "</span>"
+          + '<button class="cur-song-play" type="button" aria-label="' + htmlEsc("Play " + st + (sa ? " by " + sa : "")).replace(/"/g, "&quot;") + '">'
+          + '<svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4c.6-.4.6-1.3 0-1.7l-10-6.4c-.7-.5-1.6 0-1.6.8z"/></svg>'
+          + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg></button>'
+          + '<span class="cur-song-bar" aria-hidden="true"><span></span></span></figure>';
       }
       if (b.type === "video") {
         // videos sit in a dark Preview window (framed by MacWin once rendered)
@@ -636,6 +703,7 @@
     if (!m || m.hidden || m.classList.contains("is-closing")) return;
     if (focusState) { focusState.img.style.visibility = ""; focusState.ov.remove(); focusState = null; }
     m.classList.add("is-closing");
+    songStop();
     curTopic = null;
     setRoomHash("");
     roomAnimate(m, false, function () {
@@ -973,6 +1041,10 @@
     // the label's title button and the cover tray both open the topic
     var openBtn = t.closest(".cur-open, .cur-card .cur-tray");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
+    var sp = t.closest(".cur-song-play");
+    if (sp) { var card = sp.closest(".cur-song"); if (card) songToggle(card); return; }
+    var sh = t.closest(".cur-modal-share");
+    if (sh) { shareTopic(sh); return; }
     var zt = t.closest(".cur-zoomable, .cur-hot");
     if (zt && zt.closest(".cur-modal-content")) { openFocus(zt); return; }
     if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();

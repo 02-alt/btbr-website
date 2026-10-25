@@ -153,6 +153,16 @@
       wireMediaDrop(vw, b);
       return withCaption(vw, b);
     }
+    if (b.type === "song") {
+      var sw = document.createElement("div"); sw.className = "bs-card";
+      var sid = youtubeId(b.src);
+      if (sid) {
+        sw.innerHTML = '<img class="bs-art" alt="" src="https://i.ytimg.com/vi/' + sid + '/mqdefault.jpg"><span class="bs-meta"><span class="bs-title"></span><span class="bs-artist"></span></span><span class="bs-play">▶</span>';
+        sw.querySelector(".bs-title").textContent = b.title || "Untitled";
+        sw.querySelector(".bs-artist").textContent = b.artist || "";
+      } else sw.innerHTML = '<span class="bs-empty">Paste a YouTube link in the inspector →</span>';
+      return sw;
+    }
     if (b.type === "quote") {
       var qw = document.createDocumentFragment();
       qw.appendChild(editableLine(b, "text", "bq-text", "A line worth hanging on the wall…", "Une phrase à accrocher au mur…"));
@@ -160,6 +170,20 @@
       return qw;
     }
     return renderBoard(b);
+  }
+  // fill a song's title + artist from YouTube ("Artist - Title (Official Video)")
+  function songLookup(b) {
+    if (!youtubeId(b.src)) return;
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + youtubeId(b.src)))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o) return;
+        var t = String(o.title || "").replace(/\s*[\(\[][^\)\]]*(official|video|audio|lyric|visuali[sz]er|clip|hd|4k|remaster)[^\)\]]*[\)\]]/gi, "").trim();
+        var artist = String(o.author_name || "").replace(/\s*-\s*Topic$/i, "").replace(/VEVO$/i, "").trim(), title = t;
+        var m = t.match(/^(.+?)\s+[-–—]\s+(.+)$/); if (m) { artist = m[1].trim(); title = m[2].trim(); }
+        if (!b.title) b.title = title; if (!b.artist) b.artist = artist;
+        rerenderBlock(b.id); if (selectedId === b.id) renderInspector();
+      }).catch(function () {});
   }
   // a one-line contenteditable bound to b[key] (EN) / b.fr[key] (FR)
   function editableLine(b, key, cls, phEn, phFr) {
@@ -900,6 +924,19 @@
           b.wtitle = v; clearTimeout(vdeb); vdeb = setTimeout(function () { rerenderBlock(b.id); }, 250);
         })));
       }
+    } else if (b.type === "song") {
+      var sdeb;
+      sec.appendChild(field("YouTube link", textInput(b.src, "https://youtube.com/watch?v=…", function (v) {
+        b.src = v.trim(); clearTimeout(sdeb);
+        sdeb = setTimeout(function () { rerenderBlock(b.id); songLookup(b); }, 400);
+      })));
+      sec.appendChild(field("Title", textInput(b.title, "Song title", function (v) { b.title = v; rerenderBlock(b.id); })));
+      sec.appendChild(field("Artist", textInput(b.artist, "Artist", function (v) { b.artist = v; rerenderBlock(b.id); })));
+      sec.appendChild(field("Start at", textInput(b.start ? Math.floor(b.start / 60) + ":" + ("0" + (b.start % 60)).slice(-2) : "", "0:00", function (v) {
+        var m = String(v).trim().match(/^(?:(\d+):)?(\d{1,2})$/); b.start = m ? (+(m[1] || 0)) * 60 + (+m[2]) : 0;
+      })));
+      var sh = document.createElement("div"); sh.className = "insp-empty"; sh.textContent = "Title and artist fill in from YouTube — edit them if the video's name is messy.";
+      sec.appendChild(sh);
     } else if (b.type === "quote") {
       var qh = document.createElement("div"); qh.className = "insp-empty";
       qh.textContent = "Type the quote on the canvas, and who said it underneath. Quote marks are added for you.";
@@ -982,6 +1019,7 @@
           : type === "image" ? { id: uid(), type: "image", src: "", alt: "", caption: "", inset: false }
           : type === "video" ? { id: uid(), type: "video", src: "", caption: "" }
           : type === "quote" ? { id: uid(), type: "quote", text: "", cite: "" }
+          : type === "song" ? { id: uid(), type: "song", src: "", title: "", artist: "", start: 0 }
           : { id: uid(), type: "board", bg: "none", items: [], zc: 0 };
     var i = selectedId ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
     state.blocks.splice(i + 1, 0, b);
@@ -1371,20 +1409,43 @@
       });
     });
   }
+  // a topic's shareable page: link previews read its tags, people are sent on into the room
+  var SHARE_RESERVED = ["media", "topics"];
+  function sharePage(t) {
+    var e = function (v) { return String(v || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
+    var slug = t.slug, url = "https://buildtoberemembered.com/curation/" + slug + "/", img = "https://buildtoberemembered.com/curation/media/" + slug + "/share.jpg";
+    var desc = (t.desc || "").trim(), ogd = (t.author ? t.author + " — " : "") + desc;
+    return '<!doctype html>\n<html lang="en">\n<head>\n  <meta charset="utf-8" />\n'
+      + '  <!-- a topic\'s shareable address: link previews read the tags below, people are sent straight into the room -->\n'
+      + '  <title>' + e((t.title || "Untitled") + " — builtoberemembered") + '</title>\n'
+      + '  <meta name="description" content="' + e(desc) + '" />\n  <meta name="robots" content="noindex, follow" />\n'
+      + '  <link rel="canonical" href="' + url + '" />\n  <meta property="og:type" content="article" />\n  <meta property="og:site_name" content="builtoberemembered" />\n'
+      + '  <meta property="og:title" content="' + e(t.title) + '" />\n  <meta property="og:description" content="' + e(ogd) + '" />\n'
+      + '  <meta property="og:url" content="' + url + '" />\n  <meta property="og:image" content="' + img + '" />\n'
+      + '  <meta property="og:image:width" content="2400" />\n  <meta property="og:image:height" content="1260" />\n'
+      + '  <meta name="twitter:card" content="summary_large_image" />\n  <meta name="twitter:title" content="' + e(t.title) + '" />\n'
+      + '  <meta name="twitter:description" content="' + e(ogd) + '" />\n  <meta name="twitter:image" content="' + img + '" />\n'
+      + '  <meta name="theme-color" content="#e6e4e6" />\n  <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />\n'
+      + '  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />\n'
+      + '  <meta http-equiv="refresh" content="0; url=/curation/#' + slug + '" />\n'
+      + '  <script>location.replace("/curation/#' + slug + '");</' + 'script>\n'
+      + '  <style>html{background:#e6e4e6}</style>\n</head>\n<body></body>\n</html>\n';
+  }
   async function publish(token, log) {
     log("Preparing…");
     var slug = editingSlug || slugify(state.title) || ("topic-" + Date.now());
     var date = new Date().toISOString().slice(0, 10);
-    var files = [], outBlocks = [], cover = null, mi = 0;
+    var files = [], outBlocks = [], cover = null, coverLocal = null, mi = 0;
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
+      else if (b.type === "song") { if (youtubeId(b.src)) outBlocks.push({ type: "song", src: b.src, title: (b.title || "").trim(), artist: (b.artist || "").trim(), start: +b.start || 0 }); }
       else if (b.type === "quote") { if (plain(b.text)) outBlocks.push(withFr({ type: "quote", text: cleanRich(b.text || ""), cite: (b.cite || "").trim() }, b, ["text", "cite"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
-        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) cover = b.src; outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"])); continue; }
+        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) { cover = b.src; coverLocal = b.src; } outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"])); continue; }
         var bl = await blobFromSrc(b.src), ext = extFromType(bl.type), p = "curation/media/" + slug + "/img-" + (++mi) + "." + ext;
-        files.push({ path: p, base64: await blobToBase64(bl) }); if (!cover) cover = "/" + p;
+        files.push({ path: p, base64: await blobToBase64(bl) }); if (!cover) { cover = "/" + p; coverLocal = URL.createObjectURL(bl); }
         outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"]));
       } else if (b.type === "video") {
         if (!b.src) continue;
@@ -1400,7 +1461,7 @@
         files.push({ path: p3, base64: await blobToBase64(bb) });
         if (vid) outBlocks.push({ type: "video", src: "/" + p3, caption: "", loop: true, board: true });
         else {
-          if (!cover) cover = "/" + p3;
+          if (!cover) { cover = "/" + p3; coverLocal = URL.createObjectURL(bb); }
           // each picture on the board is kept too (its own file + where it sits),
           // so the site can open them one by one and Studio can re-edit the board
           var bitems = [], bsorted = b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); });
@@ -1424,10 +1485,10 @@
     }
     if (state.cover) {
       if (typeof state.cover === "string") {
-        if (state.cover.indexOf("/curation/media/") === 0) { cover = state.cover; }
-        else { var cbl = await blobFromSrc(state.cover), cext = extFromType(cbl.type), cp = "curation/media/" + slug + "/cover." + cext; files.push({ path: cp, base64: await blobToBase64(cbl) }); cover = "/" + cp; }
+        if (state.cover.indexOf("/curation/media/") === 0) { cover = coverLocal = state.cover; }
+        else { var cbl = await blobFromSrc(state.cover), cext = extFromType(cbl.type), cp = "curation/media/" + slug + "/cover." + cext; files.push({ path: cp, base64: await blobToBase64(cbl) }); cover = "/" + cp; coverLocal = URL.createObjectURL(cbl); }
       } else if (state.cover.items && state.cover.items.length) {
-        var cbb = await coverToPNGBlob(state.cover); var cpb = "curation/media/" + slug + "/cover.png"; files.push({ path: cpb, base64: await blobToBase64(cbb) }); cover = "/" + cpb;
+        var cbb = await coverToPNGBlob(state.cover); var cpb = "curation/media/" + slug + "/cover.png"; files.push({ path: cpb, base64: await blobToBase64(cbb) }); cover = "/" + cpb; coverLocal = URL.createObjectURL(cbb);
       }
     }
     var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
@@ -1452,6 +1513,16 @@
     var no = (prev && +prev.no) || (index.reduce(function (m, t, i) { return Math.max(m, +t.no || (index.length - i)); }, 0) + 1);
     topic.no = no;
     files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) });
+    // the topic's own address (/curation/<slug>/) with a styled link preview
+    if (window.BtbrShareCard && SHARE_RESERVED.indexOf(slug) < 0) {
+      log("Drawing the share card…");
+      try {
+        var sc = await BtbrShareCard.draw({ author: topic.author, title: topic.title, desc: desc, date: date, no: no }, coverLocal);
+        var sb = await new Promise(function (res) { sc.toBlob(res, "image/jpeg", 0.9); });
+        files.push({ path: "curation/media/" + slug + "/share.jpg", base64: await blobToBase64(sb) });
+        files.push({ path: "curation/" + slug + "/index.html", text: sharePage(topic) });
+      } catch (e) { log("(share card skipped: " + (e && e.message || e) + ")"); }
+    }
     index = index.filter(function (t) { return t.slug !== slug; });
     var entry = { slug: slug, no: no, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
     if (topic.tone) entry.tone = topic.tone;
@@ -1537,6 +1608,7 @@
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
     else if (pb.type === "quote") { nb.text = pb.text || ""; nb.cite = pb.cite || ""; }
+    else if (pb.type === "song") { nb.src = pb.src || ""; nb.title = pb.title || ""; nb.artist = pb.artist || ""; nb.start = +pb.start || 0; }
     else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;
@@ -1585,6 +1657,10 @@
       var baseSha = ref.object.sha;
       var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
       var treeItems = [{ path: "curation/topics/" + slug + ".json", mode: "100644", type: "blob", sha: null }];
+      for (var sp of ["curation/" + slug + "/index.html", "curation/media/" + slug + "/share.jpg"]) {
+        var there = await fetch("/" + sp, { method: "HEAD", cache: "no-cache" }).then(function (r) { return r.ok; }, function () { return false; });
+        if (there && mediaPaths.indexOf(sp) < 0) mediaPaths.push(sp);
+      }
       mediaPaths.forEach(function (p) { treeItems.push({ path: p, mode: "100644", type: "blob", sha: null }); });
       var iblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: JSON.stringify(index, null, 2), encoding: "utf-8" }) }, token);
       treeItems.push({ path: "curation/topics/index.json", mode: "100644", type: "blob", sha: iblob.sha });
