@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <meta name="theme-color" content="#ffffff" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=4" />
-  <link rel="stylesheet" href="/admin/editor.css?v=20" />
+  <link rel="stylesheet" href="/admin/editor.css?v=21" />
 </head>
 <body class="studio">
   <header class="studio-bar">
@@ -33,6 +33,7 @@
       <article class="doc">
         <input class="doc-title" id="docTitle" placeholder="Title" aria-label="Title" />
         <div class="doc-byline"><span class="doc-byline-dot" aria-hidden="true"></span><span id="docByline">Author</span></div>
+        <div class="doc-tune" id="docTune" hidden><i aria-hidden="true">▶</i><span></span></div>
         <div class="blocks" id="blocks"></div>
         <div class="add-rail">
           <button class="add-block" id="addBlock" type="button" aria-label="Add a block">+</button>
@@ -58,7 +59,6 @@
     <button class="picker-item" data-type="video" type="button"><span class="picker-ico">▷</span> Video</button>
     <button class="picker-item" data-type="board" type="button"><span class="picker-ico">▣</span> Board</button>
     <button class="picker-item" data-type="quote" type="button"><span class="picker-ico">“</span> Quote</button>
-    <button class="picker-item" data-type="song" type="button"><span class="picker-ico">♪</span> Song</button>
   </div>
 
   <!-- publish panel -->
@@ -80,6 +80,6 @@
   <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
   <script src="/assets/macwin.js?v=4"></script>
   <script src="/assets/sharecard.js?v=1"></script>
-  <script src="/admin/editor.js?v=30"></script>
+  <script src="/admin/editor.js?v=31"></script>
 </body>
 </html>

@@ -14,6 +14,7 @@
     desc: "",
     inspiration: "",
     tone: "",
+    song: null,
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
@@ -53,6 +54,7 @@
     blocksEl.innerHTML = "";
     state.blocks.forEach(function (b) { blocksEl.appendChild(renderBlock(b)); });
     paintRoom(state.tone);
+    paintTune();
     renderInspector();
   }
 
@@ -154,17 +156,6 @@
       wireMediaDrop(vw, b);
       return withCaption(vw, b);
     }
-    if (b.type === "song") {
-      var sw = document.createElement("div"); sw.className = "bs-card";
-      var sid = youtubeId(b.src);
-      if (sid) {
-        sw.innerHTML = '<span class="bs-text"><span class="bs-kicker">Listening</span><span class="bs-title"></span><span class="bs-by"></span><span class="bs-play">▶</span></span><img class="bs-art" alt="">';
-        sw.querySelector(".bs-title").textContent = b.title || "Untitled";
-        sw.querySelector(".bs-by").textContent = [b.artist, b.album].filter(Boolean).join(" · ");
-        sw.querySelector(".bs-art").src = b.art || ("https://i.ytimg.com/vi/" + sid + "/mqdefault.jpg");
-      } else sw.innerHTML = '<span class="bs-empty">Paste a YouTube link in the inspector →</span>';
-      return sw;
-    }
     if (b.type === "quote") {
       var qw = document.createDocumentFragment();
       qw.appendChild(editableLine(b, "text", "bq-text", "A line worth hanging on the wall…", "Une phrase à accrocher au mur…"));
@@ -210,9 +201,9 @@
             } else {
               b.title = guess.title; b.artist = guess.artist || channel; b.album = guess.album || ""; b.art = "";
             }
-            rerenderBlock(b.id); if (selectedId === b.id) renderInspector();
+            songChanged();
           });
-      }).catch(function () {});
+      }).catch(function () { songChanged(); });
   }
   // a one-line contenteditable bound to b[key] (EN) / b.fr[key] (FR)
   function editableLine(b, key, cls, phEn, phFr) {
@@ -880,6 +871,49 @@
     wrap.appendChild(sw); wrap.appendChild(note);
     return wrap;
   }
+  // the topic's soundtrack: a YouTube link, named from Apple's catalogue;
+  // shown on the site as one quiet line under the title and author
+  function songChanged() { paintTune(); renderInspector(); }
+  function paintTune() {
+    var el = document.getElementById("docTune"); if (!el) return;
+    var sg = state.song;
+    el.hidden = !(sg && youtubeId(sg.src));
+    el.querySelector("span").textContent = sg ? (sg.title || "Untitled") + (sg.artist ? " · " + sg.artist : "") : "";
+  }
+  function soundtrackField() {
+    var wrap = document.createElement("div"), deb;
+    var sg = state.song || { src: "" };
+    wrap.appendChild(textInput(sg.src, "YouTube link", function (v) {
+      v = v.trim(); clearTimeout(deb);
+      if (!v) { state.song = null; paintTune(); return; }
+      if (state.song && v === state.song.src) return;
+      state.song = { src: v, title: "", artist: "", album: "", art: "", start: 0 };
+      deb = setTimeout(function () { songLookup(state.song); }, 400);
+    }));
+    if (state.song && youtubeId(state.song.src)) {
+      var s2 = state.song;
+      var row = document.createElement("div"); row.className = "insp-pair";
+      row.appendChild(textInput(s2.title, "Track", function (v) { s2.title = v; paintTune(); }));
+      row.appendChild(textInput(s2.artist, "Artist", function (v) { s2.artist = v; paintTune(); }));
+      wrap.appendChild(row);
+      var btns = document.createElement("div"); btns.className = "cover-btns";
+      var swp = document.createElement("button"); swp.type = "button"; swp.className = "sbtn"; swp.textContent = "⇄ Swap";
+      swp.addEventListener("click", function () { var t = s2.title; s2.title = s2.artist; s2.artist = t; songChanged(); });
+      var rl = document.createElement("button"); rl.type = "button"; rl.className = "sbtn"; rl.textContent = "Look up again";
+      rl.addEventListener("click", function () { songLookup(s2); });
+      var rm = document.createElement("button"); rm.type = "button"; rm.className = "sbtn"; rm.textContent = "Remove";
+      rm.addEventListener("click", function () { state.song = null; songChanged(); });
+      btns.appendChild(swp); btns.appendChild(rl); btns.appendChild(rm); wrap.appendChild(btns);
+      var st = textInput(s2.start ? Math.floor(s2.start / 60) + ":" + ("0" + (s2.start % 60)).slice(-2) : "", "Start at 0:00", function (v) {
+        var m = String(v).trim().match(/^(?:(\d+):)?(\d{1,2})$/); s2.start = m ? (+(m[1] || 0)) * 60 + (+m[2]) : 0;
+      });
+      st.style.marginTop = "8px"; wrap.appendChild(st);
+    }
+    var h = document.createElement("div"); h.className = "insp-empty"; h.style.marginTop = "8px";
+    h.textContent = state.song && state.song.art ? "Found in Apple Music. Plays from YouTube, under the title on the site." : "Paste a YouTube link — it plays from a quiet line under the title.";
+    wrap.appendChild(h);
+    return wrap;
+  }
   function renderInspector() {
     inspectorEl.innerHTML = "";
     // document settings (always)
@@ -898,6 +932,7 @@
     inspTa.addEventListener("input", function () { state.inspiration = inspTa.value; });
     docSec.appendChild(field("Inspiration", inspTa));
     docSec.appendChild(field("Room tone", toneField()));
+    docSec.appendChild(field("Soundtrack (optional)", soundtrackField()));
     inspectorEl.appendChild(docSec);
 
     var b = selectedId && blockById(selectedId);
@@ -974,28 +1009,6 @@
           b.wtitle = v; clearTimeout(vdeb); vdeb = setTimeout(function () { rerenderBlock(b.id); }, 250);
         })));
       }
-    } else if (b.type === "song") {
-      var sdeb;
-      sec.appendChild(field("YouTube link", textInput(b.src, "https://youtube.com/watch?v=…", function (v) {
-        v = v.trim(); if (v === b.src) return;
-        b.src = v; b.title = b.artist = b.album = b.art = ""; clearTimeout(sdeb);
-        sdeb = setTimeout(function () { rerenderBlock(b.id); songLookup(b); }, 400);
-      })));
-      sec.appendChild(field("Title", textInput(b.title, "Track", function (v) { b.title = v; rerenderBlock(b.id); })));
-      sec.appendChild(field("Artist", textInput(b.artist, "Artist", function (v) { b.artist = v; rerenderBlock(b.id); })));
-      sec.appendChild(field("Album", textInput(b.album, "Album (optional)", function (v) { b.album = v; rerenderBlock(b.id); })));
-      var srow = document.createElement("div"); srow.className = "cover-btns";
-      var swp = document.createElement("button"); swp.type = "button"; swp.className = "sbtn"; swp.textContent = "⇄ Swap title / artist";
-      swp.addEventListener("click", function () { var t = b.title; b.title = b.artist; b.artist = t; rerenderBlock(b.id); renderInspector(); });
-      var rl = document.createElement("button"); rl.type = "button"; rl.className = "sbtn"; rl.textContent = "Look up again";
-      rl.addEventListener("click", function () { songLookup(b); });
-      srow.appendChild(swp); srow.appendChild(rl); sec.appendChild(srow);
-      sec.appendChild(field("Start at", textInput(b.start ? Math.floor(b.start / 60) + ":" + ("0" + (b.start % 60)).slice(-2) : "", "0:00", function (v) {
-        var m = String(v).trim().match(/^(?:(\d+):)?(\d{1,2})$/); b.start = m ? (+(m[1] || 0)) * 60 + (+m[2]) : 0;
-      })));
-      var sh = document.createElement("div"); sh.className = "insp-empty";
-      sh.textContent = b.art ? "Found in Apple Music — the sleeve and names come from there." : "Names come from the YouTube video — edit them if they're messy.";
-      sec.appendChild(sh);
     } else if (b.type === "quote") {
       var qh = document.createElement("div"); qh.className = "insp-empty";
       qh.textContent = "Type the quote on the canvas, and who said it underneath. Quote marks are added for you.";
@@ -1078,7 +1091,6 @@
           : type === "image" ? { id: uid(), type: "image", src: "", alt: "", caption: "", inset: false }
           : type === "video" ? { id: uid(), type: "video", src: "", caption: "" }
           : type === "quote" ? { id: uid(), type: "quote", text: "", cite: "" }
-          : type === "song" ? { id: uid(), type: "song", src: "", title: "", artist: "", start: 0 }
           : { id: uid(), type: "board", bg: "none", items: [], zc: 0 };
     var i = selectedId ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
     state.blocks.splice(i + 1, 0, b);
@@ -1498,7 +1510,6 @@
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
-      else if (b.type === "song") { if (youtubeId(b.src)) { var so = { type: "song", src: b.src, title: (b.title || "").trim(), artist: (b.artist || "").trim(), start: +b.start || 0 }; if ((b.album || "").trim()) so.album = b.album.trim(); if (b.art) so.art = b.art; outBlocks.push(so); } }
       else if (b.type === "quote") { if (plain(b.text)) outBlocks.push(withFr({ type: "quote", text: cleanRich(b.text || ""), cite: (b.cite || "").trim() }, b, ["text", "cite"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
@@ -1560,6 +1571,10 @@
     });
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
     if (state.tone) topic.tone = state.tone;
+    if (state.song && youtubeId(state.song.src)) {
+      var sg = state.song; topic.song = { src: sg.src, title: (sg.title || "").trim(), artist: (sg.artist || "").trim() };
+      if ((sg.album || "").trim()) topic.song.album = sg.album.trim(); if (sg.art) topic.song.art = sg.art; if (+sg.start) topic.song.start = +sg.start;
+    }
     var frTitle = (state.fr && state.fr.title || "").trim();
     var langs = ["en"];
     if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
@@ -1667,7 +1682,6 @@
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
     else if (pb.type === "quote") { nb.text = pb.text || ""; nb.cite = pb.cite || ""; }
-    else if (pb.type === "song") { nb.src = pb.src || ""; nb.title = pb.title || ""; nb.artist = pb.artist || ""; nb.album = pb.album || ""; nb.art = pb.art || ""; nb.start = +pb.start || 0; }
     else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;
@@ -1681,7 +1695,9 @@
       state.desc = t.desc || "";
       state.inspiration = t.inspiration || "";
       state.tone = t.tone || "";
-      state.blocks = (t.blocks || []).map(blockFromPublished);
+      state.song = t.song || null;
+      (t.blocks || []).forEach(function (pb) { if (pb.type === "song" && !state.song) state.song = { src: pb.src, title: pb.title, artist: pb.artist, album: pb.album, art: pb.art, start: pb.start }; });
+      state.blocks = (t.blocks || []).filter(function (pb) { return pb.type !== "song"; }).map(blockFromPublished);
       if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
       editingSlug = slug;
       selectedId = null;
@@ -1691,7 +1707,7 @@
   }
   function newTopic() {
     editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = "";
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = ""; state.song = null;
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render();
@@ -1743,7 +1759,7 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", editingSlug: editingSlug, cover: null, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", song: state.song, editingSlug: editingSlug, cover: null, blocks: [] };
     if (state.cover) {
       if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
       else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
@@ -1770,9 +1786,11 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || "";
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || ""; state.song = d.song || null;
     editingSlug = d.editingSlug || null;
-    state.blocks = (d.blocks || []).map(function (b) { return Object.assign({ id: uid() }, b); });
+    // an older draft's song block becomes the topic's soundtrack
+    (d.blocks || []).forEach(function (b) { if (b.type === "song" && !state.song && b.src) state.song = { src: b.src, title: b.title || "", artist: b.artist || "", album: b.album || "", art: b.art || "", start: +b.start || 0 }; });
+    state.blocks = (d.blocks || []).filter(function (b) { return b.type !== "song"; }).map(function (b) { return Object.assign({ id: uid() }, b); });
     if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
     selectedId = null; render();
   }

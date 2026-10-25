@@ -312,14 +312,15 @@
     modal.classList.toggle("is-dark", toneIsDark(tone));
   }
   function youtubeId(url) { var m = String(url || "").match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
-  // ---- song cards: a YouTube track played by a hidden player, one at a time,
+  // ---- a topic's soundtrack: a YouTube track played by a hidden player, one at a time,
   // with a hairline progress bar fed by the player's own updates ----
   var songNow = null;
+  function songBar(card) { return (card.closest(".cur-label") || card).querySelector(".cur-song-bar span"); }
   function songStop() {
     var s = songNow; if (!s) return; songNow = null;
     if (s.frame) s.frame.remove();
     s.card.classList.remove("is-playing", "is-loading");
-    var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = "0";
+    var bar = songBar(s.card); if (bar) bar.style.width = "0";
     var tm = s.card.querySelector(".cur-song-time"); if (tm) tm.textContent = "";
   }
   function songCmd(s, func) { try { s.frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: [] }), "*"); } catch (e) {} }
@@ -349,7 +350,7 @@
     if (info.playerState === 0) { songStop(); return; } // ended
     if (info.duration) s.dur = info.duration;
     if (info.currentTime != null && s.dur) {
-      var bar = s.card.querySelector(".cur-song-bar span"); if (bar) bar.style.width = Math.min(100, info.currentTime / s.dur * 100) + "%";
+      var bar = songBar(s.card); if (bar) bar.style.width = Math.min(100, info.currentTime / s.dur * 100) + "%";
       var tm = s.card.querySelector(".cur-song-time"), sec = Math.floor(info.currentTime);
       if (tm) tm.textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
     }
@@ -409,24 +410,6 @@
         if (!qt) return "";
         var cite = String(loc(b, "cite") || "").trim();
         return '<figure class="cur-quote"><blockquote>' + qt + "</blockquote>" + (cite ? "<figcaption>" + htmlEsc(cite) + "</figcaption>" : "") + "</figure>";
-      }
-      if (b.type === "song") {
-        // a paper card, like the labels: "Listening", the track large, who
-        // made it, the sleeve on the right; ▶ plays it from YouTube
-        var sid = youtubeId(b.src); if (!sid) return "";
-        var st = String(b.title || "").trim() || "Untitled", sa = String(b.artist || "").trim(), sb = String(b.album || "").trim();
-        var art = /^https:\/\//.test(b.art || "") ? b.art : "https://i.ytimg.com/vi/" + sid + "/mqdefault.jpg";
-        var by = [sa, sb].filter(Boolean).map(htmlEsc).join('<span class="cur-song-dot"> · </span>');
-        var fr = siteLang() === "fr";
-        return '<figure class="cur-song" data-yt="' + sid + '" data-start="' + (+b.start || 0) + '">'
-          + '<div class="cur-song-text"><span class="cur-song-kicker">' + (fr ? "À l’écoute" : "Listening") + "</span>"
-          + '<span class="cur-song-title">' + htmlEsc(st) + "</span>" + (by ? '<span class="cur-song-by">' + by + "</span>" : "")
-          + '<span class="cur-song-ctl"><button class="cur-song-play" type="button" aria-label="' + htmlEsc((fr ? "Écouter " : "Play ") + st + (sa ? " — " + sa : "")).replace(/"/g, "&quot;") + '">'
-          + '<svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4c.6-.4.6-1.3 0-1.7l-10-6.4c-.7-.5-1.6 0-1.6.8z"/></svg>'
-          + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg></button>'
-          + '<span class="cur-song-time" aria-hidden="true"></span></span></div>'
-          + '<img class="cur-song-art' + (b.art ? "" : " is-yt") + '" src="' + htmlEsc(art) + '" alt="" loading="lazy">'
-          + '<span class="cur-song-bar" aria-hidden="true"><span></span></span></figure>';
       }
       if (b.type === "video") {
         // videos sit in a dark Preview window (framed by MacWin once rendered)
@@ -787,7 +770,7 @@
   }
   function renderCurTopic(modal) {
     var no = curNo(curTopic);
-    modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false) + (no ? '<span class="cur-no">' + no + "</span>" : "");
+    modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false) + curTuneHTML(curTopic.song) + (no ? '<span class="cur-no">' + no + "</span>" : "");
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
     frameVideos(modal);
     buildTOC(modal);
@@ -853,6 +836,18 @@
       + (tail.length ? "," : "") + "</h2> "
       + (desc ? '<span class="cur-desc">' + esc(desc) + (date ? "," : "") + "</span> " : "")
       + (date ? '<time datetime="' + esc(t.date) + '">' + date + "</time>" : "");
+  }
+  // the topic's soundtrack (optional): one quiet line at the foot of its label
+  function curTuneHTML(song) {
+    var sid = song && youtubeId(song.src); if (!sid) return "";
+    var st = String(song.title || "").trim() || "Untitled", sa = String(song.artist || "").trim(), fr = siteLang() === "fr";
+    return '<div class="cur-tune" data-yt="' + sid + '" data-start="' + (+song.start || 0) + '">'
+      + '<button class="cur-song-play" type="button" aria-label="' + htmlEsc((fr ? "Écouter " : "Play ") + st + (sa ? " — " + sa : "")).replace(/"/g, "&quot;") + '">'
+      + '<svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4c.6-.4.6-1.3 0-1.7l-10-6.4c-.7-.5-1.6 0-1.6.8z"/></svg>'
+      + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg></button>'
+      + '<span class="cur-tune-name">' + htmlEsc(st) + (sa ? '<span class="cur-tune-by"> · ' + htmlEsc(sa) + "</span>" : "") + "</span>"
+      + '<span class="cur-song-time" aria-hidden="true"></span></div>'
+      + '<span class="cur-song-bar" aria-hidden="true"><span></span></span>';
   }
   function curCardText(t) { return curLabelHTML(t, true); }
   // the btbr mark, blind-embossed into the label's bottom-left corner
@@ -1054,7 +1049,7 @@
     var openBtn = t.closest(".cur-open, .cur-card .cur-tray");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
     var sp = t.closest(".cur-song-play");
-    if (sp) { var card = sp.closest(".cur-song"); if (card) songToggle(card); return; }
+    if (sp) { var tune = sp.closest(".cur-tune"); if (tune) songToggle(tune); return; }
     var sh = t.closest(".cur-modal-share");
     if (sh) { shareTopic(sh); return; }
     var zt = t.closest(".cur-zoomable, .cur-hot");

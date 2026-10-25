@@ -572,15 +572,13 @@ body.view-topics .studio-inspector { display: none; }
 /* room tone: the chosen swatch */
 .insp-swatches button.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--accent, #0a84ff); }
 
-/* song block: the same paper card as the site */
-.bs-card { display: flex; align-items: stretch; justify-content: space-between; gap: 20px; width: min(100%, 520px); padding: 18px 18px 18px 22px; background: #fff; border-radius: 2px; box-shadow: 0 1px 1px rgba(40, 30, 40, 0.05), 0 3px 6px rgba(40, 30, 40, 0.04), 0 14px 28px -10px rgba(40, 30, 40, 0.12); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
-.bs-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.bs-kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9a989b; margin-bottom: 8px; }
-.bs-title { font-size: 26px; line-height: 1.1; letter-spacing: -0.022em; color: #111; }
-.bs-by { margin-top: 6px; font-size: 14px; color: #77757a; }
-.bs-play { align-self: flex-start; margin-top: auto; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.16); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; padding-left: 2px; color: #111; }
-.bs-art { width: 116px; height: 116px; object-fit: cover; border-radius: 2px; align-self: center; flex: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 18px -8px rgba(0, 0, 0, 0.3); }
-.bs-empty { padding: 18px 8px; color: #b4b4b8; font-size: 12px; }
+/* the soundtrack line under the byline (as on the site's label card) */
+.doc-tune { display: flex; align-items: center; gap: 8px; margin: -16px 0 26px; font-size: 13px; color: #8a888b; }
+.doc-tune[hidden] { display: none; }
+.doc-tune i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.18); display: inline-flex; align-items: center; justify-content: center; font-size: 7px; font-style: normal; padding-left: 1px; color: #111; }
+.studio-canvas.is-dark-room .doc-tune { color: #9c968f; }
+.studio-canvas.is-dark-room .doc-tune i { border-color: rgba(255, 255, 255, 0.25); color: #f4f1ed; }
+.insp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 
 /* the canvas wears the topic's room tone; dark tones flip the writing to light */
 .studio-canvas { transition: background-color 0.35s ease; }

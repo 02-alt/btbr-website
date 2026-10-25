@@ -1861,57 +1861,39 @@ img.cur-avatar { object-fit: cover; }
 .cur-modal.is-dark .cap-grad { background-image: linear-gradient(90deg, rgb(150, 190, 190), rgb(190, 196, 206), rgb(250, 248, 245)); }
 .cur-modal.is-dark .cur-modal-panel { box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4); }
 
-/* ===== song: a paper card like the museum labels — "Listening", the track
-   set large, who made it, the sleeve on the right; a hairline fills as it plays ===== */
-.cur-modal-content .cur-song {
-  position: relative;
-  display: flex; align-items: stretch; justify-content: space-between; gap: 22px;
-  width: min(100%, 520px);
-  margin: 2.4em 0;
-  padding: 20px 20px 20px 24px;
-  background: #fff;
-  border-radius: 2px;
-  box-shadow:
-    0 1px 1px rgba(40, 30, 40, 0.05),
-    0 3px 6px rgba(40, 30, 40, 0.04),
-    0 14px 28px -10px rgba(40, 30, 40, 0.12);
+/* ===== soundtrack: one quiet line at the foot of the room's label card —
+   a hairline play glyph, the track, who made it; a hairline fills the
+   card's bottom edge as it plays ===== */
+.cur-tune {
+  position: absolute; left: 30px; right: 110px; bottom: 22px;
+  display: flex; align-items: center; gap: 9px;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  color: #111;
-  overflow: hidden;
+  font-size: 13px; line-height: 1.2; letter-spacing: -0.005em;
+  color: #77757a;
 }
-.cur-song-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.cur-song-kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9a989b; margin-bottom: 8px; }
-.cur-song-title { font-size: clamp(22px, 2.6vw, 28px); line-height: 1.1; letter-spacing: -0.022em; text-wrap: balance; }
-.cur-song-by { margin-top: 6px; font-size: 14px; line-height: 1.35; color: #77757a; letter-spacing: -0.005em; }
-.cur-song-dot { color: #b5b3b6; }
-.cur-song-ctl { margin-top: auto; padding-top: 16px; display: flex; align-items: center; gap: 10px; }
-.cur-song-play {
-  width: 30px; height: 30px; padding: 0; border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.16); background: none; color: #111;
+.cur-tune .cur-song-play {
+  flex: none; width: 20px; height: 20px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18); background: none; color: #111;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
-.cur-song-play:hover { border-color: #111; }
-.cur-song-play:active { transform: scale(0.92); }
-.cur-song-play:focus-visible { outline: 3px solid rgba(0, 113, 227, 0.55); outline-offset: 2px; }
-.cur-song-play svg { width: 12px; height: 12px; fill: currentColor; display: block; }
-.cur-song-play .ic-play { margin-left: 2px; }
-.cur-song-play .ic-pause,
-.cur-song.is-playing .cur-song-play .ic-play { display: none; }
-.cur-song.is-playing .cur-song-play .ic-pause { display: block; }
-.cur-song.is-playing .cur-song-play { background: #111; color: #fff; border-color: #111; }
-.cur-song.is-loading .cur-song-play { opacity: 0.5; }
-.cur-song-time { font-size: 12px; color: #9a989b; font-variant-numeric: tabular-nums; }
-.cur-song-art {
-  flex: none; align-self: center;
-  width: clamp(96px, 22vw, 128px); aspect-ratio: 1; height: auto;
-  object-fit: cover; display: block; border-radius: 2px;
-  background: #ebebef;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 18px -8px rgba(0, 0, 0, 0.3);
-}
-.cur-song-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; }
-.cur-song-bar span { display: block; height: 100%; width: 0; background: #111; transition: width 0.5s linear; }
+.cur-tune .cur-song-play:hover { border-color: #111; }
+.cur-tune .cur-song-play:active { transform: scale(0.9); }
+.cur-tune .cur-song-play:focus-visible { outline: 3px solid rgba(0, 113, 227, 0.55); outline-offset: 2px; }
+.cur-tune .cur-song-play svg { width: 8px; height: 8px; fill: currentColor; display: block; }
+.cur-tune .cur-song-play .ic-play { margin-left: 1px; }
+.cur-tune .cur-song-play .ic-pause,
+.cur-tune.is-playing .cur-song-play .ic-play { display: none; }
+.cur-tune.is-playing .cur-song-play .ic-pause { display: block; }
+.cur-tune.is-playing .cur-song-play { background: #111; border-color: #111; color: #fff; }
+.cur-tune.is-loading .cur-song-play { opacity: 0.5; }
+.cur-tune-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #3a383b; }
+.cur-tune-by { color: #9a989b; }
+.cur-tune .cur-song-time { flex: none; font-size: 12px; color: #9a989b; font-variant-numeric: tabular-nums; }
+.cur-label .cur-song-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; pointer-events: none; }
+.cur-label .cur-song-bar span { display: block; height: 100%; width: 0; background: #111; transition: width 0.5s linear; }
 .cur-song-player { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; border: 0; }
+@media (max-width: 560px) { .cur-tune { left: 22px; right: 92px; } }
 
 /* ===== share: a quiet glyph beside EN; "Link copied" fades in under it ===== */
 .cur-modal-share {
