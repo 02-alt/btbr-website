@@ -91,7 +91,7 @@
             "x": 50,
             "y": 43.456,
             "w": 47.206,
-            "h": 33.779,
+            "h": 33.677,
             "name": "Juvet Hotel_03.jpg",
             "note": "juvet landscape hotel in Valldal, Norway."
           }
@@ -122,7 +122,7 @@
             "x": 43.162,
             "y": 36.765,
             "w": 42,
-            "h": 56.848,
+            "h": 56.832,
             "name": "JH20_09.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           },
@@ -131,7 +131,7 @@
             "x": 7.941,
             "y": 3.971,
             "w": 42,
-            "h": 35.231,
+            "h": 35.245,
             "name": "69c78093c29b04eb80f82ae4_672c97c7e2740edb5e656d09_thisispaper-germany-family-house-djh2o-kohlmayer-oberst-11.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           },
@@ -140,7 +140,7 @@
             "x": 48.897,
             "y": 9.338,
             "w": 42,
-            "h": 33.554,
+            "h": 33.483,
             "name": "JH20_03.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           },
@@ -149,7 +149,7 @@
             "x": 5.515,
             "y": 51.103,
             "w": 42,
-            "h": 34.711,
+            "h": 34.657,
             "name": "JH20_11.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           }
@@ -170,7 +170,7 @@
             "x": 9.926,
             "y": 5.515,
             "w": 42,
-            "h": 34.624,
+            "h": 34.657,
             "name": "JH20_04.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           },
@@ -179,7 +179,7 @@
             "x": 50,
             "y": 12.206,
             "w": 42,
-            "h": 55.707,
+            "h": 55.853,
             "name": "JH20_01.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           },
@@ -188,7 +188,7 @@
             "x": 3.015,
             "y": 40.294,
             "w": 42,
-            "h": 55.369,
+            "h": 55.364,
             "name": "JH20_02.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           },
@@ -197,7 +197,7 @@
             "x": 37.721,
             "y": 60.735,
             "w": 42,
-            "h": 34.798,
+            "h": 34.657,
             "name": "JH20_05.jpeg",
             "note": "Kohlmayer Oberst - JH20."
           }
@@ -205,9 +205,8 @@
       }
     },
     {
-      "type": "text",
-      "head": false,
-      "html": "<p></p><p>Thanks for reading,</p><p>See you on the next one,</p><p>btbr</p><p></p>"
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3"
     }
   ],
   "tone": "#dfe2e5",
