@@ -1917,3 +1917,20 @@ img.cur-avatar { object-fit: cover; }
 .cur-modal.is-dark .cur-modal-share { background: rgba(255, 255, 255, 0.1); color: #c9c4be; }
 .cur-modal.is-dark .cur-modal-share:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
 .cur-modal.is-dark .cur-share-tip { color: #9c968f; }
+
+/* ===== handwriting: Isaac's own hand (My Hand), for a note or a signature ===== */
+@font-face {
+  font-family: "My Hand";
+  src: url("/assets/fonts/MyHand.ttf") format("truetype");
+  font-display: swap;
+}
+.cur-modal-content .cur-hand,
+.cur-modal-content .cur-sign {
+  font-family: "My Hand", Charter, Georgia, serif;
+  color: #1f1d20;
+  letter-spacing: 0;
+}
+.cur-modal-content .cur-hand { font-size: 25px; line-height: 1.4; margin: 1.4em 0; }
+.cur-modal-content .cur-sign { font-size: 40px; line-height: 1.15; margin: 1.8em 0 0.4em; text-align: right; }
+.cur-modal.is-dark .cur-modal-content .cur-hand,
+.cur-modal.is-dark .cur-modal-content .cur-sign { color: #f4f1ed; }

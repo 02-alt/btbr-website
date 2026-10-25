@@ -108,8 +108,9 @@
     return t.innerHTML;
   }
   document.addEventListener("paste", function (e) {
-    var box = e.target && e.target.closest && e.target.closest(".b-text, .b-cap, .bq-text, .bq-cite");
+    var box = e.target && e.target.closest && e.target.closest(".b-text, .b-cap, .bq-text, .bq-cite, .bh-text, .bsg-text");
     if (!box || !e.clipboardData) return;
+    if (box.matches(".bh-text, .bsg-text")) { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); return; }
     var html = e.clipboardData.getData("text/html");
     if (!html) return;
     e.preventDefault();
@@ -155,6 +156,18 @@
       } else { vw.innerHTML = "<span>click or drop a video</span>"; vw.addEventListener("click", function () { pickVideo(b); }); }
       wireMediaDrop(vw, b);
       return withCaption(vw, b);
+    }
+    if (b.type === "hand" || b.type === "sign") {
+      var hw = document.createElement("div");
+      var hv = tr(b, "text");
+      hw.className = (b.type === "hand" ? "bh-text" : "bsg-text") + (hv.trim() ? "" : " is-empty");
+      hw.dataset.ph = hint(b, "text", b.type === "sign" ? (state.author || "Your name") : (lang === "en" ? "A note in your hand…" : "Une note à la main…"));
+      hw.contentEditable = document.body.classList.contains("is-preview") ? "false" : "true";
+      hw.spellcheck = false;
+      hw.innerText = hv;
+      hw.addEventListener("input", function () { setTr(b, "text", hw.innerText.replace(/\n$/, "")); hw.classList.toggle("is-empty", !hw.textContent.trim()); });
+      if (b.type === "sign") hw.addEventListener("keydown", function (e) { if (e.key === "Enter") e.preventDefault(); });
+      return hw;
     }
     if (b.type === "quote") {
       var qw = document.createDocumentFragment();
@@ -964,7 +977,7 @@
       }
       inspectorEl.appendChild(sec); return;
     }
-    st.textContent = b.type.charAt(0).toUpperCase() + b.type.slice(1); sec.appendChild(st);
+    st.textContent = ({ hand: "Handwritten", sign: "Signature" })[b.type] || (b.type.charAt(0).toUpperCase() + b.type.slice(1)); sec.appendChild(st);
 
     if (b.type === "text") {
       var seg = document.createElement("div"); seg.className = "insp-seg";
@@ -1009,6 +1022,12 @@
           b.wtitle = v; clearTimeout(vdeb); vdeb = setTimeout(function () { rerenderBlock(b.id); }, 250);
         })));
       }
+    } else if (b.type === "hand" || b.type === "sign") {
+      var hh = document.createElement("div"); hh.className = "insp-empty";
+      hh.textContent = b.type === "sign"
+        ? "Your signature, in your own hand — set at the right, to close the topic. Empty = your author name."
+        : "A note in your own handwriting. Plain letters only: the font has no accents (é, à…), those fall back to the serif.";
+      sec.appendChild(hh);
     } else if (b.type === "quote") {
       var qh = document.createElement("div"); qh.className = "insp-empty";
       qh.textContent = "Type the quote on the canvas, and who said it underneath. Quote marks are added for you.";
@@ -1091,6 +1110,8 @@
           : type === "image" ? { id: uid(), type: "image", src: "", alt: "", caption: "", inset: false }
           : type === "video" ? { id: uid(), type: "video", src: "", caption: "" }
           : type === "quote" ? { id: uid(), type: "quote", text: "", cite: "" }
+          : type === "hand" ? { id: uid(), type: "hand", text: "" }
+          : type === "sign" ? { id: uid(), type: "sign", text: "" }
           : { id: uid(), type: "board", bg: "none", items: [], zc: 0 };
     var i = selectedId ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
     state.blocks.splice(i + 1, 0, b);
@@ -1268,7 +1289,7 @@
     document.querySelector(".doc").lang = lang;
     hideFmtBar();
     render();
-    if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap, .bq-text, .bq-cite").forEach(function (t) { t.contentEditable = "false"; });
+    if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap, .bq-text, .bq-cite, .bh-text, .bsg-text").forEach(function (t) { t.contentEditable = "false"; });
   });
   document.getElementById("addBlock").addEventListener("click", function (e) { e.stopPropagation(); openPicker(e.currentTarget); });
   document.getElementById("exportBtn").addEventListener("click", function () { exportBlocks(this); });
@@ -1276,7 +1297,7 @@
   document.getElementById("previewBtn").addEventListener("click", function () {
     var on = document.body.classList.toggle("is-preview");
     this.textContent = on ? "Edit" : "Preview";
-    document.querySelectorAll(".b-text, .b-cap, .bq-text, .bq-cite").forEach(function (t) { t.contentEditable = on ? "false" : "true"; });
+    document.querySelectorAll(".b-text, .b-cap, .bq-text, .bq-cite, .bh-text, .bsg-text").forEach(function (t) { t.contentEditable = on ? "false" : "true"; });
     if (on) hideFmtBar();
   });
   document.addEventListener("pointerdown", function (e) {
@@ -1510,6 +1531,8 @@
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
+      else if (b.type === "hand") { if ((b.text || "").trim()) outBlocks.push(withFr({ type: "hand", text: b.text.trim() }, b, ["text"])); }
+      else if (b.type === "sign") { outBlocks.push(withFr({ type: "sign", text: (b.text || "").trim() || state.author || "" }, b, ["text"])); }
       else if (b.type === "quote") { if (plain(b.text)) outBlocks.push(withFr({ type: "quote", text: cleanRich(b.text || ""), cite: (b.cite || "").trim() }, b, ["text", "cite"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
@@ -1682,6 +1705,7 @@
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
     else if (pb.type === "quote") { nb.text = pb.text || ""; nb.cite = pb.cite || ""; }
+    else if (pb.type === "hand" || pb.type === "sign") { nb.text = pb.text || ""; }
     else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;

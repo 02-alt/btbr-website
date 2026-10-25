@@ -405,6 +405,13 @@
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
           + (note ? ' data-note="' + q(note) + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
       }
+      if (b.type === "hand" || b.type === "sign") {
+        // written in Isaac's hand (the font only has plain ASCII, so curly
+        // quotes go straight; anything else falls back to the serif)
+        var ht = String(loc(b, "text") || "").replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').trim();
+        if (!ht) return "";
+        return '<p class="cur-' + b.type + '">' + htmlEsc(ht).replace(/\n/g, "<br>") + "</p>";
+      }
       if (b.type === "quote") {
         var qt = String(loc(b, "text") || "").replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, "").replace(/<\/?(?:font|span|div|p)\b[^>]*>/gi, " ").trim();
         if (!qt) return "";

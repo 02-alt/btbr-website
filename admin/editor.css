@@ -598,3 +598,12 @@ body.view-topics .studio-inspector { display: none; }
 .studio-canvas.is-dark-room .b-board.is-clear { background: rgba(255, 255, 255, 0.035); outline-color: rgba(255, 255, 255, 0.14); }
 .studio-canvas.is-dark-room .block-handle,
 .studio-canvas.is-dark-room .block-del { color: rgba(255, 255, 255, 0.5); }
+
+/* handwriting blocks: Isaac's own hand */
+@font-face { font-family: "My Hand"; src: url("/assets/fonts/MyHand.ttf") format("truetype"); font-display: swap; }
+.bh-text, .bsg-text { font-family: "My Hand", Charter, Georgia, serif; color: #1f1d20; outline: none; white-space: pre-wrap; }
+.bh-text { font-size: 25px; line-height: 1.4; min-height: 1.4em; }
+.bsg-text { font-size: 40px; line-height: 1.15; text-align: right; min-height: 1.15em; }
+.bh-text.is-empty::before, .bsg-text.is-empty::before { content: attr(data-ph); color: #c4c4c8; pointer-events: none; }
+.studio-canvas.is-dark-room .bh-text, .studio-canvas.is-dark-room .bsg-text { color: #f4f1ed; }
+.studio-canvas.is-dark-room .bh-text.is-empty::before, .studio-canvas.is-dark-room .bsg-text.is-empty::before { color: rgba(255, 255, 255, 0.25); }
