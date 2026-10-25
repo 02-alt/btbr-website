@@ -287,6 +287,29 @@
   var curList = null, curTopic = null;
 
   function authorPP(name) { var m = { "Isaaaaaaaac": "/assets/pp/isaaaaaaaac.jpg" }; return m[name] || ""; }
+  // catalogue number: set at publish; older topics fall back to their place
+  // in the list (the oldest is No. 001)
+  function curNo(t) {
+    var n = t && +t.no;
+    if (!n && curList) { var i = curList.map(function (x) { return x.slug; }).indexOf(t.slug); if (i >= 0) n = curList.length - i; }
+    return n ? (siteLang() === "fr" ? "N°\u00a0" : "No.\u00a0") + ("00" + n).slice(-3) : "";
+  }
+  // each topic can tint its room (a pale paper tone); default is the table's grey
+  var ROOM_GREY = "#e6e4e6";
+  function roomTone(slug) {
+    var t = curTopic && curTopic.slug === slug ? curTopic : (curList || []).filter(function (x) { return x.slug === slug; })[0];
+    return (t && /^#[0-9a-f]{6}$/i.test(t.tone || "") && t.tone) || ROOM_GREY;
+  }
+  // a dark tone flips the room's text to light
+  function toneIsDark(hex) {
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45;
+  }
+  function applyTone(modal, slug) {
+    var tone = roomTone(slug);
+    modal.style.setProperty("--room", tone);
+    modal.classList.toggle("is-dark", toneIsDark(tone));
+  }
   function authorAvatar(name) { var pp = authorPP(name); return pp ? '<img class="cur-avatar" src="' + pp + '" alt="" loading="lazy">' : '<span class="cur-avatar" aria-hidden="true"></span>'; }
   function curBlocksHTML(blocks) {
     var hc = 0;
@@ -319,6 +342,12 @@
         }
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
           + (note ? ' data-note="' + q(note) + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
+      }
+      if (b.type === "quote") {
+        var qt = String(loc(b, "text") || "").replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, "").replace(/<\/?(?:font|span|div|p)\b[^>]*>/gi, " ").trim();
+        if (!qt) return "";
+        var cite = String(loc(b, "cite") || "").trim();
+        return '<figure class="cur-quote"><blockquote>' + qt + "</blockquote>" + (cite ? "<figcaption>" + htmlEsc(cite) + "</figcaption>" : "") + "</figure>";
       }
       if (b.type === "video") {
         // videos sit in a dark Preview window (framed by MacWin once rendered)
@@ -386,7 +415,7 @@
       return;
     }
     var shut = { clipPath: trayClip(panel, tray), backgroundColor: "#ffffff" };
-    var open = { clipPath: "inset(0px 0px 0px 0px round 26px)", backgroundColor: "#e6e4e6" };
+    var open = { clipPath: "inset(0px 0px 0px 0px round 26px)", backgroundColor: roomTone(modal.dataset.slug) };
     var from = live || (opening ? shut : open), to = opening ? open : shut;
     var dur = opening ? 720 : 560;
     var anims = [panel.animate([from, to], { duration: dur, easing: springEase(opening ? 0.5 : 0.4, dur), fill: "both" })];
@@ -677,7 +706,8 @@
     }, function () {});
   }
   function renderCurTopic(modal) {
-    modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false);
+    var no = curNo(curTopic);
+    modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false) + (no ? '<span class="cur-no">' + no + "</span>" : "");
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
     frameVideos(modal);
     buildTOC(modal);
@@ -705,6 +735,7 @@
     var reopening = modal.classList.contains("is-closing");
     modal.classList.remove("is-closing");
     modal.dataset.slug = slug;
+    applyTone(modal, slug);
     setRoomHash(slug);
     var content = modal.querySelector(".cur-modal-content");
     if (!reopening || !content.innerHTML) {
@@ -718,7 +749,7 @@
     var close = modal.querySelector(".cur-modal-close"); if (close) close.focus({ preventScroll: true });
     fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
       if (modal.dataset.slug !== slug || modal.hidden) return;
-      curTopic = t; renderCurTopic(modal);
+      curTopic = t; applyTone(modal, slug); renderCurTopic(modal);
     }).catch(function () { content.innerHTML = '<p class="cur-loading">' + ui("failed") + "</p>"; });
   }
   // "23 October 2026" (or "23 octobre 2026") from the topic's YYYY-MM-DD date
@@ -745,13 +776,14 @@
   }
   function curCardText(t) { return curLabelHTML(t, true); }
   // the btbr mark, blind-embossed into the label's bottom-left corner
-  var CUR_MARK = '<svg class="cur-mark" viewBox="-3 -3 272 280" aria-hidden="true" focusable="false"><path d="'
+  var CUR_MARK_SVG = '<svg class="cur-mark" viewBox="-3 -3 272 280" aria-hidden="true" focusable="false"><path d="'
     + "M0 0h126v10H0zM0 38h10v126H0zM256 148h10v126h-10zM68 132h10v126H68zM10 194h122v10H10zM104 248h126v10H104z"
     + '"/></svg>';
+  function curFoot(t) { var no = curNo(t); return '<div class="cur-foot">' + CUR_MARK_SVG + (no ? '<span class="cur-no">' + no + "</span>" : "") + "</div>"; }
   function curCard(t) {
     var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
-      + '<div class="cur-sheet"><div class="cur-text">' + curCardText(t) + "</div>" + CUR_MARK + "</div>"
+      + '<div class="cur-sheet"><div class="cur-text">' + curCardText(t) + "</div>" + curFoot(t) + "</div>"
       + '<div class="cur-tray"><div class="cur-well"><div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div></div></div>"
       + "</article>";
   }
@@ -797,6 +829,7 @@
         var t = curList.filter(function (x) { return x.slug === card.dataset.slug; })[0];
         var box = card.querySelector(".cur-text");
         if (t && box) { box.innerHTML = curCardText(t); touched.push(box); }
+        var no = card.querySelector(".cur-no"); if (t && no) no.textContent = curNo(t);
       });
       var end = frame.querySelector(".cur-end"); if (end) { end.textContent = ui("end"); touched.push(end); }
       var empty = frame.querySelector(".cur-empty"); if (empty) { empty.outerHTML = curEmptyHTML(); touched.push(frame.querySelector(".cur-empty")); }

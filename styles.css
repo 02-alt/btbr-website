@@ -1228,13 +1228,27 @@ body:has(.curation-frame) { background: #e6e4e6; }
 }
 /* the btbr mark, blind-embossed: white on the white sheet, only its soft
    relief shows — a lit top edge and a faint shadow falling below */
+/* the card's foot: embossed mark left, catalogue number right */
+.cur-foot {
+  flex: none;
+  margin-top: auto;
+  padding: 0 6cqi 6cqi;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.cur-no {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(10px, 3cqi, 13px);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #9a989b;
+  line-height: 1;
+}
 .cur-mark {
   flex: none;
   width: 16cqi;
   height: auto;
-  margin: auto 0 0;
-  padding: 0 6cqi 6cqi;
-  box-sizing: content-box;
   fill: #fff;
   /* the drawn bars are hairlines at this size; a white stroke gives the
      relief enough edge to catch the light */
@@ -1317,7 +1331,8 @@ body:has(.curation-frame) { background: #e6e4e6; }
   .cur-card { grid-template-columns: 1fr; gap: 20px; width: min(100%, 420px); }
   .cur-sheet { aspect-ratio: auto; }
   .cur-text { font-size: clamp(22px, 7.4cqi, 30px); padding: 20px 22px 26px; }
-  .cur-mark { width: 40px; padding: 4px 22px 22px; }
+  .cur-foot { padding: 4px 22px 22px; }
+  .cur-mark { width: 40px; }
 }
 
 /* ===== the room: a topic, opened out of its cover tray (in-tab) ===== */
@@ -1335,7 +1350,7 @@ body:has(.curation-frame) { background: #e6e4e6; }
 .cur-modal-panel {
   position: relative;
   height: 100%;
-  background: #e6e4e6;
+  background: var(--room, #e6e4e6);
   border-radius: 26px;
   overflow: hidden;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.22);
@@ -1390,6 +1405,8 @@ body:has(.curation-frame) { background: #e6e4e6; }
   text-wrap: pretty;
 }
 .cur-label:empty { visibility: hidden; }
+.cur-label { position: relative; }
+.cur-label .cur-no { position: absolute; right: 30px; bottom: 26px; font-size: 12px; }
 .cur-label .cur-author { display: block; }
 .cur-label .cur-title { display: inline; font: inherit; letter-spacing: inherit; }
 
@@ -1728,6 +1745,28 @@ img.cur-avatar { object-fit: cover; }
 /* Safari doesn't clip an iframe to a rounded parent unless it's composited */
 .macwin-hole { isolation: isolate; -webkit-mask-image: -webkit-radial-gradient(white, black); }
 
+/* ===== pull quote: a line set large, like wall text ===== */
+.cur-modal-content .cur-quote { margin: 2.6em 0 2.4em; }
+.cur-quote blockquote {
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.16;
+  letter-spacing: -0.022em;
+  color: #111;
+  text-wrap: balance;
+  quotes: "\201C" "\201D";
+  hanging-punctuation: first;
+}
+.cur-quote blockquote::before { content: open-quote; }
+.cur-quote blockquote::after { content: close-quote; }
+.cur-quote figcaption {
+  margin-top: 14px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px; letter-spacing: 0.005em; color: #8a888b;
+}
+.cur-quote figcaption::before { content: "— "; }
+
 /* ===== focus mode: click a picture to see it large ===== */
 .cur-modal-content .cur-zoomable { cursor: zoom-in; transition: filter 0.2s ease; }
 .cur-modal-content .cur-zoomable:hover { filter: brightness(0.97); }
@@ -1796,3 +1835,28 @@ img.cur-avatar { object-fit: cover; }
 .cur-hot:focus-visible { outline: 3px solid rgba(0, 113, 227, 0.6); outline-offset: 3px; }
 /* a window from a board is a cut-out (transparent corners): its shadow follows the shape */
 .cur-focus-img.is-window { border-radius: 0; box-shadow: none; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25)) drop-shadow(0 26px 50px rgba(0, 0, 0, 0.4)); }
+
+/* ===== dark room tones: the room's text, buttons and furniture flip to light
+   (the white label + sources cards stay paper-white, dark text on them) ===== */
+.cur-modal.is-dark .cur-modal-content { color: #dedad5; }
+.cur-modal.is-dark .cur-modal-content .cur-h,
+.cur-modal.is-dark .cur-modal-content a,
+.cur-modal.is-dark .cur-quote blockquote { color: #f4f1ed; }
+.cur-modal.is-dark .cur-cap,
+.cur-modal.is-dark .cur-quote figcaption,
+.cur-modal.is-dark .cur-loading,
+.cur-modal.is-dark .cur-toc-label,
+.cur-modal.is-dark .cur-toc a { color: #9c968f; }
+.cur-modal.is-dark .cur-toc a { border-left-color: rgba(255, 255, 255, 0.14); }
+.cur-modal.is-dark .cur-toc a:hover,
+.cur-modal.is-dark .cur-toc a.is-active { color: #f4f1ed; }
+.cur-modal.is-dark .cur-toc a.is-active { border-left-color: #f4f1ed; }
+.cur-modal.is-dark .cur-modal-close { background: rgba(255, 255, 255, 0.1); color: #c9c4be; }
+.cur-modal.is-dark .cur-modal-close:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.cur-modal.is-dark .cur-modal-lang { border-color: rgba(255, 255, 255, 0.18); color: #c9c4be; }
+.cur-modal.is-dark .cur-modal-lang:hover { border-color: rgba(255, 255, 255, 0.32); color: #fff; }
+.cur-modal.is-dark .cur-board.is-clear .cur-board-art { background: rgba(255, 255, 255, 0.035); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06); }
+.cur-modal.is-dark .cur-modal-content .cur-fig2 > img,
+.cur-modal.is-dark .cur-modal-content .cur-fig2 > video { box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.08); }
+.cur-modal.is-dark .cap-grad { background-image: linear-gradient(90deg, rgb(150, 190, 190), rgb(190, 196, 206), rgb(250, 248, 245)); }
+.cur-modal.is-dark .cur-modal-panel { box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4); }

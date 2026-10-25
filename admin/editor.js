@@ -13,6 +13,7 @@
     cover: null,
     desc: "",
     inspiration: "",
+    tone: "",
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
@@ -104,7 +105,7 @@
     return t.innerHTML;
   }
   document.addEventListener("paste", function (e) {
-    var box = e.target && e.target.closest && e.target.closest(".b-text, .b-cap");
+    var box = e.target && e.target.closest && e.target.closest(".b-text, .b-cap, .bq-text, .bq-cite");
     if (!box || !e.clipboardData) return;
     var html = e.clipboardData.getData("text/html");
     if (!html) return;
@@ -152,8 +153,28 @@
       wireMediaDrop(vw, b);
       return withCaption(vw, b);
     }
+    if (b.type === "quote") {
+      var qw = document.createDocumentFragment();
+      qw.appendChild(editableLine(b, "text", "bq-text", "A line worth hanging on the wall…", "Une phrase à accrocher au mur…"));
+      qw.appendChild(editableLine(b, "cite", "bq-cite", "Who said it", "Qui l’a dit"));
+      return qw;
+    }
     return renderBoard(b);
   }
+  // a one-line contenteditable bound to b[key] (EN) / b.fr[key] (FR)
+  function editableLine(b, key, cls, phEn, phFr) {
+    var c = document.createElement("div");
+    var v = tr(b, key);
+    c.className = cls + (plain(v) ? "" : " is-empty");
+    c.dataset.ph = hint(b, key, lang === "en" ? phEn : phFr);
+    c.contentEditable = document.body.classList.contains("is-preview") ? "false" : "true";
+    c.spellcheck = false;
+    c.innerHTML = v;
+    c.addEventListener("input", function () { setTr(b, key, key === "cite" ? c.textContent : c.innerHTML); c.classList.toggle("is-empty", !c.textContent.trim()); });
+    c.addEventListener("keydown", function (e) { if (e.key === "Enter") e.preventDefault(); });
+    return c;
+  }
+
 
   function withCaption(media, b) {
     var frag = document.createDocumentFragment();
@@ -770,6 +791,21 @@
     return wrap;
   }
 
+  // the room's paper tone on the site (a pale tint; "" = the table's grey)
+  var TONES = [
+    ["", "#e6e4e6", "Grey"], ["#e9e4dc", "#e9e4dc", "Sand"], ["#dcd8d2", "#dcd8d2", "Stone"], ["#dfe2e5", "#dfe2e5", "Mist"],
+    ["#2c2b2d", "#2c2b2d", "Graphite"], ["#26292c", "#26292c", "Slate"], ["#332c27", "#332c27", "Umber"], ["#221d1a", "#221d1a", "Espresso"]
+  ];
+  function toneField() {
+    var sw = document.createElement("div"); sw.className = "insp-swatches";
+    TONES.forEach(function (t) {
+      var s = document.createElement("button"); s.type = "button"; s.style.background = t[1]; s.title = t[2];
+      if ((state.tone || "") === t[0]) s.classList.add("is-on");
+      s.addEventListener("click", function () { state.tone = t[0]; renderInspector(); });
+      sw.appendChild(s);
+    });
+    return sw;
+  }
   function renderInspector() {
     inspectorEl.innerHTML = "";
     // document settings (always)
@@ -787,6 +823,7 @@
     inspTa.value = state.inspiration || "";
     inspTa.addEventListener("input", function () { state.inspiration = inspTa.value; });
     docSec.appendChild(field("Inspiration", inspTa));
+    docSec.appendChild(field("Room tone", toneField()));
     inspectorEl.appendChild(docSec);
 
     var b = selectedId && blockById(selectedId);
@@ -863,6 +900,10 @@
           b.wtitle = v; clearTimeout(vdeb); vdeb = setTimeout(function () { rerenderBlock(b.id); }, 250);
         })));
       }
+    } else if (b.type === "quote") {
+      var qh = document.createElement("div"); qh.className = "insp-empty";
+      qh.textContent = "Type the quote on the canvas, and who said it underneath. Quote marks are added for you.";
+      sec.appendChild(qh);
     } else if (b.type === "board") {
       // background: swatches + colour picker
       var colorRow = document.createElement("div"); colorRow.className = "insp-color";
@@ -940,6 +981,7 @@
     var b = type === "text" ? { id: uid(), type: "text", head: false, html: "" }
           : type === "image" ? { id: uid(), type: "image", src: "", alt: "", caption: "", inset: false }
           : type === "video" ? { id: uid(), type: "video", src: "", caption: "" }
+          : type === "quote" ? { id: uid(), type: "quote", text: "", cite: "" }
           : { id: uid(), type: "board", bg: "none", items: [], zc: 0 };
     var i = selectedId ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
     state.blocks.splice(i + 1, 0, b);
@@ -1117,7 +1159,7 @@
     document.querySelector(".doc").lang = lang;
     hideFmtBar();
     render();
-    if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap").forEach(function (t) { t.contentEditable = "false"; });
+    if (document.body.classList.contains("is-preview")) document.querySelectorAll(".b-text, .b-cap, .bq-text, .bq-cite").forEach(function (t) { t.contentEditable = "false"; });
   });
   document.getElementById("addBlock").addEventListener("click", function (e) { e.stopPropagation(); openPicker(e.currentTarget); });
   document.getElementById("exportBtn").addEventListener("click", function () { exportBlocks(this); });
@@ -1125,7 +1167,7 @@
   document.getElementById("previewBtn").addEventListener("click", function () {
     var on = document.body.classList.toggle("is-preview");
     this.textContent = on ? "Edit" : "Preview";
-    document.querySelectorAll(".b-text, .b-cap").forEach(function (t) { t.contentEditable = on ? "false" : "true"; });
+    document.querySelectorAll(".b-text, .b-cap, .bq-text, .bq-cite").forEach(function (t) { t.contentEditable = on ? "false" : "true"; });
     if (on) hideFmtBar();
   });
   document.addEventListener("pointerdown", function (e) {
@@ -1337,6 +1379,7 @@
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
+      else if (b.type === "quote") { if (plain(b.text)) outBlocks.push(withFr({ type: "quote", text: cleanRich(b.text || ""), cite: (b.cite || "").trim() }, b, ["text", "cite"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
         if (b.src.indexOf("/curation/media/") === 0) { if (!cover) cover = b.src; outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"])); continue; }
@@ -1396,16 +1439,22 @@
       if (ob.fr && ob.fr.html) ob.fr.html = cleanRich(ob.fr.html);
     });
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
+    if (state.tone) topic.tone = state.tone;
     var frTitle = (state.fr && state.fr.title || "").trim();
     var langs = ["en"];
     if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
     topic.langs = langs;
-    files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) });
     log("Updating index…");
     var index = [];
     try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
+    // catalogue number: a topic keeps its number; a new one gets the next
+    var prev = index.filter(function (t) { return t.slug === slug; })[0];
+    var no = (prev && +prev.no) || (index.reduce(function (m, t, i) { return Math.max(m, +t.no || (index.length - i)); }, 0) + 1);
+    topic.no = no;
+    files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) });
     index = index.filter(function (t) { return t.slug !== slug; });
-    var entry = { slug: slug, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
+    var entry = { slug: slug, no: no, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
+    if (topic.tone) entry.tone = topic.tone;
     if (topic.fr) {
       var firstFr = outBlocks.filter(function (b) { return b.type === "text" && b.fr && b.fr.html; })[0];
       entry.fr = {};
@@ -1487,6 +1536,7 @@
     var nb = { id: uid(), type: pb.type };
     if (pb.type === "text") { nb.head = !!pb.head; nb.html = pb.html || ""; }
     else if (pb.type === "image") { nb.src = pb.src || ""; nb.alt = pb.alt || ""; nb.caption = pb.caption || ""; nb.note = pb.note || ""; nb.inset = !!pb.inset; }
+    else if (pb.type === "quote") { nb.text = pb.text || ""; nb.cite = pb.cite || ""; }
     else if (pb.type === "video") { nb.src = pb.src || ""; nb.caption = pb.caption || ""; if (pb.frame === false || pb.board) nb.frame = false; if (pb.wtitle) nb.wtitle = pb.wtitle; if (pb.board) nb.board = true; }
     if (pb.fr) nb.fr = pb.fr;
     return nb;
@@ -1499,6 +1549,7 @@
       state.cover = t.cover || null;
       state.desc = t.desc || "";
       state.inspiration = t.inspiration || "";
+      state.tone = t.tone || "";
       state.blocks = (t.blocks || []).map(blockFromPublished);
       if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
       editingSlug = slug;
@@ -1509,7 +1560,7 @@
   }
   function newTopic() {
     editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = "";
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = "";
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render();
@@ -1557,7 +1608,7 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, editingSlug: editingSlug, cover: null, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", editingSlug: editingSlug, cover: null, blocks: [] };
     if (state.cover) {
       if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
       else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
@@ -1584,7 +1635,7 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || "";
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || "";
     editingSlug = d.editingSlug || null;
     state.blocks = (d.blocks || []).map(function (b) { return Object.assign({ id: uid() }, b); });
     if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });

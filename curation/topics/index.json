@@ -8,7 +8,9 @@
     "desc": "Built to Disappear",
     "langs": [
       "en"
-    ]
+    ],
+    "no": 2,
+    "tone": "#dfe2e5"
   },
   {
     "slug": "riots",
@@ -19,6 +21,8 @@
     "desc": "Riots seen through art",
     "langs": [
       "en"
-    ]
+    ],
+    "no": 1,
+    "tone": "#332c27"
   }
 ]
