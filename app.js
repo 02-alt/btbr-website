@@ -448,9 +448,9 @@
     var ov = document.createElement("div");
     ov.className = "cur-focus"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", img.alt || "Image");
     ov.innerHTML = '<div class="cur-focus-back"></div><img class="cur-focus-img" alt="" draggable="false">'
-      + (note ? '<p class="cur-focus-note"></p>' : "")
+      + '<p class="cur-focus-note"' + (note ? "" : " hidden") + '></p><div class="cur-focus-count" aria-hidden="true"></div>'
       + '<button class="cur-focus-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>';
-    var big = ov.querySelector(".cur-focus-img"), noteEl = ov.querySelector(".cur-focus-note");
+    var big = ov.querySelector(".cur-focus-img"), noteBox = ov.querySelector(".cur-focus-note"), noteEl = note ? noteBox : null;
     big.src = img.currentSrc || img.src; big.alt = hot ? el.getAttribute("aria-label") || "" : img.alt || "";
     if (noteEl) noteEl.textContent = note;
     room.appendChild(ov);
@@ -460,12 +460,13 @@
     big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
     if (noteEl) { noteEl.style.left = (t.vw - t.noteW) / 2 + "px"; noteEl.style.top = (t.t + t.h + 18) + "px"; }
     // `img` = the picture to show, `src` = what it grows out of (and returns to)
-    var f = focusState = { ov: ov, big: big, img: el, note: noteEl, back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
+    var f = focusState = { ov: ov, big: big, img: el, note: noteEl, noteBox: noteBox, count: ov.querySelector(".cur-focus-count"), back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
+    focusCount(f);
     // a window on a board keeps its Preview-window corner (16pt at 726pt wide)
     f.srcR = hot ? 0 : parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
     f.toR = hot ? 0 : 14;
     if (!hot) el.style.visibility = "hidden";
-    var k = r.width / t.w, chrome = [f.close].concat(noteEl ? [noteEl] : []);
+    var k = r.width / t.w, chrome = [f.close, f.count].concat(noteEl ? [noteEl] : []);
     if (reduceMotion || !big.animate) {
       f.anims = [ov.animate ? ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "both" }) : null].filter(Boolean);
     } else {
@@ -476,6 +477,68 @@
     }
     f.close.focus({ preventScroll: true });
     wireFocusDrag(f);
+  }
+  // ← / → (or a sideways swipe) step through every picture in the topic, in
+  // page order: the picture slides out, the next one fades in at its own size
+  function focusList(f) {
+    var room = f.ov.closest(".cur-modal");
+    if (!room) return [];
+    // reading order: top to bottom, then left to right (a board's pictures
+    // are stacked in z-order in the page, not in the order you see them)
+    return [].slice.call(room.querySelectorAll(".cur-modal-content .cur-zoomable, .cur-modal-content .cur-hot"))
+      .map(function (el, i) { var r = el.getBoundingClientRect(); return { el: el, t: r.top, l: r.left, i: i }; })
+      .sort(function (a, b) { return Math.abs(a.t - b.t) > 24 ? a.t - b.t : (a.l - b.l) || (a.i - b.i); })
+      .map(function (o) { return o.el; });
+  }
+  function focusCount(f) {
+    var list = focusList(f), i = list.indexOf(f.img);
+    f.count.textContent = list.length > 1 && i >= 0 ? (i + 1) + " / " + list.length : "";
+  }
+  function stepFocus(dir) {
+    var f = focusState; if (!f || f.closing || f.stepping) return;
+    var list = focusList(f), el = list[list.indexOf(f.img) + dir];
+    var calm = reduceMotion || !f.big.animate;
+    if (!el) { // the end of the topic: a small bump, nothing more
+      if (!calm) { settleFocus(f); f.anims = [f.big.animate([{ transform: "none" }, { transform: "translateX(" + dir * 10 + "px)" }, { transform: "none" }], { duration: 280, easing: "ease-out" })]; }
+      return;
+    }
+    f.stepping = true;
+    var hot = el.classList.contains("cur-hot"), img = new Image();
+    img.onerror = function () { f.stepping = false; };
+    img.onload = function () {
+      if (focusState !== f || f.closing) { f.stepping = false; return; }
+      settleFocus(f);
+      var out = calm ? null : f.big.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(" + -dir * 18 + "px)" }], { duration: 150, easing: "ease-in", fill: "both" });
+      if (f.note && !calm) f.note.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: "both" });
+      function swapIn() {
+        if (out) out.cancel();
+        // leave its old place on the page, bring the new one into view so a
+        // close lands back on it
+        f.img.style.visibility = "";
+        el.scrollIntoView({ block: "center" });
+        var note = el.getAttribute("data-note") || "";
+        f.noteBox.textContent = note; f.noteBox.hidden = !note;
+        f.noteBox.getAnimations && f.noteBox.getAnimations().forEach(function (a) { a.cancel(); });
+        var t = focusTarget(img, note ? f.noteBox : null, hot ? el.getBoundingClientRect() : null);
+        f.big.src = img.src; f.big.alt = hot ? el.getAttribute("aria-label") || "" : el.alt || "";
+        f.big.classList.toggle("is-window", hot);
+        f.big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
+        if (note) { f.noteBox.style.left = (t.vw - t.noteW) / 2 + "px"; f.noteBox.style.top = (t.t + t.h + 18) + "px"; }
+        f.ov.setAttribute("aria-label", f.big.alt || "Image");
+        f.t = t; f.img = el; f.note = note ? f.noteBox : null;
+        f.srcR = hot ? 0 : parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+        f.toR = hot ? 0 : 14;
+        if (!hot) el.style.visibility = "hidden";
+        focusCount(f);
+        if (!calm) {
+          f.anims = [f.big.animate([{ opacity: 0, transform: "translateX(" + dir * 18 + "px)" }, { opacity: 1, transform: "none" }], { duration: 300, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" })];
+          if (f.note) f.anims.push(f.note.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 60, fill: "backwards" }));
+        }
+        f.stepping = false;
+      }
+      if (out) setTimeout(swapIn, 150); else swapIn();
+    };
+    img.src = hot ? el.getAttribute("data-src") : (el.currentSrc || el.src);
   }
   function settleFocus(f) { f.anims.forEach(function (a) { try { a.finish(); } catch (e) {} }); f.anims = []; }
   function closeFocus() {
@@ -491,13 +554,13 @@
     var to = onScreen ? { transform: lift(f, r), borderRadius: f.srcR / k + "px", opacity: 1 } : { transform: "translateY(48px) scale(0.94)", borderRadius: f.toR + "px", opacity: 0 };
     var a = f.big.animate([from, to], { duration: 480, easing: springEase(0.36, 480), fill: "both" });
     f.back.animate([{ opacity: backFrom }, { opacity: 0 }], { duration: 300, easing: "ease", fill: "both" });
-    [f.close].concat(f.note ? [f.note] : []).forEach(function (el) { el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 140, fill: "both" }); });
+    [f.close, f.count].concat(f.note ? [f.note] : []).forEach(function (el) { el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 140, fill: "both" }); });
     a.onfinish = done;
     return true;
   }
   // drag to dismiss: 1:1 tracking, velocity from the last few moves
   function wireFocusDrag(f) {
-    var start = null, hist = [], dragging = false;
+    var start = null, hist = [], dragging = false, last = { dx: 0, dy: 0 };
     f.ov.addEventListener("pointerdown", function (e) {
       if (f.closing || e.target.closest(".cur-focus-close")) return;
       settleFocus(f);
@@ -508,6 +571,7 @@
       if (!start || f.closing) return;
       var dx = e.clientX - start.x, dy = e.clientY - start.y;
       if (!dragging && Math.hypot(dx, dy) < 8) return;
+      last = { dx: dx, dy: dy };
       dragging = true;
       hist.push({ y: e.clientY, t: e.timeStamp }); if (hist.length > 5) hist.shift();
       var p = Math.min(1, Math.abs(dy) / (window.innerHeight * 0.5));
@@ -519,6 +583,11 @@
       if (!start) return;
       var was = dragging; start = null; dragging = false;
       if (!was) { if (e.type === "pointerup") closeFocus(); return; }
+      // a sideways swipe steps to the next / previous picture
+      if (Math.abs(last.dx) > 60 && Math.abs(last.dx) > Math.abs(last.dy) * 1.4) {
+        f.big.style.transform = ""; f.back.style.opacity = ""; if (f.note) f.note.style.opacity = "";
+        stepFocus(last.dx < 0 ? 1 : -1); return;
+      }
       var a = hist[0], b = hist[hist.length - 1], vy = b.t > a.t ? (b.y - a.y) / (b.t - a.t) * 1000 : 0;
       var cur = new DOMMatrixReadOnly(getComputedStyle(f.big).transform);
       var projected = cur.m42 + (vy / 1000) * 0.998 / (1 - 0.998); // where the throw would come to rest
@@ -539,6 +608,7 @@
     if (focusState) { focusState.img.style.visibility = ""; focusState.ov.remove(); focusState = null; }
     m.classList.add("is-closing");
     curTopic = null;
+    setRoomHash("");
     roomAnimate(m, false, function () {
       stopRoom(m);
       m.classList.remove("is-closing");
@@ -635,6 +705,7 @@
     var reopening = modal.classList.contains("is-closing");
     modal.classList.remove("is-closing");
     modal.dataset.slug = slug;
+    setRoomHash(slug);
     var content = modal.querySelector(".cur-modal-content");
     if (!reopening || !content.innerHTML) {
       modal.querySelector(".cur-label").innerHTML = "";
@@ -697,8 +768,27 @@
       feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
       // after the grid, not in it, so a short row of cards stays centred
       feed.insertAdjacentHTML("afterend", '<p class="cur-end">' + ui("end") + "</p>");
+      openFromHash();
     }).catch(function () { curList = []; feed.insertAdjacentHTML("beforeend", curEmptyHTML()); });
   }
+  // deep links: /curation/#slug opens that topic (out of its tray, once the
+  // table is laid out); the address follows the open room without adding
+  // history entries, so Back still leaves the page as before
+  function hashSlug() { return decodeURIComponent((location.hash || "").slice(1)); }
+  function openFromHash() {
+    var slug = hashSlug();
+    if (!slug || !curList || !document.querySelector(".curation-frame")) return;
+    if (!curList.some(function (x) { return x.slug === slug; })) return;
+    var m = document.querySelector(".cur-modal");
+    if (m && !m.hidden && m.dataset.slug === slug) return;
+    requestAnimationFrame(function () { openCurTopic(slug); });
+  }
+  function setRoomHash(slug) {
+    if (!document.querySelector(".curation-frame")) return;
+    var url = location.pathname + location.search + (slug ? "#" + encodeURIComponent(slug) : "");
+    try { history.replaceState(history.state, "", url); } catch (e) {}
+  }
+  window.addEventListener("hashchange", openFromHash);
   // re-render the curation feed + open topic in the current language
   function applyCurLang(touched) {
     var frame = document.querySelector(".curation-frame"); if (!frame) return;
@@ -860,6 +950,7 @@
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { if (!closeFocus()) closeCurModal(); return; }
+    if (focusState && (e.key === "ArrowRight" || e.key === "ArrowLeft")) { e.preventDefault(); stepFocus(e.key === "ArrowRight" ? 1 : -1); return; }
     var z = e.target && e.target.classList && e.target.classList.contains("cur-zoomable");
     if (z && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openFocus(e.target); }
   });

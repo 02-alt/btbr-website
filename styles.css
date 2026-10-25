@@ -1751,6 +1751,14 @@ img.cur-avatar { object-fit: cover; }
   font-size: 15px; line-height: 1.45; letter-spacing: -0.01em;
   color: rgba(255, 255, 255, 0.86); text-wrap: balance;
 }
+/* "3 / 12": where you are in the topic, barely there */
+.cur-focus-count {
+  position: fixed; top: 31px; left: 28px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
+  font-size: 12px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.42);
+  pointer-events: none;
+}
 .cur-focus-close {
   position: fixed; top: 22px; right: 22px;
   width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%;
