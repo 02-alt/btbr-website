@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram export — Curation Studio</title>
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
+  <style>
+    @font-face { font-family: "My Hand"; src: url("/assets/fonts/MyHand.ttf") format("truetype"); }
+    :root { --tone: #e6e4e6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--tone); color: #111; font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+    .bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 22px;
+      background: color-mix(in srgb, var(--tone) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .brand { font-weight: 600; margin-right: 6px; }
+    .brand span { font-weight: 400; color: rgba(17,17,17,0.55); }
+    .brand a { color: inherit; text-decoration: none; }
+    select, button { font: inherit; }
+    select { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: #fff; }
+    .seg { display: inline-flex; background: rgba(0,0,0,0.06); border-radius: 9px; padding: 2px; }
+    .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 7px; cursor: pointer; color: rgba(17,17,17,0.65); }
+    .seg button[aria-pressed="true"] { background: #fff; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+    .chk { display: inline-flex; gap: 6px; align-items: center; color: rgba(17,17,17,0.75); cursor: pointer; }
+    .count { color: rgba(17,17,17,0.55); }
+    .count.warn { color: #b3261e; }
+    .grow { flex: 1; }
+    .btn { border: 1px solid rgba(0,0,0,0.12); background: #fff; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
+    .btn.primary { background: #111; color: #fff; border-color: #111; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+
+    .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 26px 18px; padding: 28px 22px 18px; }
+    .slide { margin: 0; min-width: 0; }
+    .slide canvas { display: block; width: 100%; aspect-ratio: 4 / 5; height: auto; border-radius: 4px; cursor: pointer;
+      box-shadow: 0 1px 1px rgba(40,30,40,0.05), 0 3px 6px rgba(40,30,40,0.05), 0 14px 28px -10px rgba(40,30,40,0.18);
+      transition: opacity 0.2s ease, transform 0.2s ease; }
+    .slide canvas:hover { transform: translateY(-2px); }
+    .slide.is-off canvas { opacity: 0.28; }
+    .slide-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; min-height: 24px; }
+    .slide-pick { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: rgba(17,17,17,0.6); font-variant-numeric: tabular-nums; }
+    .slide-pick span { min-width: 44px; text-align: center; }
+    .slide-pick button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: rgba(0,0,0,0.06); color: #111; font-size: 16px; line-height: 1; cursor: pointer; }
+    .slide-pick button:hover { background: rgba(0,0,0,0.1); }
+    .slide-pick button:active { transform: scale(0.94); }
+    .slide-tag { display: flex; gap: 6px; align-items: center; font-size: 12px; color: rgba(17,17,17,0.6); cursor: pointer; text-transform: capitalize; }
+
+    .cap { max-width: 760px; padding: 6px 22px 48px; }
+    .cap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .cap-head h2 { font-size: 13px; font-weight: 600; margin: 0; }
+    textarea { width: 100%; min-height: 220px; padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); background: #fff;
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; resize: vertical; }
+    .hint { color: rgba(17,17,17,0.5); font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand"><a href="/admin/">Studio</a> <span>/ Instagram</span></div>
+    <select id="topic" aria-label="Topic"></select>
+    <div class="seg" role="group" aria-label="Text slides">
+      <button type="button" data-style="blur" title="Text card over the nearest photo, out of focus">Blur</button>
+      <button type="button" data-style="strip" title="Nearest photo as a strip above the text card">Strip</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="folio" /> Page count</label>
+    <span class="count" id="count">Loading…</span>
+    <span class="grow"></span>
+    <button class="btn" id="share" type="button" hidden>Share to Instagram…</button>
+    <button class="btn primary" id="dlZip" type="button">Download ZIP</button>
+  </header>
+
+  <main>
+    <div class="strip" id="strip"></div>
+    <section class="cap">
+      <div class="cap-head"><h2>Caption</h2><button class="btn" id="copyCap" type="button">Copy caption</button></div>
+      <textarea id="caption" spellcheck="true"></textarea>
+      <div class="hint">Click a slide to download it alone; untick it to leave it out. Under a text slide, ‹ › changes its photo (“auto” is the nearest image block). The ZIP holds the ticked slides, numbered in order, plus this caption.</div>
+    </section>
+  </main>
+
+  <script src="/assets/macwin.js?v=2"></script>
+  <script src="/admin/instagram.js?v=3"></script>
+</body>
+</html>

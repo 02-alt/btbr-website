@@ -483,12 +483,13 @@ body.view-topics .studio-inspector { display: none; }
 .topic-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topic-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 .topic-acts { display: flex; gap: 6px; flex: none; }
-.topic-acts button {
+.topic-acts button, .topic-acts a {
   font: inherit; font-size: 12px; font-weight: 590; padding: 6px 12px; border-radius: 8px;
   border: 1px solid var(--hair); background: #fff; color: var(--ink); cursor: pointer;
 }
 .topic-acts .del { color: #ff3b30; }
-.topic-acts button:hover { background: #fafafa; }
+.topic-acts a { text-decoration: none; display: inline-flex; align-items: center; }
+.topic-acts button:hover, .topic-acts a:hover { background: #fafafa; }
 .topics-empty, .topics-loading { color: var(--ink-soft); font-size: 14px; padding: 30px 0; text-align: center; }
 
 /* resume-draft banner */

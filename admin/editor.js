@@ -1694,7 +1694,8 @@
         var acts = document.createElement("div"); acts.className = "topic-acts";
         var ed = document.createElement("button"); ed.type = "button"; ed.textContent = "Edit"; ed.addEventListener("click", function () { editTopic(t.slug); });
         var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl); });
-        acts.appendChild(ed); acts.appendChild(dl);
+        var ig = document.createElement("a"); ig.href = "/admin/instagram.html?t=" + encodeURIComponent(t.slug); ig.target = "_blank"; ig.rel = "noopener"; ig.textContent = "Instagram";
+        acts.appendChild(ed); acts.appendChild(ig); acts.appendChild(dl);
         row.appendChild(thumb); row.appendChild(meta); row.appendChild(acts); listEl.appendChild(row);
       });
     }).catch(function () { listEl.innerHTML = '<p class="topics-empty">Couldn’t load topics.</p>'; });
