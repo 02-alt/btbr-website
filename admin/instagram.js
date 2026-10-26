@@ -143,6 +143,17 @@
     var k = Math.max(im.naturalWidth / 726, im.naturalHeight / 760), e = 5 * k;
     return { x: 3 * k + e, y: 37 * k + e, w: im.naturalWidth - 6 * k - 2 * e, h: im.naturalHeight - 40 * k - 2 * e };
   }
+  // what's already on the slide, blurred, faded in along y by stops [[y, 0..1], …]
+  function focusPull(ctx, stops) {
+    var b = document.createElement("canvas"); b.width = W; b.height = H;
+    var bc = b.getContext("2d");
+    if (typeof bc.filter === "string") { bc.filter = "blur(14px)"; bc.drawImage(ctx.canvas, 0, 0); bc.filter = "none"; }
+    else { var sm = document.createElement("canvas"); sm.width = W / 12; sm.height = H / 12; sm.getContext("2d").drawImage(ctx.canvas, 0, 0, sm.width, sm.height); bc.imageSmoothingQuality = "high"; bc.drawImage(sm, 0, 0, W, H); }
+    var m = bc.createLinearGradient(0, 0, 0, H);
+    stops.forEach(function (st) { m.addColorStop(Math.max(0, Math.min(1, st[0] / H)), "rgba(0,0,0," + st[1] + ")"); });
+    bc.globalCompositeOperation = "destination-in"; bc.fillStyle = m; bc.fillRect(0, 0, W, H);
+    ctx.drawImage(b, 0, 0);
+  }
   function shadowed(ctx, fn, a, blur, dy) {
     ctx.save(); ctx.shadowColor = "rgba(20,15,20," + (a || 0.22) + ")"; ctx.shadowBlur = blur || 50; ctx.shadowOffsetY = dy || 24; fn(); ctx.restore();
   }
@@ -271,7 +282,8 @@
       } else if (b.type === "quote" && b.text) {
         out.push({ kind: "quote", text: b.text, cite: b.cite });
       } else if ((b.type === "hand" || b.type === "sign") && b.text) {
-        out.push({ kind: b.type, text: b.text });
+        var last = photoPool().filter(function (p) { return p !== topic.cover; }).pop() || topic.cover;
+        out.push({ kind: b.type, text: b.text, key: "note:" + i, auto: last, photo: picks["note:" + i] || last });
       }
     });
     if (tailFrom === blocks.length && topic.inspiration) out.push({ kind: "sources" });
@@ -383,14 +395,23 @@
     },
 
     hand: function (ctx, s) {
-      wall(ctx);
       var size = 66, lh = size * 1.32, lines = wrap(plainRuns(s.text), size, HAND, W - 2 * M - 150);
       var cw = W - 2 * M - 40, ch = linesH(lines, lh) + 150, cx = (W - cw) / 2, cy = (H - FOOT - ch) / 2 + 10;
+      return loadImg(s.photo).then(function (im) {
+      s.light = !!im;
+      if (im) {                                      // the photo edge to edge, out of focus around the note
+        ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
+        cover(ctx, im, 0, 0, W, H, 0, bare(im));
+        focusPull(ctx, [[cy - 280, 0], [cy - 10, 1], [cy + ch + 10, 1], [cy + ch + 280, 0]]);
+        var g = ctx.createLinearGradient(0, H - 260, 0, H);
+        g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.35)");
+        ctx.fillStyle = g; ctx.fillRect(0, H - 260, W, 260);
+      } else wall(ctx);
       ctx.save(); ctx.translate(W / 2, cy + ch / 2); ctx.rotate(-0.018); ctx.translate(-W / 2, -(cy + ch / 2));
       card(ctx, cx, cy, cw, ch);
       drawLines(ctx, lines, cx + 72, cy + 62, size, lh, HAND, "#1f1d20");
       ctx.restore();
-      return Promise.resolve();
+      });
     },
 
     sign: function (ctx, s) {
@@ -462,15 +483,7 @@
       var top = H - 120 - th;
       if (im) {
         cover(ctx, im, 0, 0, W, H, 0, bare(im));
-        // a soft focus pull behind the words: the photo, blurred, faded in from above the text
-        var b = document.createElement("canvas"); b.width = W; b.height = H;
-        var bc = b.getContext("2d");
-        if (typeof bc.filter === "string") { bc.filter = "blur(14px)"; bc.drawImage(ctx.canvas, 0, 0); bc.filter = "none"; }
-        else { var sm = document.createElement("canvas"); sm.width = W / 12; sm.height = H / 12; sm.getContext("2d").drawImage(ctx.canvas, 0, 0, sm.width, sm.height); bc.imageSmoothingQuality = "high"; bc.drawImage(sm, 0, 0, W, H); }
-        var m = bc.createLinearGradient(0, top - 320, 0, top - 30);
-        m.addColorStop(0, "rgba(0,0,0,0)"); m.addColorStop(1, "rgba(0,0,0,1)");
-        bc.globalCompositeOperation = "destination-in"; bc.fillStyle = m; bc.fillRect(0, 0, W, H);
-        ctx.drawImage(b, 0, 0);
+        focusPull(ctx, [[top - 320, 0], [top - 30, 1]]);   // a soft focus pull behind the words
       }
       var g = ctx.createLinearGradient(0, top - 380, 0, H);
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.45, "rgba(0,0,0,0.55)"); g.addColorStop(1, "rgba(0,0,0,0.86)");
@@ -543,7 +556,7 @@
       cb.addEventListener("change", function () { skip[i] = !cb.checked; fig.classList.toggle("is-off", !!skip[i]); });
       tag.appendChild(cb); tag.appendChild(document.createTextNode(" " + pad(i + 1) + " · " + s.kind));
       var foot = document.createElement("div"); foot.className = "slide-foot"; foot.appendChild(tag);
-      if (s.kind === "text" && pool.length > 1) foot.appendChild(picker(s, i));
+      if (s.auto && pool.length > 1) foot.appendChild(picker(s, i));
       fig.appendChild(c); fig.appendChild(foot); strip.appendChild(fig);
       c.title = "Click to download this slide";
       c.addEventListener("click", function () { blobOf(c).then(function (b) { save(b, fileName(i)); }); });
