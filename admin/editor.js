@@ -819,7 +819,12 @@
       ctx.fillStyle = cover.bg || "#ebebef"; ctx.fillRect(0, 0, W, H);
       var items = cover.items.slice().sort(function (a, b) { return (a.z || 0) - (b.z || 0); });
       Promise.all(items.map(function (it) { return new Promise(function (r) { var im = new Image(); im.onload = function () { r({ it: it, im: im }); }; im.onerror = function () { r(null); }; im.src = it.src; }); }))
-        .then(function (arr) { arr.forEach(function (o) { if (!o) return; var dw = o.it.w / 100 * W, dh = dw * (o.im.naturalHeight / o.im.naturalWidth); ctx.save(); if (o.it.win) itemShadow(ctx, dw); ctx.drawImage(o.im, o.it.x / 100 * W, o.it.y / 100 * H, dw, dh); ctx.restore(); }); c.toBlob(resolve, "image/png"); });
+        .then(function (arr) {
+          // every picture on the cover hangs as a print (the photo out of its window, if it has one)
+          var tilts = [-0.04, 0.035, -0.02, 0.045], tapes = ["top", "corner", "top", "both"];
+          arr.forEach(function (o, i) { if (!o) return; Prints.draw(ctx, o.im, o.it.x / 100 * W, o.it.y / 100 * H, o.it.w / 100 * W, { window: !!o.it.win, angle: tilts[i % 4], tape: tapes[i % 4] }); });
+          c.toBlob(resolve, "image/png");
+        });
     });
   }
   function coverField() {
