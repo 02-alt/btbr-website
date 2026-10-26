@@ -38,5 +38,28 @@
     ctx.restore();
     return PH;
   }
-  window.Prints = { bare: bare, draw: draw };
+  // a published board window (board-N-M.png) or one baked in Studio (`win`) carries the Preview chrome
+  function isWindow(src, it) { return !!(it && it.win) || /\/board-\d+-\d+\.png($|\?)/.test(String(src || "")); }
+  var TILTS = [-2.6, 2, -1.2, 2.8, -2, 1.4], TAPES = ["top", "corner", "top", "both", "corner", "top"];
+  // the same print as a DOM element (class "print", styled by the page): the photo cropped out of its
+  // window once it loads; `o.onload` runs after, when the print has its real height
+  function dom(src, o) {
+    o = o || {};
+    var i = o.index || 0, card = document.createElement("span");
+    card.className = "print tape-" + (o.tape || TAPES[i % 6]);
+    card.style.setProperty("--tilt", (o.tilt != null ? o.tilt : TILTS[i % 6]) + "deg");
+    card.innerHTML = '<span class="print-in"><span class="print-photo"><img alt="" draggable="false"></span><span class="print-note"></span></span>';
+    var im = card.querySelector("img"), box = card.querySelector(".print-photo");
+    card.querySelector(".print-note").textContent = o.note || "";
+    im.addEventListener("load", function () {
+      var nw = im.naturalWidth, nh = im.naturalHeight, s = o.window ? bare(im) : { x: 0, y: 0, w: nw, h: nh };
+      box.style.aspectRatio = (s.w / s.h).toFixed(4);
+      im.style.cssText = "width:" + (nw / s.w * 100) + "%;height:" + (nh / s.h * 100) + "%;left:" + (-s.x / s.w * 100) + "%;top:" + (-s.y / s.h * 100) + "%";
+      im.classList.add("is-in");
+      if (o.onload) o.onload();
+    });
+    if (src) im.src = src;
+    return card;
+  }
+  window.Prints = { bare: bare, draw: draw, dom: dom, isWindow: isWindow };
 })();

@@ -151,7 +151,14 @@
           vm = document.createElement("video"); vm.src = b.src; vm.controls = true;
           if (!b.nat) vm.addEventListener("loadedmetadata", function () { if (!b.nat && vm.videoWidth) { b.nat = { w: vm.videoWidth, h: vm.videoHeight }; rerenderBlock(b.id); } }, { once: true });
         }
-        if (b.frame !== false && window.MacWin) { vw.classList.add("has-win"); vw.appendChild(MacWin.frameDOM(vm, { ratio: "orig", fit: "fill", title: videoWinTitle(b) }, yt ? 16 : b.nat && b.nat.w, yt ? 9 : b.nat && b.nat.h)); }
+        if (b.frame !== false) {
+          // as on the site: the video on a print card, its title written underneath
+          vw.classList.add("has-vprint");
+          var vp = document.createElement("div"); vp.className = "vprint";
+          var hole = document.createElement("div"); hole.className = "vprint-hole"; hole.appendChild(vm);
+          var vn = document.createElement("div"); vn.className = "vprint-note"; vn.textContent = videoWinTitle(b);
+          vp.appendChild(hole); vp.appendChild(vn); vw.appendChild(vp);
+        }
         else vw.appendChild(vm);
       } else { vw.innerHTML = "<span>click or drop a video</span>"; vw.addEventListener("click", function () { pickVideo(b); }); }
       wireMediaDrop(vw, b);
@@ -310,7 +317,11 @@
     }
     media.draggable = false;
     if (it.win) wrap.classList.add("is-win");
-    if (it.kind === "video" && it.win && window.MacWin) {
+    if (it.kind !== "video" && window.Prints) {
+      // a picture on a board hangs as a print, as on the site: the photo out of its window, its note underneath
+      wrap.classList.add("is-print"); wrap.classList.remove("is-win");
+      wrap.appendChild(Prints.dom(it.src, { window: Prints.isWindow(it.src, it), note: it.note, index: b.items.indexOf(it) }));
+    } else if (it.kind === "video" && it.win && window.MacWin) {
       // a live Preview window; learn the video's size first for "Original"
       if (!it.nat) media.addEventListener("loadedmetadata", function () { if (!it.nat && media.videoWidth) { it.nat = { w: media.videoWidth, h: media.videoHeight }; rerenderBlock(b.id); } }, { once: true });
       media.style.objectFit = it.win.fit === "fit" ? "contain" : "cover";
@@ -789,7 +800,8 @@
   function renderCoverItem(it, box) {
     var wrap = document.createElement("div"); wrap.className = "cover-item" + (it.win ? " is-win" : ""); wrap.dataset.iid = it.id;
     wrap.style.left = it.x + "%"; wrap.style.top = it.y + "%"; wrap.style.width = it.w + "%"; wrap.style.zIndex = it.z || 1;
-    var img = document.createElement("img"); img.src = it.src; img.draggable = false; wrap.appendChild(img);
+    if (window.Prints) { wrap.classList.add("is-print"); wrap.classList.remove("is-win"); wrap.appendChild(Prints.dom(it.src, { window: Prints.isWindow(it.src, it), index: state.cover.items.indexOf(it), tape: ["top", "corner", "top", "both"][state.cover.items.indexOf(it) % 4], tilt: [-2.3, 2, -1.1, 2.6][state.cover.items.indexOf(it) % 4] })); }
+    else { var img = document.createElement("img"); img.src = it.src; img.draggable = false; wrap.appendChild(img); }
     var rs = document.createElement("div"); rs.className = "cover-resize"; rs.textContent = "⤡"; wrap.appendChild(rs);
     var del = document.createElement("button"); del.type = "button"; del.className = "cover-del"; del.innerHTML = "&times;"; wrap.appendChild(del);
     del.addEventListener("click", function (e) { e.stopPropagation(); state.cover.items = state.cover.items.filter(function (x) { return x.id !== it.id; }); renderInspector(); });
@@ -821,8 +833,8 @@
       Promise.all(items.map(function (it) { return new Promise(function (r) { var im = new Image(); im.onload = function () { r({ it: it, im: im }); }; im.onerror = function () { r(null); }; im.src = it.src; }); }))
         .then(function (arr) {
           // every picture on the cover hangs as a print (the photo out of its window, if it has one)
-          var tilts = [-0.04, 0.035, -0.02, 0.045], tapes = ["top", "corner", "top", "both"];
-          arr.forEach(function (o, i) { if (!o) return; Prints.draw(ctx, o.im, o.it.x / 100 * W, o.it.y / 100 * H, o.it.w / 100 * W, { window: !!o.it.win, angle: tilts[i % 4], tape: tapes[i % 4] }); });
+          var tilts = [-2.3, 2, -1.1, 2.6], tapes = ["top", "corner", "top", "both"];
+          arr.forEach(function (o) { if (!o) return; var i = cover.items.indexOf(o.it); Prints.draw(ctx, o.im, o.it.x / 100 * W, o.it.y / 100 * H, o.it.w / 100 * W, { window: Prints.isWindow(o.it.src, o.it), angle: tilts[i % 4] * Math.PI / 180, tape: tapes[i % 4] }); });
           c.toBlob(resolve, "image/png");
         });
     });

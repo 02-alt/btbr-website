@@ -604,7 +604,35 @@ body.view-topics .studio-inspector { display: none; }
 @font-face { font-family: "My Hand"; src: url("/assets/fonts/MyHand.ttf") format("truetype"); font-display: swap; }
 .bh-text, .bsg-text { font-family: "My Hand", Charter, Georgia, serif; color: #1f1d20; outline: none; white-space: pre-wrap; }
 .bh-text { font-size: 25px; line-height: 1.4; min-height: 1.4em; }
-.bsg-text { font-size: 40px; line-height: 1.15; text-align: right; min-height: 1.15em; }
+.bsg-text { font-size: 40px; line-height: 1.15; text-align: center; min-height: 1.15em; }
 .bh-text.is-empty::before, .bsg-text.is-empty::before { content: attr(data-ph); color: #c4c4c8; pointer-events: none; }
 .studio-canvas.is-dark-room .bh-text, .studio-canvas.is-dark-room .bsg-text { color: #f4f1ed; }
 .studio-canvas.is-dark-room .bh-text.is-empty::before, .studio-canvas.is-dark-room .bsg-text.is-empty::before { color: rgba(255, 255, 255, 0.25); }
+
+/* ===== prints (assets/prints.js): board and cover pictures hang as polaroids, as on the site ===== */
+.print { position: relative; display: block; container-type: inline-size; transform: rotate(var(--tilt, 0deg)); }
+.print-in { display: block; padding: 4.8cqw 4.8cqw 0; background: #fdfcf9; box-shadow: 0 1px 2px rgba(30, 25, 30, 0.14), 0 12px 26px -10px rgba(30, 25, 30, 0.32); }
+.print-photo { display: block; position: relative; overflow: hidden; background: #e6e3de; aspect-ratio: 4 / 3; }
+.board-item .print-photo img, .cover-item .print-photo img {
+  position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; display: block; object-fit: cover; opacity: 0;
+  border-radius: 0; box-shadow: none !important; filter: none !important; transform: none !important;
+}
+.board-item .print-photo img.is-in, .cover-item .print-photo img.is-in { inset: auto; object-fit: fill; opacity: 1; }
+.print-note { text-transform: none; letter-spacing: 0; font-weight: 400; display: block; height: 21cqw; padding-top: 2.6cqw; overflow: hidden; font: 5.8cqw/1.12 "My Hand", Charter, Georgia, serif; color: #1f1d20; text-align: left; }
+.print::before, .print::after { content: ""; position: absolute; width: 30cqw; height: 8cqw; background: rgba(235, 228, 205, 0.82); z-index: 1; pointer-events: none; }
+.print.tape-top::before { top: -3cqw; left: 35cqw; transform: rotate(-3deg); }
+.print.tape-corner::before { top: -0.5cqw; left: -8cqw; transform: rotate(-40deg); }
+.print.tape-both::before { top: -1cqw; left: -6cqw; transform: rotate(-34deg); }
+.print.tape-both::after { top: -1cqw; right: -6cqw; transform: rotate(34deg); }
+.print:not(.tape-both)::after { display: none; }
+.board-item.is-print, .cover-item.is-print { container-type: normal; }
+.board-item.is-print.is-sel { outline-offset: 6px; border-radius: 4px; }
+.board-item.is-print.is-dragging .print { transform: rotate(var(--tilt, 0deg)) scale(1.04); }
+.board-item.is-print .print { transition: transform 150ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.b-media.has-vprint { background: none; aspect-ratio: auto; height: auto; overflow: visible; padding: 10px 0 18px; }
+.vprint { position: relative; width: 100%; box-sizing: border-box; container-type: inline-size; padding: 2.2cqw 2.2cqw 0; background: #fdfcf9; transform: rotate(-0.6deg);
+  box-shadow: 0 1px 2px rgba(30, 25, 30, 0.14), 0 16px 34px -12px rgba(30, 25, 30, 0.32); }
+.vprint::before { content: ""; position: absolute; top: -1.4cqw; left: 41cqw; width: 18cqw; height: 4.2cqw; transform: rotate(-2deg); background: rgba(235, 228, 205, 0.82); z-index: 1; }
+.vprint-hole { position: relative; aspect-ratio: 16 / 9; background: #000; overflow: hidden; }
+.vprint-hole > iframe, .vprint-hole > video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; object-fit: cover; border-radius: 0; }
+.vprint-note { text-transform: none; letter-spacing: 0; font-weight: 400; text-align: left; min-height: 9cqw; padding: 2cqw 0.4cqw 2.4cqw; font: 3.4cqw/1.15 "My Hand", Charter, Georgia, serif; color: #1f1d20; }
