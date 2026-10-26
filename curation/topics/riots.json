@@ -86,6 +86,11 @@
       "html": "<p>Violence is also a message. On 17 October 2026, hundreds of thousands of people took to the streets across France, and once again the same demand came back from the top: say it, but say it nicely.</p><p><br></p><p>The rapper Casey has named this better than anyone. Speaking about the myth of the aggressive Black person, she explains that it has always existed to disqualify people from thinking. If you’re angry, you can’t reason. In the West, anger is treated as the enemy of thought. For her, that’s paternalism: a way of saying you’re primitive, that you can’t organise your ideas, a way of disqualifying what you say. And a way of staying comfortable.</p><p><br></p><p>“I know you’re suffering, I’m willing to hear you, but tell me nicely, so it isn’t uncomfortable.”</p><p>Her answer: “No. Sometimes it’s a spit in your face, one I want to throw so that you understand.” What the person in power asks of the oppressed, from the comfort of their impunity, is to describe their suffering gently, with all the softness, love and tenderness required. “Isn’t that an incredible degree of insolence?”</p><p><br></p><p>That’s what a riot says.</p>"
     },
     {
+      "type": "quote",
+      "text": "No. Sometimes it’s a spit in your face, one I want to throw so that you understand.",
+      "cite": "Casey"
+    },
+    {
       "type": "video",
       "src": "https://www.youtube.com/watch?v=xDANWya9fX4",
       "caption": "<span class=\"cap-grad\">Casey interview by Yard - 2020</span>"
@@ -93,7 +98,11 @@
     {
       "type": "text",
       "head": false,
-      "html": "<p>Long before all of this, there was&nbsp;<em>La Haine</em>. Mathieu Kassovitz’s 1995 film showed what riots look like for the part of society that really needs them.</p><p><br></p><p>Thanks for reading,</p><p><br></p><p>See you on the next one,</p><p><br></p><p>btbr</p>"
+      "html": "<p>Long before all of this, there was&nbsp;<em>La Haine</em>. Mathieu Kassovitz’s 1995 film showed what riots look like for the part of society that really needs them.</p>"
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\nbtbr"
     }
   ],
   "tone": "#dfe2e5",
