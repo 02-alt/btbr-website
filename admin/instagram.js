@@ -337,7 +337,7 @@
           out.push({ kind: "text", style: o.textStyle, nth: nth++, photo2: second, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
         });
       } else if (b.type === "image" && b.src) {
-        out.push(b.board ? { kind: "board", src: b.src } : { kind: "photo", src: b.src, caption: b.caption });
+        out.push(b.board ? { kind: "board", src: b.src, items: b.board.items || [], prints: o.textStyle === "polaroid" } : { kind: "photo", src: b.src, caption: b.caption });
       } else if (b.type === "video" && b.src) {
         var vid = ytId(b.src), st = vid ? ytStills(vid) : { srcs: [], labels: [] }, vkey = "video:" + i;
         out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle, key: vkey,
@@ -380,6 +380,7 @@
 
     board: function (ctx, s) {
       wall(ctx);
+      if (s.prints && s.items.length) return printsBoard(ctx, s);
       return loadImg(s.src).then(function (im) {
         if (!im) return;
         var b = alphaBox(im), padB = 0.03 * Math.max(b.w, b.h);
@@ -637,6 +638,30 @@
     }
   };
 
+  // a board as prints: its windows become polaroids, laid where they hang on the board, in the same order
+  function printsBoard(ctx, s) {
+    return Promise.all(s.items.map(function (it) { return loadImg(it.src); })).then(function (ims) {
+      var boxes = [];
+      s.items.forEach(function (it, k) {
+        var im = ims[k]; if (!im) return;
+        var b = bare(im) || { w: im.naturalWidth, h: im.naturalHeight }, pw = it.w, ph = pw * b.h / b.w;
+        var PW = pw * 1.096, PH = ph + pw * 0.258;                 // the print's border and its writing strip
+        boxes.push({ im: im, src: it.src, x: it.x, y: it.y, h: it.h || ph, pw: pw, ph: ph, PW: PW, PH: PH, k: k });
+      });
+      if (!boxes.length) return;
+      // a print is taller than its window (the writing strip): spread the rows by as much, so prints overlap no more than the windows did
+      var spread = Math.max(1, Math.max.apply(null, boxes.map(function (b) { return b.PH / b.h; })));
+      boxes.forEach(function (b) { b.y *= spread; });
+      var x0 = Math.min.apply(null, boxes.map(function (b) { return b.x; })), y0 = Math.min.apply(null, boxes.map(function (b) { return b.y; }));
+      var x1 = Math.max.apply(null, boxes.map(function (b) { return b.x + b.PW; })), y1 = Math.max.apply(null, boxes.map(function (b) { return b.y + b.PH; }));
+      var aw = W - 140, ah = H - FOOT - 110, k = Math.min(aw / (x1 - x0), ah / (y1 - y0));
+      var ox = (W - (x1 - x0) * k) / 2, oy = 60 + (ah - (y1 - y0) * k) / 2;
+      var angles = [-0.045, 0.035, -0.02, 0.05, -0.035, 0.025], tapes = ["top", "corner", "top", "both", "corner", "top"];
+      boxes.forEach(function (b, i) {
+        print(ctx, b.im, b.src, ox + (b.x - x0) * k, oy + (b.y - y0) * k, b.pw * k, b.ph * k, angles[i % angles.length], tapes[i % tapes.length]);
+      });
+    });
+  }
   // a print: white border, the photo, its note written under it, a piece of tape
   function print(ctx, im, src, x, y, pw, ph, angle, tapeAt) {
     var b = bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
