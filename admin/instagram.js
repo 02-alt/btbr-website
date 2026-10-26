@@ -17,7 +17,7 @@
   var SITE = "builtoberemembered.com";
 
   var q = new URLSearchParams(location.search);
-  var opts = { slug: q.get("t") || "djh20", textStyle: q.get("style") || "blur", video: q.get("video") || "subtitle", folio: q.get("folio") !== "0" };
+  var opts = { slug: q.get("t") || "djh20", textStyle: q.get("style") || "blur", video: q.get("video") || "subtitle", cover: q.get("cover") || "museum", folio: q.get("folio") !== "0" };
   var topic = null, slides = [], skip = {}, picks = {}, pool = [];
   var $ = function (id) { return document.getElementById(id); };
 
@@ -320,7 +320,9 @@
   }
   function plan(o) {
     o = o || opts;
-    var out = [{ kind: "cover" }], blocks = topic.blocks || [], nth = 0, everyPhoto = photoPool();
+    var everyPhoto = photoPool(), blocks = topic.blocks || [], nth = 0;
+    var hero = /\.(jpe?g|webp)($|\?)/i.test(topic.cover || "") ? topic.cover : (everyPhoto[0] || topic.cover);
+    var out = [{ kind: "cover", cover: o.cover || "museum", key: "cover", auto: hero, photo: picks.cover || hero }];
     var tailFrom = blocks.length;                    // trailing hand/sign close the carousel, after the sources
     while (tailFrom > 0 && /^(hand|sign)$/.test(blocks[tailFrom - 1].type)) tailFrom--;
     blocks.forEach(function (b, i) {
@@ -354,31 +356,12 @@
   /* ---------- the slides ---------- */
   var draw = {
     cover: function (ctx, s) {
-      wall(ctx);
-      return loadImg(topic.cover).then(function (im) {
-        // the museum label, overlapping the photo's foot: "Author, / Title, desc"
-        var desc = String(topic.desc || "").trim().replace(/[.,;:]+$/, "");
-        var words = plainRuns(topic.author + ",").concat([{ br: true }], plainRuns(topic.title + (desc ? ", " + desc : "")));
-        var cw = 680, size = 50, lines = wrap(words, size, SANS, cw - 84), lh = size * 1.13, ch = 44 + linesH(lines, lh) + 96;
-        var k = im ? Math.min((W - 2 * M) / im.naturalWidth, 800 / im.naturalHeight) : 0, w = im ? im.naturalWidth * k : 0, h = im ? im.naturalHeight * k : 0;
-        var y = Math.max(70, (H - FOOT - (h + ch - 80)) / 2), bottom = y;
-        if (im) {
-          ctx.save(); ctx.shadowColor = "rgba(40,30,40,0.18)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 24;
-          ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(M, y, w, h, 6); ctx.fill(); ctx.restore();
-          cover(ctx, im, M, y, w, h, 6); bottom = y + h;
-        }
-        var cy = Math.min(bottom - 80, H - FOOT - ch - 40);
-        card(ctx, M, cy, cw, ch);
-        drawLines(ctx, lines, M + 42, cy + 34, size, lh, SANS, "#111");
-        ctx.font = font(20, SANS); ctx.fillStyle = "#111"; ctx.textAlign = "right";
-        if (topic.no) ctx.fillText("No. " + pad(topic.no), M + cw - 40, cy + ch - 36);
-        ctx.textAlign = "left";
-        if (topic.song && topic.song.title) {
-          ctx.font = font(24, SANS); ctx.fillStyle = "rgba(17,17,17,0.55)";
-          ctx.fillText("♪  " + topic.song.title + (topic.song.artist ? " · " + topic.song.artist : ""), M + 42, cy + ch - 36);
-        }
+      return loadImg(s.photo).then(function (im) {
+        s.light = false;
+        return (COVERS[s.cover] || COVERS.museum)(ctx, s, im);
       });
     },
+
 
     text: function (ctx, s) {
       return loadImg(s.photo).then(function (im) {
@@ -674,6 +657,195 @@
     ctx.restore();
   }
 
+  /* ---------- the cover, ten ways ---------- */
+  var COVER_NAMES = ["museum", "repeat", "split", "tunnel", "bleed", "poster", "grid", "board", "magazine", "ink"];
+  // film: grain and a warm 70s grade, laid over what's on the slide
+  var grainTile = null;
+  function filmGrade(ctx, warmth) {
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = "rgba(214,130,60," + (warmth || 0.5) + ")"; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "multiply";
+    var v = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.85);
+    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(40,20,10,0.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    if (!grainTile) {
+      grainTile = document.createElement("canvas"); grainTile.width = grainTile.height = 160;
+      var g = grainTile.getContext("2d"), d = g.createImageData(160, 160);
+      for (var i = 0; i < d.data.length; i += 4) { var n = 110 + Math.random() * 40; d.data[i] = d.data[i + 1] = d.data[i + 2] = n; d.data[i + 3] = 255; }
+      g.putImageData(d, 0, 0);
+    }
+    ctx.globalCompositeOperation = "overlay"; ctx.globalAlpha = 0.35; ctx.fillStyle = ctx.createPattern(grainTile, "repeat"); ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  function crop(im) { return bare(im) || unbar(im); }
+  function titleLine(ctx, t, x, y, size, color, align, weight, track) {
+    ctx.save(); ctx.font = font(size, SANS, false, weight || 700); ctx.fillStyle = color; ctx.textAlign = align || "left";
+    if (track && ctx.letterSpacing !== undefined) ctx.letterSpacing = track;
+    ctx.fillText(t, x, y); ctx.restore();
+  }
+  function descOf() { return String(topic.desc || "").trim().replace(/[.,;:]+$/, ""); }
+  var CREAM = "#f3e7c9";
+  var COVERS = {
+    museum: function (ctx, s) {
+      wall(ctx);
+      return loadImg(s.photo === s.auto ? topic.cover : s.photo).then(function (im) {
+        // the museum label, overlapping the photo's foot: "Author, / Title, desc"
+        var desc = String(topic.desc || "").trim().replace(/[.,;:]+$/, "");
+        var words = plainRuns(topic.author + ",").concat([{ br: true }], plainRuns(topic.title + (desc ? ", " + desc : "")));
+        var cw = 680, size = 50, lines = wrap(words, size, SANS, cw - 84), lh = size * 1.13, ch = 44 + linesH(lines, lh) + 96;
+        var k = im ? Math.min((W - 2 * M) / im.naturalWidth, 800 / im.naturalHeight) : 0, w = im ? im.naturalWidth * k : 0, h = im ? im.naturalHeight * k : 0;
+        var y = Math.max(70, (H - FOOT - (h + ch - 80)) / 2), bottom = y;
+        if (im) {
+          ctx.save(); ctx.shadowColor = "rgba(40,30,40,0.18)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 24;
+          ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(M, y, w, h, 6); ctx.fill(); ctx.restore();
+          cover(ctx, im, M, y, w, h, 6); bottom = y + h;
+        }
+        var cy = Math.min(bottom - 80, H - FOOT - ch - 40);
+        card(ctx, M, cy, cw, ch);
+        drawLines(ctx, lines, M + 42, cy + 34, size, lh, SANS, "#111");
+        ctx.font = font(20, SANS); ctx.fillStyle = "#111"; ctx.textAlign = "right";
+        if (topic.no) ctx.fillText("No. " + pad(topic.no), M + cw - 40, cy + ch - 36);
+        ctx.textAlign = "left";
+        if (topic.song && topic.song.title) {
+          ctx.font = font(24, SANS); ctx.fillStyle = "rgba(17,17,17,0.55)";
+          ctx.fillText("♪  " + topic.song.title + (topic.song.artist ? " · " + topic.song.artist : ""), M + 42, cy + ch - 36);
+        }
+      });
+    },
+
+    // 70s · repeat: the same shot cut into bands, each band slid sideways — the opening titles of a 70s film
+    repeat: function (ctx, s, im) {
+      ctx.fillStyle = "#0b0907"; ctx.fillRect(0, 0, W, H); s.light = true;
+      var n = 5, gap = 10, titleH = 300, bh = (H - titleH - gap * n) / n, b = im ? crop(im) : null;
+      var shifts = [-0.16, 0.12, 0, -0.08, 0.18];
+      if (im) for (var k = 0; k < n; k++) {
+        var zoom = 1.35 + (k % 2) * 0.12, sw = b.w / zoom, sh = sw * bh / W;
+        var sx = b.x + (b.w - sw) / 2 + shifts[k] * b.w, sy = b.y + b.h * 0.42 - sh / 2;
+        sx = Math.max(b.x, Math.min(b.x + b.w - sw, sx)); sy = Math.max(b.y, Math.min(b.y + b.h - sh, sy));
+        ctx.drawImage(im, sx, sy, sw, sh, 0, gap + k * (bh + gap), W, bh);
+      }
+      filmGrade(ctx, 0.55);
+      var ty = H - titleH + 40;
+      titleLine(ctx, topic.title.toUpperCase(), W / 2, ty + 110, 120, CREAM, "center", 800, "6px");
+      ctx.font = font(30, SERIF, true); ctx.fillStyle = "rgba(243,231,201,0.75)"; ctx.textAlign = "center";
+      ctx.fillText("a curation by " + topic.author + (descOf() ? " \u00B7 " + descOf() : ""), W / 2, ty + 170); ctx.textAlign = "left";
+    },
+    // 70s · split screen: one shot in nine panels at nine framings, the title in the middle one (The Thomas Crown Affair)
+    split: function (ctx, s, im) {
+      ctx.fillStyle = "#0b0907"; ctx.fillRect(0, 0, W, H); s.light = true;
+      var g = 12, cw = (W - 4 * g) / 3, chh = (H - 4 * g) / 3, b = im ? crop(im) : null;
+      for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) {
+        var x = g + c * (cw + g), y = g + r * (chh + g), k = r * 3 + c;
+        if (k === 4) continue;
+        if (!im) continue;
+        var zoom = 1 + (k % 4) * 0.45, sw = Math.min(b.w, b.h * cw / chh) / zoom, sh = sw * chh / cw;
+        var fx = [0.3, 0.5, 0.7, 0.4, 0.5, 0.6, 0.35, 0.5, 0.65][k], fy = [0.35, 0.45, 0.4, 0.55, 0.5, 0.45, 0.6, 0.5, 0.55][k];
+        var sx = Math.max(b.x, Math.min(b.x + b.w - sw, b.x + b.w * fx - sw / 2)), sy = Math.max(b.y, Math.min(b.y + b.h - sh, b.y + b.h * fy - sh / 2));
+        ctx.drawImage(im, sx, sy, sw, sh, x, y, cw, chh);
+      }
+      filmGrade(ctx, 0.5);
+      var mx = g + cw + g, my = g + chh + g;
+      ctx.fillStyle = "#0b0907"; ctx.fillRect(mx, my, cw, chh);
+      var size = fitText(ctx, topic.title.toUpperCase(), 64, SANS, cw - 40, false, 800);
+      titleLine(ctx, topic.title.toUpperCase(), mx + cw / 2, my + chh / 2 + size * 0.2, size, CREAM, "center", 800, "3px");
+      ctx.font = font(20, SERIF, true); ctx.fillStyle = "rgba(243,231,201,0.7)"; ctx.textAlign = "center";
+      ctx.fillText(topic.author, mx + cw / 2, my + chh / 2 + size * 0.2 + 40); ctx.textAlign = "left";
+    },
+    // 70s · tunnel: the shot inside itself, frame after frame, falling toward the title
+    tunnel: function (ctx, s, im) {
+      ctx.fillStyle = "#0b0907"; ctx.fillRect(0, 0, W, H); s.light = true;
+      var b = im ? crop(im) : null, x = 0, y = 0, w = W, h = H;
+      for (var k = 0; k < 6 && im; k++) {
+        cover(ctx, im, x, y, w, h, 0, b);
+        ctx.strokeStyle = "#0b0907"; ctx.lineWidth = 14; ctx.strokeRect(x + 7, y + 7, w - 14, h - 14);
+        var nw = w * 0.74, nh = h * 0.74; x += (w - nw) / 2; y += (h - nh) * 0.42; w = nw; h = nh;
+      }
+      filmGrade(ctx, 0.5);
+      var g2 = ctx.createLinearGradient(0, H - 420, 0, H); g2.addColorStop(0, "rgba(11,9,7,0)"); g2.addColorStop(1, "rgba(11,9,7,0.85)");
+      ctx.fillStyle = g2; ctx.fillRect(0, H - 420, W, 420);
+      titleLine(ctx, topic.title.toUpperCase(), W / 2, H - 170, 104, CREAM, "center", 800, "8px");
+      ctx.font = font(28, SERIF, true); ctx.fillStyle = "rgba(243,231,201,0.75)"; ctx.textAlign = "center";
+      ctx.fillText(topic.author + (descOf() ? " \u00B7 " + descOf() : ""), W / 2, H - 116); ctx.textAlign = "left";
+    },
+    // bleed: the photo edge to edge, the museum label in its corner
+    bleed: function (ctx, s, im) {
+      ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
+      if (im) cover(ctx, im, 0, 0, W, H, 0, crop(im));
+      coverLabel(ctx, 70, null, 620);
+      s.light = true;
+    },
+    // poster: the title huge on the wall, the photo below, the credits beside it
+    poster: function (ctx, s, im) {
+      wall(ctx);
+      var t = topic.title, size = fitText(ctx, t, 230, SANS, W - 140, false, 800);
+      titleLine(ctx, t, 62, 70 + size * 0.86, size, onWall(1), "left", 800, "-4px");
+      var y = 70 + size + 30;
+      ctx.font = font(34, SERIF, true); ctx.fillStyle = onWall(0.7); ctx.fillText(descOf(), 70, y + 10);
+      if (im) cover(ctx, im, 70, y + 50, W - 140, H - FOOT - (y + 50) - 40, 4, crop(im));
+      ctx.font = font(20, SANS, false, 600); ctx.fillStyle = onWall(0.6); ctx.textAlign = "right";
+      ctx.fillText(topic.author + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), W - 70, y + 10); ctx.textAlign = "left";
+    },
+    // grid: the whole topic at a glance — nine of its photos, the label in the middle
+    grid: function (ctx, s, im) {
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+      var all = [s.photo].concat(pool.filter(function (p) { return p !== s.photo; })), list = [];
+      for (var k = 0; k < 9; k++) list.push(all[k % all.length]);                 // fewer than nine photos: they come round again
+      var g = 6, cw = (W - 2 * g) / 3, chh = (H - 2 * g) / 3;
+      return Promise.all(list.map(loadImg)).then(function (ims) {
+        ims.forEach(function (p, k) { if (p) cover(ctx, p, (k % 3) * (cw + g), Math.floor(k / 3) * (chh + g), cw, chh, 0, crop(p)); });
+        coverLabel(ctx, null, null, 560, true);
+      });
+    },
+    // board: the topic's first board, as it hangs on the site, its label under it
+    board: function (ctx, s) {
+      wall(ctx);
+      var first = (topic.blocks || []).filter(function (b) { return b.type === "image" && b.board; })[0];
+      return loadImg(first ? first.src : s.photo).then(function (im) {
+        if (im) {
+          var b = alphaBox(im), k = Math.min((W - 120) / b.w, 820 / b.h), dw = b.w * k, dh = b.h * k;
+          ctx.drawImage(im, b.x, b.y, b.w, b.h, (W - dw) / 2, 70, dw, dh);
+          coverLabel(ctx, M, Math.min(70 + dh - 40, H - FOOT - 260), 640);
+        } else coverLabel(ctx, M, 300, 640);
+      });
+    },
+    // magazine: the photo across the top, the title set big in Charter on the paper below
+    magazine: function (ctx, s, im) {
+      ctx.fillStyle = "#fbfaf7"; ctx.fillRect(0, 0, W, H);
+      var ph = 860;
+      if (im) cover(ctx, im, 0, 0, W, ph, 0, crop(im));
+      titleLine(ctx, "builtoberemembered", 60, 76, 30, "#fff", "left", 700, "1px");
+      ctx.save(); ctx.font = font(120, SERIF); ctx.fillStyle = "#111"; ctx.fillText(topic.title, 56, ph + 150); ctx.restore();
+      ctx.font = font(34, SERIF, true); ctx.fillStyle = "#444"; ctx.fillText(descOf(), 60, ph + 214);
+      ctx.font = font(20, SANS); ctx.fillStyle = "#777";
+      ctx.fillText(topic.author + "  \u00B7  " + String(topic.date || "").replace(/-/g, ".") + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), 60, ph + 270);
+    },
+    // ink: the photo dimmed, the title written over it in Isaac's hand
+    ink: function (ctx, s, im) {
+      ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H); s.light = true;
+      if (im) { cover(ctx, im, 0, 0, W, H, 0, crop(im)); focusPull(ctx, [[300, 0], [560, 1], [900, 1], [1150, 0]]); }
+      ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 18;
+      var size = 200; ctx.font = font(size, HAND); while (size > 80 && ctx.measureText(topic.title).width > W - 160) { size -= 8; ctx.font = font(size, HAND); }
+      ctx.fillStyle = "#fbf8f2"; ctx.fillText(topic.title, 80, 640);
+      ctx.font = font(52, HAND); ctx.fillText(descOf(), 86, 740);
+      ctx.restore();
+      ctx.font = font(22, SANS); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(topic.author + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), 86, H - 110);
+    }
+  };
+  // the museum label (as on the site) — "Author, / Title, desc" — at (x, y) or centred
+  function coverLabel(ctx, x, y, cw, centred) {
+    var desc = descOf(), size = 46, lh = size * 1.13;
+    var words = plainRuns(topic.author + ",").concat([{ br: true }], plainRuns(topic.title + (desc ? ", " + desc : "")));
+    var lines = wrap(words, size, SANS, cw - 84), ch = 40 + linesH(lines, lh) + 84;
+    if (centred) { x = (W - cw) / 2; y = (H - ch) / 2; }
+    if (x == null) x = 70;
+    if (y == null) y = H - FOOT - ch - 20;
+    card(ctx, x, y, cw, ch);
+    drawLines(ctx, lines, x + 42, y + 30, size, lh, SANS, "#111");
+    ctx.font = font(20, SANS); ctx.fillStyle = "#111"; ctx.textAlign = "right";
+    if (topic.no) ctx.fillText("No. " + pad(topic.no), x + cw - 40, y + ch - 32);
+    ctx.textAlign = "left";
+  }
+
   /* ---------- caption ---------- */
   function caption() {
     var first = (topic.blocks || []).filter(function (b) { return b.type === "text" && !b.head; })[0];
@@ -815,7 +987,8 @@
   var chipsFor = "";
   function chips() {
     if (chipsFor === topic.slug) return; chipsFor = topic.slug;
-    [["text", "chipsText", "secText", ["blur", "strip", "cinema", "half", "polaroid"], "textStyle"],
+    [["cover", "chipsCover", "secCover", COVER_NAMES, "cover"],
+     ["text", "chipsText", "secText", ["blur", "strip", "cinema", "half", "polaroid"], "textStyle"],
      ["video", "chipsVideo", "secVideo", ["subtitle", "bands"], "video"]].forEach(function (g) {
       var kind = g[0], box = $(g[1]), names = g[3], key = g[4];
       var sample = plan(opts).filter(function (s) { return s.kind === kind; })[0];
@@ -823,7 +996,7 @@
       if (!sample) return;
       box.innerHTML = "";
       names.reduce(function (p, name) {
-        var o = { textStyle: opts.textStyle, video: opts.video }; o[key] = name;
+        var o = { textStyle: opts.textStyle, video: opts.video, cover: opts.cover }; o[key] = name;
         var s = plan(o).filter(function (x) { return x.kind === kind; })[0];
         var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.name = name;
         b.setAttribute("aria-pressed", String(opts[key] === name));
