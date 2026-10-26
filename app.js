@@ -394,13 +394,21 @@
         var note = String(loc(b, "note") || "").trim(), q = function (v) { return htmlEsc(v).replace(/"/g, "&quot;"); };
         var items = b.board && b.board.items || [];
         if (items.length) {
-          // a board: every picture on it is its own target (stacked in board order)
-          var hots = items.map(function (it) {
-            var n = String(loc(it, "note") || "").trim();
-            return '<button class="cur-hot" type="button" data-src="' + q(it.src) + '"' + (n ? ' data-note="' + q(n) + '"' : "")
-              + ' aria-label="' + q(it.name || "View picture") + '" style="left:' + it.x + "%;top:" + it.y + "%;width:" + it.w + "%;height:" + it.h + '%"></button>';
+          // a board as prints: every window on it becomes a polaroid — the photo out of its window,
+          // its note written underneath in Isaac's hand, a strip of tape — hung where the window
+          // hangs, in board order. A print is taller than its window (the writing strip), so the
+          // board grows by as much and the prints overlap no more than the windows did.
+          var spread = 1;
+          items.forEach(function (it) { spread = Math.max(spread, (it.h + it.w * 0.26) / it.h); });
+          var tilts = [-2.6, 2, -1.2, 2.8, -2, 1.4], tapes = ["top", "corner", "top", "both", "corner", "top"];
+          var prints = items.map(function (it, i) {
+            var n = String(loc(it, "note") || "").trim(), ar = it.w / Math.max(1, it.h - it.w * 0.053);
+            return '<button class="cur-hot cur-print tape-' + tapes[i % 6] + '" type="button" data-src="' + q(it.src) + '"' + (n ? ' data-note="' + q(n) + '"' : "")
+              + ' aria-label="' + q(n || it.name || "View picture") + '" style="left:' + it.x + "%;top:" + it.y + "%;width:" + it.w + "%;--tilt:" + tilts[i % 6] + 'deg">'
+              + '<span class="cur-print-in"><span class="cur-print-photo" style="aspect-ratio:' + ar.toFixed(3) + '"><img src="' + esc(it.src) + '" alt="" decoding="async"></span>'
+              + '<span class="cur-print-note">' + htmlEsc(n.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')) + "</span></span></button>";
           }).join("");
-          return '<figure class="cur-fig2 cur-board' + (b.board.bg === "none" ? " is-clear" : "") + '"><div class="cur-board-art"><img src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '" loading="lazy">' + hots + "</div>" + cap + "</figure>";
+          return '<figure class="cur-fig2 cur-board is-prints"><div class="cur-board-art" style="aspect-ratio:1 / ' + spread.toFixed(3) + '">' + prints + "</div>" + cap + "</figure>";
         }
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
           + (note ? ' data-note="' + q(note) + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
@@ -524,6 +532,7 @@
     var tw = Math.min(maxW, (vh - 2 * m - capH) * nw / nh), th = tw * nh / nw;
     return { l: (vw - tw) / 2, t: (vh - capH - th) / 2, w: tw, h: th, noteW: noteW, vw: vw };
   }
+  function focusRect(el) { var ph = el.querySelector && el.querySelector(".cur-print-photo"); return (ph || el).getBoundingClientRect(); }
   function lift(f, r) { return "translate(" + (r.left - f.t.l) + "px, " + (r.top - f.t.t) + "px) scale(" + (r.width / f.t.w) + ")"; }
   function openFocus(el) {
     if (focusState) return;
@@ -541,7 +550,7 @@
     }
     if (!img.complete || !img.naturalWidth) return;
     var room = el.closest(".cur-modal"); if (!room) return;
-    var r = el.getBoundingClientRect();
+    var r = focusRect(el);
     var note = el.getAttribute("data-note") || "";
     var ov = document.createElement("div");
     ov.className = "cur-focus"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", img.alt || "Image");
@@ -553,7 +562,7 @@
     if (noteEl) noteEl.textContent = note;
     room.appendChild(ov);
     var t = focusTarget(img, noteEl, hot ? r : null);
-    if (hot) big.classList.add("is-window");
+    if (hot) big.classList.add(el.classList.contains("cur-print") ? "is-print" : "is-window");
     ov.setAttribute("aria-label", big.alt || "Image");
     big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
     if (noteEl) { noteEl.style.left = (t.vw - t.noteW) / 2 + "px"; noteEl.style.top = (t.t + t.h + 18) + "px"; }
@@ -617,9 +626,10 @@
         var note = el.getAttribute("data-note") || "";
         f.noteBox.textContent = note; f.noteBox.hidden = !note;
         f.noteBox.getAnimations && f.noteBox.getAnimations().forEach(function (a) { a.cancel(); });
-        var t = focusTarget(img, note ? f.noteBox : null, hot ? el.getBoundingClientRect() : null);
+        var t = focusTarget(img, note ? f.noteBox : null, hot ? focusRect(el) : null);
         f.big.src = img.src; f.big.alt = hot ? el.getAttribute("aria-label") || "" : el.alt || "";
-        f.big.classList.toggle("is-window", hot);
+        f.big.classList.toggle("is-window", hot && !el.classList.contains("cur-print"));
+        f.big.classList.toggle("is-print", el.classList.contains("cur-print"));
         f.big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
         if (note) { f.noteBox.style.left = (t.vw - t.noteW) / 2 + "px"; f.noteBox.style.top = (t.t + t.h + 18) + "px"; }
         f.ov.setAttribute("aria-label", f.big.alt || "Image");
@@ -645,7 +655,7 @@
     var live = getComputedStyle(f.big), from = { transform: live.transform === "none" ? "none" : live.transform, borderRadius: live.borderTopLeftRadius, opacity: live.opacity };
     var backFrom = getComputedStyle(f.back).opacity;
     f.anims.forEach(function (a) { a.cancel(); }); f.anims = [];
-    var r = f.img.getBoundingClientRect(), onScreen = r.width && r.bottom > 0 && r.top < window.innerHeight;
+    var r = focusRect(f.img), onScreen = r.width && r.bottom > 0 && r.top < window.innerHeight;
     function done() { f.img.style.visibility = ""; f.ov.remove(); if (focusState === f) focusState = null; try { f.img.focus({ preventScroll: true }); } catch (e) {} }
     if (reduceMotion || !f.big.animate) { done(); return true; }
     var k = r.width / f.t.w;
@@ -753,33 +763,45 @@
     });
     return macwinLoading;
   }
-  function frameVideos(root) {
-    var figs = [].slice.call(root.querySelectorAll("figure[data-win]:not(.is-framed)"));
-    if (!figs.length) return;
-    loadMacWin().then(function () {
-      figs.forEach(function (fig) {
-        var media = fig.querySelector("iframe, video"); if (!media || !root.contains(fig)) return;
-        fig.classList.add("is-framed");
-        function wrap(w, h) {
-          var f = MacWin.frameDOM(media.cloneNode(true), { ratio: "orig", fit: "fill", title: fig.getAttribute("data-win") }, w, h);
-          media.replaceWith(f);
-          fig.classList.remove("cur-vid"); fig.classList.add("cur-win");
-          var v = f.querySelector("video"); if (v && v.autoplay) v.play().catch(function () {});
-        }
-        if (media.tagName === "IFRAME") wrap(16, 9);
-        else if (media.videoWidth) wrap(media.videoWidth, media.videoHeight);
-        else {
-          var done = false, go = function () { if (!done) { done = true; wrap(media.videoWidth || 16, media.videoHeight || 9); } };
-          media.addEventListener("loadedmetadata", go, { once: true }); setTimeout(go, 4000);
-        }
-      });
-    }, function () {});
+  // a board window is MacWin's Preview window baked at 2× around the photo (37pt title bar, 3pt sides,
+  // the long side of the photo 720pt): show just the photo, and hand focus mode the same crop
+  function developPrints(root) {
+    [].forEach.call(root.querySelectorAll(".cur-print-photo img"), function (im) {
+      function crop() {
+        var nw = im.naturalWidth, nh = im.naturalHeight; if (!nw) return;
+        var k = Math.max(nw / 726, nh / 760), e = 5 * k, x = 3 * k + e, y = 37 * k + e, w = nw - 2 * x, h = nh - 40 * k - 2 * e;
+        var box = im.parentNode; box.style.aspectRatio = (w / h).toFixed(4);
+        im.style.cssText = "width:" + (nw / w * 100) + "%;height:" + (nh / h * 100) + "%;left:" + (-x / w * 100) + "%;top:" + (-y / h * 100) + "%";
+        im.classList.add("is-in");
+        try {
+          var c = document.createElement("canvas"); c.width = Math.round(w); c.height = Math.round(h);
+          c.getContext("2d").drawImage(im, x, y, w, h, 0, 0, c.width, c.height);
+          c.toBlob(function (b) { if (b) im.closest(".cur-print").setAttribute("data-src", URL.createObjectURL(b)); }, "image/jpeg", 0.92);
+        } catch (err) {}
+      }
+      if (im.complete && im.naturalWidth) crop(); else im.addEventListener("load", crop, { once: true });
+    });
   }
+  // a video hangs as a print too: the player on white card, its title written underneath, a strip of tape
+  function frameVideos(root) {
+    [].forEach.call(root.querySelectorAll("figure[data-win]:not(.is-framed)"), function (fig, i) {
+      var media = fig.querySelector("iframe, video"); if (!media) return;
+      fig.classList.add("is-framed", "cur-vprint");
+      fig.style.setProperty("--tilt", [-0.8, 0.7, -0.5, 0.9][i % 4] + "deg");
+      var hole = document.createElement("div"); hole.className = "cur-vprint-hole";
+      media.replaceWith(hole); hole.appendChild(media);
+      var note = document.createElement("div"); note.className = "cur-vprint-note";
+      note.textContent = String(fig.getAttribute("data-win") || "").replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+      hole.after(note);
+      if (media.tagName === "VIDEO" && media.autoplay) media.play().catch(function () {});
+    });
+  }
+
   function renderCurTopic(modal) {
     var no = curNo(curTopic);
     modal.querySelector(".cur-label").innerHTML = curLabelHTML(curTopic, false) + curTuneHTML(curTopic.song) + (no ? '<span class="cur-no">' + no + "</span>" : "");
     modal.querySelector(".cur-modal-content").innerHTML = curBlocksHTML(curTopic.blocks);
-    frameVideos(modal);
+    frameVideos(modal); developPrints(modal);
     buildTOC(modal);
     renderSources(modal, curTopic.inspiration);
   }

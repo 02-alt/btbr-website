@@ -216,7 +216,7 @@
     ctx.save(); ctx.shadowColor = "rgba(20,15,20," + (a || 0.22) + ")"; ctx.shadowBlur = blur || 50; ctx.shadowOffsetY = dy || 24; fn(); ctx.restore();
   }
   function contain(ctx, im, x, y, w, h) {             // a window (or photo) whole, centred in the box, trimmed to its own edges
-    var b = /\.png($|\?)/i.test(im.src) ? alphaBox(im) : { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
+    var b = bare(im) || (/\.png($|\?)/i.test(im.src) ? alphaBox(im) : { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight });
     var k = Math.min(w / b.w, h / b.h), dw = b.w * k, dh = b.h * k;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(im, b.x, b.y, b.w, b.h, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
@@ -337,7 +337,7 @@
           out.push({ kind: "text", style: o.textStyle, nth: nth++, photo2: second, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
         });
       } else if (b.type === "image" && b.src) {
-        out.push(b.board ? { kind: "board", src: b.src, items: b.board.items || [], prints: o.textStyle === "polaroid" } : { kind: "photo", src: b.src, caption: b.caption });
+        out.push(b.board ? { kind: "board", src: b.src, items: b.board.items || [], prints: true } : { kind: "photo", src: b.src, caption: b.caption });
       } else if (b.type === "video" && b.src) {
         var vid = ytId(b.src), st = vid ? ytStills(vid) : { srcs: [], labels: [] }, vkey = "video:" + i;
         out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle, key: vkey,
@@ -495,7 +495,7 @@
       drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, st.family, "#222");
       part(ctx, s, M + cw - 26, cy + ch - 20);
     },
-    // the photo's window above the label card
+    // the photo above the label card
     strip: function (ctx, s, im, st) {
       var lh = s.size * st.lh, cw = W - 2 * M, ch = linesH(s.lines, lh) + 2 * TEXT.padY, cy;
       wall(ctx);
@@ -639,7 +639,7 @@
   };
 
   // a board as prints: its windows become polaroids, laid where they hang on the board, in the same order
-  function printsBoard(ctx, s) {
+  function printsBoard(ctx, s, maxH) {
     return Promise.all(s.items.map(function (it) { return loadImg(it.src); })).then(function (ims) {
       var boxes = [];
       s.items.forEach(function (it, k) {
@@ -654,7 +654,7 @@
       boxes.forEach(function (b) { b.y *= spread; });
       var x0 = Math.min.apply(null, boxes.map(function (b) { return b.x; })), y0 = Math.min.apply(null, boxes.map(function (b) { return b.y; }));
       var x1 = Math.max.apply(null, boxes.map(function (b) { return b.x + b.PW; })), y1 = Math.max.apply(null, boxes.map(function (b) { return b.y + b.PH; }));
-      var aw = W - 140, ah = H - FOOT - 110, k = Math.min(aw / (x1 - x0), ah / (y1 - y0));
+      var aw = W - 140, ah = (maxH || H - FOOT) - 110, k = Math.min(aw / (x1 - x0), ah / (y1 - y0));
       var ox = (W - (x1 - x0) * k) / 2, oy = 60 + (ah - (y1 - y0) * k) / 2;
       var angles = [-0.045, 0.035, -0.02, 0.05, -0.035, 0.025], tapes = ["top", "corner", "top", "both", "corner", "top"];
       boxes.forEach(function (b, i) {
@@ -823,14 +823,9 @@
     // board: the topic's first board, as it hangs on the site, its label under it
     board: function (ctx, s) {
       wall(ctx);
-      var first = (topic.blocks || []).filter(function (b) { return b.type === "image" && b.board; })[0];
-      return loadImg(first ? first.src : s.photo).then(function (im) {
-        if (im) {
-          var b = alphaBox(im), k = Math.min((W - 120) / b.w, 820 / b.h), dw = b.w * k, dh = b.h * k;
-          ctx.drawImage(im, b.x, b.y, b.w, b.h, (W - dw) / 2, 70, dw, dh);
-          coverLabel(ctx, M, Math.min(70 + dh - 40, H - FOOT - 260), 640);
-        } else coverLabel(ctx, M, 300, 640);
-      });
+      var first = (topic.blocks || []).filter(function (b) { return b.type === "image" && b.board && b.board.items && b.board.items.length; })[0];
+      if (!first) { coverLabel(ctx, M, 300, 640); return Promise.resolve(); }
+      return printsBoard(ctx, { items: first.board.items }, H - FOOT - 300).then(function () { coverLabel(ctx, M, null, 640); });
     },
     // magazine: the photo across the top, the title set big in Charter on the paper below
     magazine: function (ctx, s, im) {
