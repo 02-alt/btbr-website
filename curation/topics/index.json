@@ -1,5 +1,18 @@
 [
   {
+    "slug": "riots",
+    "no": 1,
+    "title": "RIOTS",
+    "author": "Isaaaaaaaac",
+    "date": "2026-10-26",
+    "cover": "/curation/media/riots/cover.png",
+    "desc": "Riots seen through art",
+    "langs": [
+      "en"
+    ],
+    "tone": "#dfe2e5"
+  },
+  {
     "slug": "djh20",
     "no": 2,
     "title": "DJH20",
@@ -11,18 +24,5 @@
       "en"
     ],
     "tone": "#dfe2e5"
-  },
-  {
-    "slug": "riots",
-    "title": "RIOTS",
-    "author": "Isaaaaaaaac",
-    "date": "2026-10-24",
-    "cover": "/curation/media/riots/cover.png",
-    "desc": "Riots seen through art",
-    "langs": [
-      "en"
-    ],
-    "no": 1,
-    "tone": "#332c27"
   }
 ]
