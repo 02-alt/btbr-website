@@ -2,7 +2,7 @@
   "slug": "riots",
   "title": "RIOTS",
   "author": "Isaaaaaaaac",
-  "date": "2026-10-24",
+  "date": "2026-10-26",
   "cover": "/curation/media/riots/cover.png",
   "desc": "Riots seen through art",
   "inspiration": "Inspiration : \nAthena : Romain Gavras - 2022\nGosh : Jamie XX - 2015\nNo church in the wild : Kanye West, Jay-Z - 2012\nStress : Justice - 2007\nThis is What Democracy Looks Like : Jill Friedberg - 2000\nBalaclava \"PUSSY RIOT\" : Nadya Tolokonnikova - 2012\n\"PROTECT THE DOLLS\" Tee : Connor Ives - 2025\nNorthside Needs Me : Blackhaine - 2026",
@@ -11,11 +11,6 @@
       "type": "text",
       "head": false,
       "html": "<p>To a big part of the world, it probably looks like something very French. But riots have always held a strange beauty.</p><p><br></p><p>Riots don’t have to be violent, and most of them aren’t. This piece looks at the violent side on purpose: it’s the side that feels closest, and visually the most striking.</p><p><br></p><p>A riot sits on a balance between complete mayhem and a kind of mechanism that moves forward. It brings together people who have the same thing in mind, who want to go somewhere, toward a place or an ideology. And art has never stopped coming back to it.</p><p><br></p><p>In 2008, Justice released the video for&nbsp;Stress. It isn’t about a riot, but it borrows the visual codes of one. What stands out is the duality. A riot is often violent, because it rises against something that doesn’t want to move, or isn’t moving enough for the people it’s supposed to serve. That’s the paradox, and the beauty of it: it’s violent for peace.</p>"
-    },
-    {
-      "type": "quote",
-      "text": "That’s the paradox, and the beauty of it: it’s violent for peace.",
-      "cite": "Isaaaaaaaac"
     },
     {
       "type": "video",
@@ -101,9 +96,9 @@
       "html": "<p>Long before all of this, there was&nbsp;<em>La Haine</em>. Mathieu Kassovitz’s 1995 film showed what riots look like for the part of society that really needs them.</p><p><br></p><p>Thanks for reading,</p><p><br></p><p>See you on the next one,</p><p><br></p><p>btbr</p>"
     }
   ],
+  "tone": "#332c27",
   "langs": [
     "en"
   ],
-  "no": 1,
-  "tone": "#332c27"
+  "no": 1
 }
