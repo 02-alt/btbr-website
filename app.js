@@ -400,15 +400,17 @@
           // board grows by as much and the prints overlap no more than the windows did.
           var spread = 1;
           items.forEach(function (it) { spread = Math.max(spread, (it.h + it.w * 0.26) / it.h); });
+          var depth = 0;                                   // how far down the lowest print reaches, so the board ends there
+          items.forEach(function (it) { depth = Math.max(depth, it.y * spread + it.h + it.w * 0.26 + 3); });
           var tilts = [-2.6, 2, -1.2, 2.8, -2, 1.4], tapes = ["top", "corner", "top", "both", "corner", "top"];
           var prints = items.map(function (it, i) {
             var n = String(loc(it, "note") || "").trim(), ar = it.w / Math.max(1, it.h - it.w * 0.053);
             return '<button class="cur-hot cur-print tape-' + tapes[i % 6] + '" type="button" data-src="' + q(it.src) + '"' + (n ? ' data-note="' + q(n) + '"' : "")
-              + ' aria-label="' + q(n || it.name || "View picture") + '" style="left:' + it.x + "%;top:" + it.y + "%;width:" + it.w + "%;--tilt:" + tilts[i % 6] + 'deg">'
+              + ' aria-label="' + q(n || it.name || "View picture") + '" style="left:' + it.x + "%;top:" + (it.y * spread / depth * 100).toFixed(3) + "%;width:" + it.w + "%;--tilt:" + tilts[i % 6] + 'deg">'
               + '<span class="cur-print-in"><span class="cur-print-photo" style="aspect-ratio:' + ar.toFixed(3) + '"><img src="' + esc(it.src) + '" alt="" decoding="async"></span>'
               + '<span class="cur-print-note">' + htmlEsc(n.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')) + "</span></span></button>";
           }).join("");
-          return '<figure class="cur-fig2 cur-board is-prints"><div class="cur-board-art" style="aspect-ratio:1 / ' + spread.toFixed(3) + '">' + prints + "</div>" + cap + "</figure>";
+          return '<figure class="cur-fig2 cur-board is-prints"><div class="cur-board-art" style="aspect-ratio:100 / ' + depth.toFixed(2) + '">' + prints + "</div>" + cap + "</figure>";
         }
         return '<figure class="cur-fig2' + (b.inset ? " inset" : "") + '"><img class="cur-zoomable" src="' + esc(b.src) + '" alt="' + esc(loc(b, "alt")) + '"'
           + (note ? ' data-note="' + q(note) + '"' : "") + ' tabindex="0" loading="lazy">' + cap + "</figure>";
