@@ -693,7 +693,13 @@
   function sync() {
     var n = slides.length, s = slides[at]; if (!s) return;
     $("pill").textContent = (at + 1) + "/" + n;
-    [].forEach.call($("dots").children, function (e, i) { e.classList.toggle("on", i === at); });
+    // like Instagram: no more than seven dots at once, the window following the slide, its edges smaller
+    var lo = Math.max(0, Math.min(at - 3, n - 7)), hi = lo + 6;
+    [].forEach.call($("dots").children, function (e, i) {
+      e.classList.toggle("on", i === at);
+      e.hidden = i < lo || i > hi;
+      e.classList.toggle("edge", (i === lo && lo > 0) || (i === hi && hi < n - 1));
+    });
     $("prev").hidden = at === 0; $("next").hidden = at === n - 1;
     $("slideName").textContent = (at + 1) + " · " + KIND[s.kind];
     $("include").checked = !skip[at];
@@ -896,6 +902,7 @@
         var o = document.createElement("option"); o.value = t.slug; o.textContent = t.title || t.slug; o.selected = t.slug === topic.slug; sel.appendChild(o);
       });
       document.documentElement.style.setProperty("--tone", topic.tone || "#e6e4e6");
+      document.body.classList.add("lay-" + (q.get("layout") || "trio"));
       wire(); return render();
     }).catch(function (e) { $("count").textContent = "Couldn’t load “" + opts.slug + "”: " + e.message; });
   }
