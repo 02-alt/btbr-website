@@ -17,7 +17,7 @@
   var SITE = "builtoberemembered.com";
 
   var q = new URLSearchParams(location.search);
-  var opts = { slug: q.get("t") || "djh20", textStyle: q.get("style") || "blur", video: q.get("video") || "window", folio: q.get("folio") !== "0" };
+  var opts = { slug: q.get("t") || "djh20", textStyle: q.get("style") || "blur", video: q.get("video") || "subtitle", folio: q.get("folio") !== "0" };
   var topic = null, slides = [], skip = {}, picks = {}, pool = [];
   var $ = function (id) { return document.getElementById(id); };
 
@@ -50,16 +50,24 @@
       });
     })).then(function (a) { return a.filter(Boolean); });
   }
-  // the picture without its black letterbox bars
+  // the picture without its black bars, top and bottom (letterbox) and either side (pillarbox)
   function unbar(im) {
-    var w = 64, h = Math.round(64 * im.naturalHeight / im.naturalWidth), c = document.createElement("canvas"); c.width = w; c.height = h;
+    var w = 96, h = Math.max(1, Math.round(w * im.naturalHeight / im.naturalWidth)), c = document.createElement("canvas"); c.width = w; c.height = h;
     var t = c.getContext("2d"); t.drawImage(im, 0, 0, w, h);
     var d = t.getImageData(0, 0, w, h).data;
-    function dark(y) { for (var x = 0; x < w; x++) { var i = (y * w + x) * 4; if (d[i] + d[i + 1] + d[i + 2] > 60) return false; } return true; }
-    var y0 = 0, y1 = h - 1; while (y0 < h / 3 && dark(y0)) y0++; while (y1 > h * 2 / 3 && dark(y1)) y1--;
-    var k = im.naturalHeight / h, pad = y0 || y1 < h - 1 ? 1 : 0;
-    return { x: 0, y: (y0 + (y0 ? pad : 0)) * k, w: im.naturalWidth, h: (y1 - y0 + 1 - (y0 ? pad : 0) - (y1 < h - 1 ? pad : 0)) * k };
+    function lit(x, y) { var i = (y * w + x) * 4; return d[i] + d[i + 1] + d[i + 2] > 60; }
+    function darkRow(y, a, b) { for (var x = a; x <= b; x++) if (lit(x, y)) return false; return true; }
+    function darkCol(x, a, b) { for (var y = a; y <= b; y++) if (lit(x, y)) return false; return true; }
+    var y0 = 0, y1 = h - 1, x0 = 0, x1 = w - 1;
+    while (y0 < h / 3 && darkRow(y0, 0, w - 1)) y0++;
+    while (y1 > h * 2 / 3 && darkRow(y1, 0, w - 1)) y1--;
+    while (x0 < w / 3 && darkCol(x0, y0, y1)) x0++;
+    while (x1 > w * 2 / 3 && darkCol(x1, y0, y1)) x1--;
+    if (y0) y0++; if (y1 < h - 1) y1--; if (x0) x0++; if (x1 < w - 1) x1--;   // a pixel more, past the soft edge
+    var kx = im.naturalWidth / w, ky = im.naturalHeight / h;
+    return { x: x0 * kx, y: y0 * ky, w: (x1 - x0 + 1) * kx, h: (y1 - y0 + 1) * ky };
   }
+
 
   /* ---------- text ---------- */
   var mctx = document.createElement("canvas").getContext("2d");
@@ -386,7 +394,7 @@
         v.title = plain(s.caption) || s.wtitle || v.info.title || "Film";
         v.by = v.info.author_name || "";
         s.light = false;
-        return (VIDEOS[opts.video] || VIDEOS.window)(ctx, s, v);
+        return (VIDEOS[opts.video] || VIDEOS.subtitle)(ctx, s, v);
       });
     },
 
@@ -550,86 +558,26 @@
   }
 
   /* ---------- the video slide ---------- */
-  function playButton(ctx, cx, cy, r) {
-    ctx.fillStyle = "rgba(0,0,0,0.38)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    var k = r / 62; ctx.fillStyle = "#fff"; ctx.beginPath();
-    ctx.moveTo(cx - 18 * k, cy - 28 * k); ctx.lineTo(cx + 30 * k, cy); ctx.lineTo(cx - 18 * k, cy + 28 * k); ctx.closePath(); ctx.fill();
-  }
   function fitText(ctx, t, size, family, maxW, italic, weight) {
     ctx.font = font(size, family, italic, weight);
     while (size > 14 && ctx.measureText(t).width > maxW) { size -= 1; ctx.font = font(size, family, italic, weight); }
     return size;
   }
-  // a Quick Look window around an image, as on the boards
-  function previewWindow(ctx, im, title, X, Y, dw, play) {
-    return MacWin.videoChrome({ ratio: "16:9", title: title }, 1280, 720).then(function (chw) {
-      var k = dw / chw.w, dh = chw.h * k, hh = chw.hole, hx = X + hh.x * k, hy = Y + hh.y * k, hw = hh.w * k, hhh = hh.h * k;
-      shadowed(ctx, function () { ctx.fillStyle = "#1e1e1e"; ctx.beginPath(); ctx.roundRect(X + 4, Y + 4, dw - 8, dh - 8, 14 * k); ctx.fill(); }, 0.28, 60, 28);
-      ctx.fillStyle = "#000"; ctx.fillRect(hx, hy, hw, hhh);
-      if (im) cover(ctx, im, hx, hy, hw, hhh, hh.r * k, unbar(im));
-      ctx.drawImage(chw.img, X, Y, dw, dh);
-      if (play) playButton(ctx, hx + hw / 2, hy + hhh / 2, play);
-      return dh;
-    });
-  }
   var VIDEOS = {
-    // the thumbnail in its Quick Look window (as before)
-    window: function (ctx, s, v) {
-      wall(ctx);
-      var X = 50, dw = W - 100, dh0 = dw * 0.6, Y = (H - FOOT - dh0) / 2 - 40;
-      return previewWindow(ctx, v.thumb, s.wtitle || v.info.title || "Film", X, Y, dw, 62).then(function (dh) {
-        ctx.font = font(34, SERIF, true); ctx.fillStyle = onWall(0.88);
-        ctx.fillText(plain(s.caption) || "Watch the film — link in bio", X + 6, Y + dh + 70);
-        if (s.caption) { ctx.font = font(24, SANS); ctx.fillStyle = onWall(0.5); ctx.fillText("Watch it — link in bio", X + 6, Y + dh + 116); }
-      });
-    },
-    // film strip: the three real frames on a strip of film, sprocket holes and all
-    strip: function (ctx, s, v) {
-      ctx.fillStyle = "#121212"; ctx.fillRect(0, 0, W, H); s.light = true;
-      var fr = v.frames.length ? v.frames : [v.thumb], fw = 640, fh = fw * 9 / 16, gap = 34, x = (W - fw) / 2;
-      var total = fr.length * fh + (fr.length - 1) * gap, y0 = (H - FOOT - total) / 2 - 10;
-      ctx.fillStyle = "#1b1a19"; ctx.fillRect(x - 70, 0, fw + 140, H);
-      for (var y = 14; y < H; y += 46) { ctx.fillStyle = "#0b0b0b"; ctx.beginPath(); ctx.roundRect(x - 52, y, 26, 30, 5); ctx.roundRect(x + fw + 26, y, 26, 30, 5); ctx.fill(); }
-      fr.forEach(function (im, k) { if (im) cover(ctx, im, x, y0 + k * (fh + gap), fw, fh, 2, unbar(im)); });
-      ctx.font = font(18, SANS, false, 600); ctx.fillStyle = "rgba(240,200,120,0.75)";
-      fr.forEach(function (im, k) { ctx.fillText(String(k + 1) + "A", x + fw + 4 - 30, y0 + k * (fh + gap) - 10); });
-      fitText(ctx, v.title, 26, SANS, fw, false, 500); ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.fillText(v.title, x, H - FOOT + 10);
-      ctx.font = font(20, SANS); ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillText("Watch it — link in bio", x, H - FOOT + 42);
-    },
-    // backdrop: a frame blurred to fill the slide, the video sharp in the middle, title under it in white
-    backdrop: function (ctx, s, v) {
+    // subtitle: one frame edge to edge, the title set as a film subtitle across its foot
+    subtitle: function (ctx, s, v) {
       var im = v.frames[1] || v.thumb; s.light = true;
-      ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
-      if (im) {
-        cover(ctx, im, 0, 0, W, H, 0, unbar(im));
-        focusPull(ctx, [[0, 1], [H, 1]]); focusPull(ctx, [[0, 1], [H, 1]]);
-        ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(0, 0, W, H);
-      }
-      var fw = W - 120, fh = fw * 9 / 16, x = 60, y = (H - FOOT - fh) / 2 - 50, th = v.thumb || im;
-      shadowed(ctx, function () { ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(x, y, fw, fh, 18); ctx.fill(); }, 0.4, 60, 26);
-      if (th) cover(ctx, th, x, y, fw, fh, 18, unbar(th));
-      playButton(ctx, x + fw / 2, y + fh / 2, 62);
-      fitText(ctx, v.title, 40, SANS, fw, false, 500); ctx.fillStyle = "#fff"; ctx.fillText(v.title, x + 4, y + fh + 70);
-      ctx.font = font(24, SANS); ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.fillText((v.by ? v.by + " · " : "") + "link in bio", x + 4, y + fh + 112);
-    },
-    // credits: a film-poster card — the title big, who made it, the three frames in a row
-    credits: function (ctx, s, v) {
-      wall(ctx);
-      var x = 76, w = W - 152, y = 110;
-      ctx.font = font(22, SANS, false, 500); ctx.fillStyle = onWall(0.5); ctx.fillText("FILM", x, y);
-      var words = plainRuns(v.title), lines = wrap(words, 76, SANS, w), lh = 76 * 1.04;
-      lines = lines.slice(0, 3);
-      drawLines(ctx, lines, x, y + 24, 76, lh, SANS, onWall(1));
-      y += 24 + linesH(lines, lh) + 30;
-      if (v.by) { ctx.font = font(30, SERIF, true); ctx.fillStyle = onWall(0.7); ctx.fillText("by " + v.by, x, y + 20); y += 50; }
-      var fr = v.frames.length ? v.frames : [v.thumb], gap = 14, fw = (w - gap * (fr.length - 1)) / fr.length, fh = fw * 1.25;
-      fh = Math.max(fw * 1.2, H - FOOT - 90 - (y + 50));        // the frames take the rest of the poster
-      var fy = y + 50;
-      fr.forEach(function (im, k) { if (im) cover(ctx, im, x + k * (fw + gap), fy, fw, fh, 3, unbar(im)); });
-      ctx.font = font(22, SANS); ctx.fillStyle = onWall(0.5);
-      ctx.fillText("▶  Watch it — link in bio", x, fy + fh + 50);
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+      if (im) cover(ctx, im, 0, 0, W, H, 0, unbar(im));
+      var g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = "center";
+      fitText(ctx, v.title, 44, SANS, W - 160, false, 500);
+      ctx.lineJoin = "round"; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.strokeText(v.title, W / 2, H - 200);
+      ctx.fillStyle = "#fff"; ctx.fillText(v.title, W / 2, H - 200);
+      ctx.font = font(24, SANS); ctx.lineWidth = 5; var sub = (v.by ? v.by + " \u00B7 " : "") + "link in bio";
+      ctx.strokeText(sub, W / 2, H - 150); ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.fillText(sub, W / 2, H - 150);
+      ctx.textAlign = "left";
     },
     // bands: the three frames stacked edge to edge, the title over the last one
     bands: function (ctx, s, v) {
@@ -640,87 +588,8 @@
       ctx.fillStyle = g; ctx.fillRect(0, H - 380, W, 380);
       fitText(ctx, v.title, 44, SANS, W - 152, false, 500); ctx.fillStyle = "#fff"; ctx.fillText(v.title, 76, H - 140);
       ctx.font = font(24, SANS); ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.fillText("\u25B6  " + (v.by ? v.by + " \u00B7 " : "") + "link in bio", 76, H - 96);
-    },
-    // subtitle: one frame edge to edge with the title set as a film subtitle across its foot
-    subtitle: function (ctx, s, v) {
-      var im = v.frames[1] || v.thumb; s.light = true;
-      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
-      if (im) cover(ctx, im, 0, 0, W, H, 0, unbar(im));
-      var g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
-      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      ctx.textAlign = "center";
-      var size = fitText(ctx, v.title, 44, SANS, W - 160, false, 500);
-      ctx.lineJoin = "round"; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.strokeText(v.title, W / 2, H - 200);
-      ctx.fillStyle = "#fff"; ctx.fillText(v.title, W / 2, H - 200);
-      ctx.font = font(24, SANS); ctx.lineWidth = 5; var sub = (v.by ? v.by + " \u00B7 " : "") + "link in bio";
-      ctx.strokeText(sub, W / 2, H - 150); ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.fillText(sub, W / 2, H - 150);
-      ctx.textAlign = "left";
-    },
-    // museum · label: the film's frame hung like the cover, the museum label over its foot — "Channel, / Title, video"
-    label: function (ctx, s, v) {
-      wall(ctx);
-      var im = v.thumb || v.frames[0], b = im ? unbar(im) : null, w = W - 2 * M, h = b ? Math.min(w * b.h / b.w, 700) : 0;
-      var lw = 700, L = museumLabel(v, lw, 46), y = Math.max(70, (H - FOOT - (h + L.h - 80)) / 2);
-      if (im) {
-        shadowed(ctx, function () { ctx.fillStyle = "#000"; ctx.fillRect(M, y, w, h); }, 0.2, 50, 24);
-        cover(ctx, im, M, y, w, h, 0, b);
-        playButton(ctx, M + w / 2, y + h / 2 - 30, 56);
-      }
-      drawLabel(ctx, L, M, Math.min(y + h - 80, H - FOOT - L.h - 30));
-    },
-    // museum · screening: the video as a screen hung in the room, its wall label beside it
-    screening: function (ctx, s, v) {
-      gallery(ctx, 1070);
-      var im = v.thumb || v.frames[0], sw = 900, sh = sw * 9 / 16, sx = (W - sw) / 2, sy = 210;
-      shadowed(ctx, function () { ctx.fillStyle = "#0c0c0c"; ctx.beginPath(); ctx.roundRect(sx - 14, sy - 14, sw + 28, sh + 28, 8); ctx.fill(); }, 0.3, 50, 30);
-      if (im) cover(ctx, im, sx, sy, sw, sh, 2, unbar(im));
-      var g = ctx.createLinearGradient(sx, sy, sx + sw, sy + sh); g.addColorStop(0, "rgba(255,255,255,0.10)"); g.addColorStop(0.45, "rgba(255,255,255,0)");
-      ctx.fillStyle = g; ctx.fillRect(sx, sy, sw, sh);                       // a little glare on the glass
-      var L = museumLabel(v, 400, 26, true);
-      drawLabel(ctx, L, sx + sw - 400 + 14, sy + sh + 64, true);
-    },
-    // museum · triptych: the three frames hung as prints in a row, matted and framed, one label for the set
-    triptych: function (ctx, s, v) {
-      gallery(ctx, 1070);
-      var fr = v.frames.length ? v.frames : [v.thumb], n = fr.length, fw = 290, fh = 362, gap = 30, mat = 22;
-      var x0 = (W - (n * fw + (n - 1) * gap)) / 2, y = 330;
-      fr.forEach(function (im, k) {
-        var x = x0 + k * (fw + gap);
-        shadowed(ctx, function () { ctx.fillStyle = "#151515"; ctx.fillRect(x - 6, y - 6, fw + 12, fh + 12); }, 0.25, 30, 16);
-        ctx.fillStyle = "#fbfaf7"; ctx.fillRect(x, y, fw, fh);
-        if (im) cover(ctx, im, x + mat, y + mat, fw - 2 * mat, fh - 2 * mat, 0, unbar(im));
-      });
-      var L = museumLabel(v, 400, 26, true);
-      drawLabel(ctx, L, x0, y + fh + 90, true);
     }
   };
-
-  // the room for the museum slides: the topic's tone as the wall, a little floor at the foot
-  function gallery(ctx, floorY) {
-    wall(ctx);
-    var g = ctx.createLinearGradient(0, floorY, 0, H);
-    g.addColorStop(0, "rgba(0,0,0,0.10)"); g.addColorStop(1, "rgba(0,0,0,0.04)");
-    ctx.fillStyle = g; ctx.fillRect(0, floorY, W, H - floorY);
-    ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(0, floorY, W, 2);
-    var w = ctx.createLinearGradient(0, 0, 0, floorY); w.addColorStop(0, "rgba(255,255,255,0.18)"); w.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = w; ctx.fillRect(0, 0, W, floorY);                         // the light falls from above
-  }
-  // a museum label for the film, set as the site sets one: "Channel, / Title, video" (+ the medium, small, on wall labels)
-  function museumLabel(v, w, size, small) {
-    var words = (v.by ? plainRuns(v.by + ",").concat([{ br: true }]) : []).concat(plainRuns(v.title + ", video"));
-    var lh = size * 1.13, lines = wrap(words, size, SANS, w - (small ? 56 : 84));
-    var h = (small ? 30 : 44) + linesH(lines, lh) + (small ? 92 : 96);
-    return { w: w, size: size, lh: lh, lines: lines, h: h, small: small };
-  }
-  function drawLabel(ctx, L, x, y, small) {
-    card(ctx, x, y, L.w, L.h);
-    var px = small ? 28 : 42;
-    drawLines(ctx, L.lines, x + px, y + (small ? 22 : 34), L.size, L.lh, SANS, "#111");
-    var fy = y + L.h - (small ? 30 : 36);
-    ctx.font = font(small ? 17 : 22, SANS); ctx.fillStyle = "rgba(17,17,17,0.55)";
-    ctx.fillText(small ? "Colour, sound \u00B7 watch it, link in bio" : "\u25B6  Watch it \u2014 link in bio", x + px, fy);
-    if (topic.no) { ctx.textAlign = "right"; ctx.fillStyle = "#111"; ctx.font = font(small ? 15 : 20, SANS); ctx.fillText("No. " + pad(topic.no), x + L.w - px, fy); ctx.textAlign = "left"; }
-  }
 
   /* ---------- caption ---------- */
   function caption() {
