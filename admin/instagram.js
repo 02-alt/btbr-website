@@ -879,7 +879,7 @@
     }, Promise.resolve()).then(function () {
       if (my !== token) return;
       if (!$("caption").value) setCaption(caption());
-      chips();
+      chips(); fitPhone();
       if (q.get("dump")) {                           // dev: hand the slides to a headless browser
         var pre = document.createElement("pre"); pre.id = "dump"; pre.dataset.kinds = slides.map(function (s) { return s.kind; }).join(",");
         pre.textContent = slides.map(function (s) { return s.canvas.toDataURL("image/jpeg", 0.9); }).join("\n");
@@ -1064,6 +1064,16 @@
     return new Blob(parts.concat(central, [end.buffer]), { type: "application/zip" });
   }
 
+  // the phone is drawn at its true size and zoomed to the height the layout leaves it
+  function fitPhone() {
+    var phone = document.querySelector(".phone");
+    if (innerWidth <= 760) { phone.style.zoom = ""; return; }
+    var dock = document.body.classList.contains("lay-dock") ? document.querySelector(".panel").offsetHeight + 52 : 40;
+    var h = Math.max(420, Math.min(document.body.classList.contains("lay-side") ? 860 : 820, innerHeight - 52 - dock));
+    phone.style.zoom = String(h / 820);
+    var t = $("track"); if (t) t.scrollLeft = at * t.clientWidth;
+    placePicker();
+  }
   function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
   function wire() {
     $("dlZip").addEventListener("click", function () {
@@ -1124,7 +1134,7 @@
       if (e.key === "ArrowRight") { go(at + 1); e.preventDefault(); }
       if (e.key === "ArrowLeft") { go(at - 1); e.preventDefault(); }
     });
-    addEventListener("resize", function () { track.scrollLeft = at * track.clientWidth; });
+    addEventListener("resize", function () { fitPhone(); track.scrollLeft = at * track.clientWidth; });
   }
 
   function start() {
@@ -1144,6 +1154,7 @@
       });
       document.documentElement.style.setProperty("--tone", topic.tone || "#e6e4e6");
       document.body.classList.add("lay-" + (q.get("layout") || "dock"));
+      fitPhone(); requestAnimationFrame(fitPhone);
       wire(); return render();
     }).catch(function (e) { $("count").textContent = "Couldn’t load “" + opts.slug + "”: " + e.message; });
   }

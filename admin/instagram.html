@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
   <style>
     @font-face { font-family: "My Hand"; src: url("/assets/fonts/MyHand.ttf") format("truetype"); }
-    :root { --blue: #0071e3; --ink: #1d1d1f; --ink2: #6e6e73; --ink3: #86868b; --hair: rgba(0,0,0,0.08); --phone-h: min(820px, calc(100vh - 92px)); }
+    :root { --blue: #0071e3; --ink: #1d1d1f; --ink2: #6e6e73; --ink3: #86868b; --hair: rgba(0,0,0,0.08); }
     * { box-sizing: border-box; }
     html, body { margin: 0; }
     body { min-height: 100vh; color: var(--ink); background: radial-gradient(1200px 700px at 50% 0, #fff, #ececf0) fixed;
@@ -36,14 +36,14 @@
     .intro h1 { font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; font-weight: 700; margin: 0; }
     .intro p { font-size: 17px; line-height: 1.45; color: var(--ink2); margin: 12px 0 0; }
 
-    .phone { height: var(--phone-h); width: calc(var(--phone-h) * 400 / 820); border-radius: calc(var(--phone-h) * 0.07); background: #111; padding: calc(var(--phone-h) * 0.0146);
+    .phone { width: 400px; height: 820px; flex: none; border-radius: 58px; background: #111; padding: 12px;
       box-shadow: 0 30px 80px -20px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.2); }
-    .screen { position: relative; height: 100%; border-radius: calc(var(--phone-h) * 0.056); background: #fff; overflow: hidden; display: flex; flex-direction: column; }
+    .screen { position: relative; height: 100%; border-radius: 46px; background: #fff; overflow: hidden; display: flex; flex-direction: column; }
     .island { position: absolute; top: 1.4%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.9%; border-radius: 99px; background: #000; z-index: 2; }
     .status { height: 6.6%; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 1% 9% 0; font-weight: 600; font-size: 15px; }
     .status svg { height: 12px; }
     .ig-head { display: flex; align-items: center; gap: 9px; padding: 8px 12px; flex: none; }
-    .avatar { width: 30px; height: 30px; border-radius: 50%; background: #ddd center / cover; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #d62976; }
+    .avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; background: #ddd center / cover; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #d62976; }
     .ig-head b { font-size: 13px; }
     .ig-head .dots3 { margin-left: auto; font-weight: 700; letter-spacing: 1px; color: var(--ink); }
 
@@ -72,7 +72,7 @@
     .dotrow i.off { background: transparent; box-shadow: inset 0 0 0 1px #c7c7cc; }
     .dotrow i.on { background: #0095f6; transform: scale(1.15); }
     .dotrow i.edge { transform: scale(0.6); }
-    .ig-cap { padding: 0 12px; font-size: 13px; line-height: 1.35; }
+    .ig-cap { padding: 0 12px; font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .ig-cap b { margin-right: 4px; }
     .ig-cap .more { color: var(--ink3); }
 
@@ -147,7 +147,6 @@
 
     /* ---- narrower screens: the words go, then the phone frame (on a phone, the phone is the frame) ---- */
     /* ---- layout B · sidebar: the phone alone in the room, settings in a full-height inspector ---- */
-    .lay-side { --phone-h: min(860px, calc(100vh - 92px)); }
     .lay-side .stage { grid-template-columns: minmax(0, 1fr) 380px; padding: 0; gap: 0; min-height: calc(100vh - 52px); }
     .lay-side .intro { display: none; }
     .lay-side .phone { justify-self: center; }
@@ -157,11 +156,11 @@
     .lay-side .top { border-bottom: 0.5px solid rgba(0,0,0,0.08); }
 
     /* ---- layout C · dock: the phone centre stage, settings in one floating bar beneath it ---- */
-    .lay-dock { --phone-h: min(720px, calc(100vh - 300px)); }
     .lay-dock .stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 4px 20px 24px; }
     .lay-dock .intro { display: none; }
     .lay-dock .panel { width: auto; max-width: calc(100vw - 40px); max-height: none; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 18px 22px; padding: 16px 20px; border-radius: 26px; }
     .lay-dock .rule { width: 0.5px; height: auto; align-self: stretch; margin: 0; }
+    .lay-dock .panel > .rule.break { flex-basis: 100%; width: auto; height: 0.5px; margin: 0 -20px; }   /* two rows: the looks, then this slide · caption · share */
     .lay-dock .panel > .row { flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; }
     .lay-dock .panel > section:has(#include) { width: 250px; }
     .lay-dock .panel > section:has(#caption) { width: 220px; }
@@ -171,11 +170,16 @@
     @media (max-width: 1180px) { .stage { grid-template-columns: auto auto; justify-content: center; } .intro { display: none; } }
     @media (max-width: 760px) {
       .stage { display: block; padding: 0 0 24px; }
-      .phone { height: auto; width: 100%; border-radius: 0; padding: 0; background: none; box-shadow: none; }
+      .phone { height: auto; width: 100%; border-radius: 0; padding: 0; background: none; box-shadow: none; zoom: 1 !important; }
       .screen { border-radius: 0; background: #fff; }
       .island, .status { display: none; }
       .nav { display: none; }
       .panel { width: auto; max-height: none; margin: 16px; }
+      .lay-dock .panel { flex-direction: column; flex-wrap: nowrap; align-items: stretch; max-width: none; gap: 18px; }
+      .lay-dock .rule, .lay-dock .panel > .rule.break { width: auto; height: 1px; flex-basis: auto; margin: 0 -20px; }
+      .lay-dock .panel > section, .lay-dock .actions { width: auto !important; }
+      .lay-dock .panel > .row { flex-direction: row; align-items: center; }
+      .lay-dock .stage { display: block; padding: 0 0 24px; }
     }
     @media (prefers-reduced-motion: reduce) { .switch::after, .nav, .chip canvas, .btn { transition: none; } }
     @media (prefers-reduced-transparency: reduce) { .panel { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; } }
@@ -221,7 +225,7 @@
       <section id="secText"><h3>Text slides</h3><div class="chips" id="chipsText" role="group" aria-label="Text slides"></div></section>
       <section id="secVideo"><h3>Video slides</h3><div class="chips" id="chipsVideo" role="group" aria-label="Video slides"></div></section>
       <div class="row"><span>Page count</span><input class="switch" type="checkbox" role="switch" id="folio" /></div>
-      <div class="rule"></div>
+      <div class="rule break"></div>
       <section>
         <h3>This slide <span class="val" id="slideName"></span><button class="link" id="dlOne" type="button">Download</button></h3>
         <div class="row"><span>In the post</span><input class="switch" type="checkbox" role="switch" id="include" /></div>
@@ -244,6 +248,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/instagram.js?v=22"></script>
+  <script src="/admin/instagram.js?v=24"></script>
 </body>
 </html>
