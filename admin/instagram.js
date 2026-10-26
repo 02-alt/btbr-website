@@ -459,8 +459,20 @@
     cinema: function (ctx, s, im, st) {
       var lh = s.size * st.lh, th = linesH(s.lines, lh);
       ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
-      if (im) cover(ctx, im, 0, 0, W, H, 0, bare(im));
-      var top = H - 120 - th, g = ctx.createLinearGradient(0, top - 380, 0, H);
+      var top = H - 120 - th;
+      if (im) {
+        cover(ctx, im, 0, 0, W, H, 0, bare(im));
+        // a soft focus pull behind the words: the photo, blurred, faded in from above the text
+        var b = document.createElement("canvas"); b.width = W; b.height = H;
+        var bc = b.getContext("2d");
+        if (typeof bc.filter === "string") { bc.filter = "blur(14px)"; bc.drawImage(ctx.canvas, 0, 0); bc.filter = "none"; }
+        else { var sm = document.createElement("canvas"); sm.width = W / 12; sm.height = H / 12; sm.getContext("2d").drawImage(ctx.canvas, 0, 0, sm.width, sm.height); bc.imageSmoothingQuality = "high"; bc.drawImage(sm, 0, 0, W, H); }
+        var m = bc.createLinearGradient(0, top - 320, 0, top - 30);
+        m.addColorStop(0, "rgba(0,0,0,0)"); m.addColorStop(1, "rgba(0,0,0,1)");
+        bc.globalCompositeOperation = "destination-in"; bc.fillStyle = m; bc.fillRect(0, 0, W, H);
+        ctx.drawImage(b, 0, 0);
+      }
+      var g = ctx.createLinearGradient(0, top - 380, 0, H);
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.45, "rgba(0,0,0,0.55)"); g.addColorStop(1, "rgba(0,0,0,0.86)");
       ctx.fillStyle = g; ctx.fillRect(0, top - 380, W, H - top + 380);
       drawLines(ctx, s.lines, 76, top, s.size, lh, st.family, "#fff");
