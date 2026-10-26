@@ -320,7 +320,7 @@
   }
   function plan(o) {
     o = o || opts;
-    var out = [{ kind: "cover" }], blocks = topic.blocks || [];
+    var out = [{ kind: "cover" }], blocks = topic.blocks || [], nth = 0, everyPhoto = photoPool();
     var tailFrom = blocks.length;                    // trailing hand/sign close the carousel, after the sources
     while (tailFrom > 0 && /^(hand|sign)$/.test(blocks[tailFrom - 1].type)) tailFrom--;
     blocks.forEach(function (b, i) {
@@ -331,7 +331,8 @@
         var pages = textPages(words, o.textStyle), photos = nearestPhotos(blocks, i);
         pages.forEach(function (p, k) {
           var key = i + ":" + k, auto = photos[k % photos.length];
-          out.push({ kind: "text", style: o.textStyle, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
+          var second = photos.length > 1 ? photos[(k + 1) % photos.length] : everyPhoto[(everyPhoto.indexOf(auto) + 1) % everyPhoto.length];
+          out.push({ kind: "text", style: o.textStyle, nth: nth++, photo2: second, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
         });
       } else if (b.type === "image" && b.src) {
         out.push(b.board ? { kind: "board", src: b.src } : { kind: "photo", src: b.src, caption: b.caption });
@@ -552,28 +553,45 @@
       s.light = false;
     },
     // polaroid: a print taped over the label card, its note written under it in Isaac's hand
+    // polaroid: prints taped over the label card, their notes in Isaac's hand — five arrangements,
+    // taken in turn, so polaroid slides that follow each other never repeat
     polaroid: function (ctx, s, im, st) {
-      var lh = s.size * st.lh, cw = W - 2 * M, ch = linesH(s.lines, lh) + 2 * TEXT.padY;
+      var lh = s.size * st.lh, cw = W - 2 * M, ch = linesH(s.lines, lh) + 2 * TEXT.padY, v = (s.nth || 0) % 5;
+      var top = v === 2;                                         // the one arrangement with the card on top
+      var cy = top ? 84 : Math.max(600, H - FOOT - ch - 30);
       wall(ctx);
-      var cy = Math.max(600, H - FOOT - ch - 30);
-      card(ctx, M, cy, cw, ch);
-      drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, st.family, "#222");
-      part(ctx, s, M + cw - 26, cy + ch - 20);
-      if (!im) return;
-      var b = bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
-      var pw = 460, fr = 22, bottom = 96, ph = pw, PW = pw + 2 * fr, PH = ph + fr + bottom;
-      var px = W - M - PW + 20, py = Math.max(40, cy - PH + 34);   // pinned to the card's top edge, clear of the words
-      ctx.save(); ctx.translate(px + PW / 2, py + PH / 2); ctx.rotate(0.045); ctx.translate(-PW / 2, -PH / 2);
-      shadowed(ctx, function () { ctx.fillStyle = "#fdfcf9"; ctx.fillRect(0, 0, PW, PH); }, 0.24, 36, 16);
-      cover(ctx, im, fr, fr, pw, ph, 0, b);
-      var note = noteOf(s.photo) || topic.title;
-      ctx.font = font(30, HAND); ctx.fillStyle = "#1f1d20";
-      noteLines(ctx, note, 30, HAND, pw, 2).forEach(function (ln, k) {
-        ctx.fillText(ln.map(function (w) { return w.parts.map(function (p) { return p.t; }).join(""); }).join(" "), fr + 4, ph + fr + 40 + k * 34);
-      });
-      ctx.fillStyle = "rgba(235,228,205,0.82)"; ctx.translate(PW / 2, -8); ctx.rotate(-0.06); ctx.fillRect(-70, -18, 140, 40);   // tape
-      ctx.restore();
+      function words() {
+        card(ctx, M, cy, cw, ch);
+        drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, st.family, "#222");
+        part(ctx, s, M + cw - 26, cy + ch - 20);
+      }
+      if (!im) { words(); return; }
+      if (top) {                                                 // 3 · card first, the print hanging from its foot, bottom right
+        words();
+        var pw3 = Math.min(400, H - FOOT - (cy + ch - 34) - 140);
+        print(ctx, im, s.photo, W - M - pw3 - 44 + 20, cy + ch - 34, pw3, pw3, -0.035, "top");
+        return;
+      }
+      if (v === 3) {                                             // 4 · a pair, crossed, the second photo beside the first
+        return loadImg(s.photo2).then(function (im2) {
+          var pw = 330, PH = pw + 2 * 16 + 69, py = Math.max(36, cy - PH + 34);
+          words();
+          print(ctx, im, s.photo, M - 10, py + 10, pw, pw, -0.06, "corner");
+          if (im2 && im2 !== im) print(ctx, im2, s.photo2, W - M - pw - 32 + 10, py - 4, pw, pw, 0.05, "top");
+        });
+      }
+      if (v === 4) {                                             // 5 · one wide print, nearly straight, taped at both corners
+        var ww = 680, wh = Math.round(ww * 0.62), WPH = wh + Math.round(ww * 0.048) + Math.round(ww * 0.21);
+        words();
+        print(ctx, im, s.photo, (W - ww - 66) / 2, Math.max(40, cy - WPH + 34), ww, wh, -0.012, "both");
+        return;
+      }
+      words();
+      var pw1 = 460, PH1 = pw1 + 22 + 96;
+      if (v === 1) print(ctx, im, s.photo, M - 20, Math.max(40, cy - PH1 + 34), pw1, pw1, -0.05, "corner");   // 2 · top left, tape across the corner
+      else print(ctx, im, s.photo, W - M - pw1 - 44 + 20, Math.max(40, cy - PH1 + 34), pw1, pw1, 0.045, "top"); // 1 · top right
     }
+
   };
 
   /* ---------- the handwritten note ---------- */
@@ -635,6 +653,26 @@
       ctx.font = font(24, SANS); ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.fillText("\u25B6  " + (v.by ? v.by + " \u00B7 " : "") + "link in bio", 76, H - 96);
     }
   };
+
+  // a print: white border, the photo, its note written under it, a piece of tape
+  function print(ctx, im, src, x, y, pw, ph, angle, tapeAt) {
+    var b = bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
+    var fr = Math.round(pw * 0.048), bottom = Math.round(pw * 0.21), PW = pw + 2 * fr, PH = ph + fr + bottom;
+    ctx.save(); ctx.translate(x + PW / 2, y + PH / 2); ctx.rotate(angle); ctx.translate(-PW / 2, -PH / 2);
+    shadowed(ctx, function () { ctx.fillStyle = "#fdfcf9"; ctx.fillRect(0, 0, PW, PH); }, 0.24, 36, 16);
+    cover(ctx, im, fr, fr, pw, ph, 0, b);
+    var size = Math.min(32, Math.max(22, Math.round(pw * 0.065))), note = noteOf(src) || topic.title;
+    ctx.font = font(size, HAND); ctx.fillStyle = "#1f1d20";
+    noteLines(ctx, note, size, HAND, pw, 2).forEach(function (ln, k) {
+      ctx.fillText(ln.map(function (w) { return w.parts.map(function (p) { return p.t; }).join(""); }).join(" "), fr + 4, ph + fr + size * 1.3 + k * size * 1.12);
+    });
+    ctx.fillStyle = "rgba(235,228,205,0.82)";
+    function strip(cx, cy, a) { ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillRect(-70, -18, 140, 40); ctx.restore(); }
+    if (tapeAt === "top") strip(PW / 2, -8, -0.06);
+    if (tapeAt === "corner") strip(18, 18, -0.75);
+    if (tapeAt === "both") { strip(28, 6, -0.6); strip(PW - 28, 6, 0.6); }
+    ctx.restore();
+  }
 
   /* ---------- caption ---------- */
   function caption() {
