@@ -129,11 +129,22 @@
     ctx.shadowColor = "rgba(40,30,40,0.06)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1; ctx.fill();
     ctx.restore();
   }
-  function cover(ctx, im, x, y, w, h, r) {           // object-fit: cover, rounded
-    var k = Math.max(w / im.naturalWidth, h / im.naturalHeight), sw = w / k, sh = h / k;
+  function cover(ctx, im, x, y, w, h, r, sr) {       // object-fit: cover, rounded; sr = the part of the image to use
+    sr = sr || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
+    var k = Math.max(w / sr.w, h / sr.h), sw = w / k, sh = h / k;
     ctx.save(); if (r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.clip(); }
-    ctx.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+    ctx.drawImage(im, sr.x + (sr.w - sw) / 2, sr.y + (sr.h - sh) / 2, sw, sh, x, y, w, h);
     ctx.restore();
+  }
+  // a board's window PNG is the Preview window baked at 2× around the photo (MacWin: 37pt title bar,
+  // 3pt sides, the long side of the photo 720pt) — this is the photo alone, for layouts that go edge to edge
+  function bare(im) {
+    if (!/board-\d+-\d+\.png($|\?)/i.test(im.src)) return null;
+    var k = Math.max(im.naturalWidth / 726, im.naturalHeight / 760), e = 5 * k;
+    return { x: 3 * k + e, y: 37 * k + e, w: im.naturalWidth - 6 * k - 2 * e, h: im.naturalHeight - 40 * k - 2 * e };
+  }
+  function shadowed(ctx, fn, a, blur, dy) {
+    ctx.save(); ctx.shadowColor = "rgba(20,15,20," + (a || 0.22) + ")"; ctx.shadowBlur = blur || 50; ctx.shadowOffsetY = dy || 24; fn(); ctx.restore();
   }
   function contain(ctx, im, x, y, w, h) {             // a window (or photo) whole, centred in the box, trimmed to its own edges
     var b = /\.png($|\?)/i.test(im.src) ? alphaBox(im) : { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
@@ -161,9 +172,9 @@
   }
   function onWall(a) { return isDark(topic.tone) ? "rgba(255,255,255," + a + ")" : "rgba(17,17,17," + a + ")"; }
   function wall(ctx) { ctx.fillStyle = topic.tone || "#e6e4e6"; ctx.fillRect(0, 0, W, H); }
-  function folio(ctx, i, n) {                       // just the page count, quiet, bottom right
+  function folio(ctx, i, n, light) {                // just the page count, quiet, bottom right
     if (!opts.folio) return;
-    ctx.font = font(20, SANS); ctx.fillStyle = onWall(0.38); ctx.textBaseline = "alphabetic"; ctx.textAlign = "right";
+    ctx.font = font(20, SANS); ctx.fillStyle = light ? "rgba(255,255,255,0.6)" : onWall(0.38); ctx.textBaseline = "alphabetic"; ctx.textAlign = "right";
     ctx.fillText((i + 1) + " / " + n, W - 56, H - 48);
     ctx.textAlign = "left";
   }
@@ -195,6 +206,13 @@
     return [topic.cover];
   }
   // every photo in the topic, in reading order: what the ‹ › under a text slide steps through
+  function noteOf(src) {
+    var n = "";
+    (topic.blocks || []).forEach(function (b) {
+      (b.board && b.board.items || []).forEach(function (it) { if (it.src === src && it.note) n = it.note; });
+    });
+    return n.trim();
+  }
   function photoPool() {
     var out = [];
     (topic.blocks || []).forEach(function (b) {
@@ -206,13 +224,21 @@
     return out;
   }
   var TEXT = { size: 42, min: 36, lh: 1.5, padX: 64, padY: 58 };
-  function textPages(words, maxH) {
-    var innerW = W - 2 * M - 2 * TEXT.padX;
-    for (var s = TEXT.size; s >= TEXT.min; s -= 2) {
-      var lines = wrap(words, s, SERIF, innerW);
-      if (linesH(lines, s * TEXT.lh) <= maxH) return [{ lines: lines, size: s }];
+  var STYLES = {
+    blur:     { family: SERIF, size: 42, min: 36, lh: 1.5, w: W - 2 * M - 128, maxH: 960 },
+    strip:    { family: SERIF, size: 42, min: 36, lh: 1.5, w: W - 2 * M - 128, maxH: 640 },
+    cinema:   { family: SANS, size: 46, min: 40, lh: 1.24, w: W - 2 * 76, maxH: 600 },
+    half:     { family: SERIF, size: 38, min: 34, lh: 1.45, w: W - 2 * 84, maxH: 560 },
+    polaroid: { family: SERIF, size: 38, min: 34, lh: 1.48, w: W - 2 * M - 128, maxH: 520 }
+  };
+  function style() { return STYLES[opts.textStyle] || STYLES.blur; }
+  function textPages(words) {
+    var st = style(), innerW = st.w, maxH = st.maxH, family = st.family;
+    for (var s = st.size; s >= st.min; s -= 2) {
+      var lines = wrap(words, s, family, innerW);
+      if (linesH(lines, s * st.lh) <= maxH) return [{ lines: lines, size: s }];
     }
-    var s2 = TEXT.size - 2, lh = s2 * TEXT.lh, all = wrap(words, s2, SERIF, innerW);
+    var s2 = st.size - 2, lh = s2 * st.lh, all = wrap(words, s2, family, innerW);
     var n = Math.ceil(linesH(all, lh) / maxH), target = linesH(all, lh) / n, pages = [], cur = [];
     all.forEach(function (ln) {                      // balanced pages, not a stub at the end; a paragraph gap is the best place to turn
       var h = linesH(cur.concat([ln]), lh), more = pages.length < n - 1;
@@ -233,8 +259,7 @@
       if (b.type === "text") {
         var words = runsFromHTML(b.html); if (!words.length) return;
         if (b.head) { out.push({ kind: "chapter", words: words }); return; }
-        var maxH = opts.textStyle === "strip" ? 640 : 960;
-        var pages = textPages(words, maxH), photos = nearestPhotos(blocks, i);
+        var pages = textPages(words), photos = nearestPhotos(blocks, i);
         pages.forEach(function (p, k) {
           var key = i + ":" + k, auto = photos[k % photos.length];
           out.push({ kind: "text", key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
@@ -283,24 +308,12 @@
     },
 
     text: function (ctx, s) {
-      var lh = s.size * TEXT.lh, th = linesH(s.lines, lh), cw = W - 2 * M, ch = th + 2 * TEXT.padY;
       return loadImg(s.photo).then(function (im) {
-        var cy;
-        if (opts.textStyle === "strip" && im) {
-          wall(ctx);
-          var gap = 28, stripH = Math.min(520, H - FOOT - 80 - ch - gap - 70);
-          var top = Math.max(70, (H - FOOT - (stripH + gap + ch)) / 2);
-          if (stripH >= 200) { contain(ctx, im, M, top, cw, stripH); cy = top + stripH + gap; }
-          else cy = (H - FOOT - ch) / 2;
-        } else {
-          if (im) blurred(ctx, im, topic.tone || "#e6e4e6"); else wall(ctx);
-          cy = (H - FOOT - ch) / 2 + 10;
-        }
-        card(ctx, M, cy, cw, ch);
-        drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, SERIF, "#222");
-        if (s.part) { ctx.font = font(18, SANS); ctx.fillStyle = "rgba(17,17,17,0.4)"; ctx.textAlign = "right"; ctx.fillText(s.part, M + cw - 26, cy + ch - 20); ctx.textAlign = "left"; }
+        s.light = false;
+        return (TEXTS[opts.textStyle] || TEXTS.blur)(ctx, s, im, style());
       });
     },
+
 
     chapter: function (ctx, s) {
       wall(ctx);
@@ -410,6 +423,88 @@
     }
   };
 
+  /* ---------- text slides, one per style ---------- */
+  function part(ctx, s, x, y, light) {
+    if (!s.part) return;
+    ctx.font = font(18, SANS); ctx.fillStyle = light ? "rgba(255,255,255,0.55)" : "rgba(17,17,17,0.4)";
+    ctx.textAlign = "right"; ctx.fillText(s.part, x, y); ctx.textAlign = "left";
+  }
+  function noteLines(ctx, text, size, family, maxW, maxLines) {
+    var lines = wrap(plainRuns(text), size, family, maxW);
+    return lines.slice(0, maxLines);
+  }
+  var TEXTS = {
+    // the label card over the nearest photo, out of focus
+    blur: function (ctx, s, im, st) {
+      var lh = s.size * st.lh, cw = W - 2 * M, ch = linesH(s.lines, lh) + 2 * TEXT.padY;
+      if (im) blurred(ctx, im, topic.tone || "#e6e4e6"); else wall(ctx);
+      var cy = (H - FOOT - ch) / 2 + 10;
+      card(ctx, M, cy, cw, ch);
+      drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, st.family, "#222");
+      part(ctx, s, M + cw - 26, cy + ch - 20);
+    },
+    // the photo's window above the label card
+    strip: function (ctx, s, im, st) {
+      var lh = s.size * st.lh, cw = W - 2 * M, ch = linesH(s.lines, lh) + 2 * TEXT.padY, cy;
+      wall(ctx);
+      var gap = 28, stripH = Math.min(520, H - FOOT - 80 - ch - gap - 70);
+      var top = Math.max(70, (H - FOOT - (stripH + gap + ch)) / 2);
+      if (im && stripH >= 200) { contain(ctx, im, M, top, cw, stripH); cy = top + stripH + gap; }
+      else cy = (H - FOOT - ch) / 2;
+      card(ctx, M, cy, cw, ch);
+      drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, st.family, "#222");
+      part(ctx, s, M + cw - 26, cy + ch - 20);
+    },
+    // film still: the photo edge to edge, the words set over its darkened foot like a subtitle card
+    cinema: function (ctx, s, im, st) {
+      var lh = s.size * st.lh, th = linesH(s.lines, lh);
+      ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
+      if (im) cover(ctx, im, 0, 0, W, H, 0, bare(im));
+      var top = H - 120 - th, g = ctx.createLinearGradient(0, top - 380, 0, H);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.45, "rgba(0,0,0,0.55)"); g.addColorStop(1, "rgba(0,0,0,0.86)");
+      ctx.fillStyle = g; ctx.fillRect(0, top - 380, W, H - top + 380);
+      drawLines(ctx, s.lines, 76, top, s.size, lh, st.family, "#fff");
+      ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillRect(76, top - 46, 44, 3);
+      part(ctx, s, W - 76, top - 36, true);
+      s.light = true;
+    },
+    // half page: the photo bleeds off the top, the words sit on paper below, its note as the caption
+    half: function (ctx, s, im, st) {
+      var lh = s.size * st.lh, th = linesH(s.lines, lh), note = noteOf(s.photo);
+      var textTop = H - FOOT - th - (note ? 64 : 20), split = Math.min(textTop - 70, 620);
+      ctx.fillStyle = "#fbfaf8"; ctx.fillRect(0, 0, W, H);
+      if (im) cover(ctx, im, 0, 0, W, split, 0, bare(im));
+      var y = split + 34;
+      if (note) { ctx.font = font(20, SANS); ctx.fillStyle = "rgba(17,17,17,0.45)"; ctx.fillText(note, 84, y + 20); y += 50; }
+      drawLines(ctx, s.lines, 84, y + (H - FOOT - y - th) / 2 - s.size * 0.2, s.size, lh, st.family, "#222");
+      part(ctx, s, W - 84, H - FOOT + 2);
+      s.light = false;
+    },
+    // polaroid: a print taped over the label card, its note written under it in Isaac's hand
+    polaroid: function (ctx, s, im, st) {
+      var lh = s.size * st.lh, cw = W - 2 * M, ch = linesH(s.lines, lh) + 2 * TEXT.padY;
+      wall(ctx);
+      var cy = Math.max(600, H - FOOT - ch - 30);
+      card(ctx, M, cy, cw, ch);
+      drawLines(ctx, s.lines, M + TEXT.padX, cy + TEXT.padY - s.size * 0.18, s.size, lh, st.family, "#222");
+      part(ctx, s, M + cw - 26, cy + ch - 20);
+      if (!im) return;
+      var b = bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
+      var pw = 460, fr = 22, bottom = 96, ph = pw, PW = pw + 2 * fr, PH = ph + fr + bottom;
+      var px = W - M - PW + 20, py = Math.max(40, cy - PH + 34);   // pinned to the card's top edge, clear of the words
+      ctx.save(); ctx.translate(px + PW / 2, py + PH / 2); ctx.rotate(0.045); ctx.translate(-PW / 2, -PH / 2);
+      shadowed(ctx, function () { ctx.fillStyle = "#fdfcf9"; ctx.fillRect(0, 0, PW, PH); }, 0.24, 36, 16);
+      cover(ctx, im, fr, fr, pw, ph, 0, b);
+      var note = noteOf(s.photo) || topic.title;
+      ctx.font = font(30, HAND); ctx.fillStyle = "#1f1d20";
+      noteLines(ctx, note, 30, HAND, pw, 2).forEach(function (ln, k) {
+        ctx.fillText(ln.map(function (w) { return w.parts.map(function (p) { return p.t; }).join(""); }).join(" "), fr + 4, ph + fr + 40 + k * 34);
+      });
+      ctx.fillStyle = "rgba(235,228,205,0.82)"; ctx.translate(PW / 2, -8); ctx.rotate(-0.06); ctx.fillRect(-70, -18, 140, 40);   // tape
+      ctx.restore();
+    }
+  };
+
   /* ---------- caption ---------- */
   function caption() {
     var first = (topic.blocks || []).filter(function (b) { return b.type === "text" && !b.head; })[0];
@@ -450,7 +545,7 @@
       if (my !== token) return;
       var cap = $("caption"); cap.value = caption(); cap.style.height = ""; cap.style.height = (cap.scrollHeight + 4) + "px";
       if (q.get("dump")) {                           // dev: hand the slides to a headless browser
-        var pre = document.createElement("pre"); pre.id = "dump";
+        var pre = document.createElement("pre"); pre.id = "dump"; pre.dataset.kinds = slides.map(function (s) { return s.kind; }).join(",");
         pre.textContent = slides.map(function (s) { return s.canvas.toDataURL("image/jpeg", 0.9); }).join("\n");
         document.body.appendChild(pre);
       }
@@ -460,7 +555,7 @@
   function paint(s, i) {
     var ctx = s.canvas.getContext("2d");
     ctx.clearRect(0, 0, W, H);
-    return (draw[s.kind] || function () { return Promise.resolve(); })(ctx, s).then(function () { folio(ctx, i, slides.length); })
+    return (draw[s.kind] || function () { return Promise.resolve(); })(ctx, s).then(function () { folio(ctx, i, slides.length, s.light); })
       .catch(function (e) { console.error(e); });
   }
   // ‹ Photo 3 / 18 › — step a text slide through the topic's photos; back on the rule's choice it says "auto"
