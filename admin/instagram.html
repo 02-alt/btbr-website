@@ -36,7 +36,7 @@
     .intro h1 { font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; font-weight: 700; margin: 0; }
     .intro p { font-size: 17px; line-height: 1.45; color: var(--ink2); margin: 12px 0 0; }
 
-    .phone { width: 400px; height: 820px; flex: none; border-radius: 58px; background: #111; padding: 12px;
+    .phone { width: 400px; height: 820px; flex: none; transform-origin: top center; border-radius: 58px; background: #111; padding: 12px;
       box-shadow: 0 30px 80px -20px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.2); }
     .screen { position: relative; height: 100%; border-radius: 46px; background: #fff; overflow: hidden; display: flex; flex-direction: column; }
     .island { position: absolute; top: 1.4%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.9%; border-radius: 99px; background: #000; z-index: 2; }
@@ -185,7 +185,7 @@
     @media (max-width: 1180px) { .stage { grid-template-columns: auto auto; justify-content: center; } .intro { display: none; } }
     @media (max-width: 760px) {
       .stage { display: block; padding: 0 0 24px; }
-      .phone { height: auto; width: 100%; border-radius: 0; padding: 0; background: none; box-shadow: none; zoom: 1 !important; }
+      .phone { height: auto; width: 100%; border-radius: 0; padding: 0; background: none; box-shadow: none; transform: none !important; margin-bottom: 0 !important; }
       .screen { border-radius: 0; background: #fff; }
       .island, .status { display: none; }
       .nav { display: none; }
@@ -270,6 +270,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/instagram.js?v=28"></script>
+  <script src="/admin/instagram.js?v=29"></script>
 </body>
 </html>

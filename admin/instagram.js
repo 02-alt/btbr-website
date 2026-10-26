@@ -918,8 +918,9 @@
     $("count").classList.toggle("warn", k > 20);
     $("dlZip").textContent = "Download " + k + " images + caption";
     photos(s);
-    if (s.kind === "cover" || s.kind === "text" || s.kind === "video") showLook(s.kind);
+    if (at !== lookAt) { lookAt = at; if (/^(cover|text|video)$/.test(s.kind)) showLook(s.kind); }
   }
+  var lookAt = -1;
   var KIND = { cover: "Cover", text: "Text", chapter: "Heading", board: "Board", photo: "Photo", video: "Video", quote: "Quote", hand: "Note", sign: "Signature", sources: "Sources" };
   function go(i) {
     var track = $("track"); at = Math.max(0, Math.min(slides.length - 1, i));
@@ -1008,6 +1009,10 @@
           opts[key] = name;
           [].forEach.call(box.children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
           render();
+          if (!slides[at] || slides[at].kind !== kind) {
+            var first = slides.map(function (x) { return x.kind; }).indexOf(kind);
+            if (first >= 0) go(first);
+          }
         });
         var full = document.createElement("canvas"); full.width = W; full.height = H;
         return p.then(function () {
@@ -1077,11 +1082,12 @@
   // the phone is drawn at its true size and zoomed to the height the layout leaves it
   function fitPhone() {
     var phone = document.querySelector(".phone");
-    if (innerWidth <= 760) { phone.style.zoom = ""; return; }
+    if (innerWidth <= 760) { phone.style.transform = phone.style.marginBottom = ""; return; }
     var dock = document.body.classList.contains("lay-dock") ? document.querySelector(".panel").offsetHeight + 52 : 40;
     var h = Math.max(420, Math.min(document.body.classList.contains("lay-side") ? 860 : 820, innerHeight - 52 - dock));
-    phone.style.zoom = String(h / 820);
-    var t = $("track"); if (t) t.scrollLeft = at * t.clientWidth;
+    var k = h / 820, was = phone.style.transform;
+    phone.style.transform = "scale(" + k + ")"; phone.style.marginBottom = (820 * (k - 1)) + "px";
+    var t = $("track"); if (t && was !== phone.style.transform) t.scrollLeft = at * t.clientWidth;   // only when the size really changed: never mid-swipe
     placePicker();
   }
   function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
