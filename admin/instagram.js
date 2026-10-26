@@ -50,6 +50,37 @@
       });
     })).then(function (a) { return a.filter(Boolean); });
   }
+  // a YouTube still by URL, falling back to its 480px twin when the HD one doesn't exist
+  function ytImg(url) {
+    return loadImg(url).then(function (im) {
+      return im && im.naturalWidth > 200 ? im : loadImg(url.replace("maxresdefault", "hqdefault").replace(/maxres(\d)\.jpg/, "hq$1.jpg"));
+    });
+  }
+  function ytStills(id) {
+    var b = "https://i.ytimg.com/vi/" + id + "/";
+    return { srcs: [b + "maxresdefault.jpg", b + "maxres1.jpg", b + "maxres2.jpg", b + "maxres3.jpg"], labels: ["Cover", "\u00BC", "\u00BD", "\u00BE"] };
+  }
+  // a video file of your own: ten stills taken across it (5% … 95%)
+  var fileStills = {};
+  function videoStills(src) {
+    if (fileStills[src]) return fileStills[src];
+    return (fileStills[src] = new Promise(function (res) {
+      var v = document.createElement("video"), out = [], k = 0;
+      v.crossOrigin = "anonymous"; v.muted = true; v.preload = "auto"; v.src = src;
+      function next() {
+        if (k >= 10) { res(out); return; }
+        v.currentTime = v.duration * (0.05 + 0.1 * k);
+      }
+      v.addEventListener("loadedmetadata", next);
+      v.addEventListener("seeked", function () {
+        var c = document.createElement("canvas"); c.width = Math.min(1280, v.videoWidth); c.height = Math.round(c.width * v.videoHeight / v.videoWidth);
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        try { out.push(c.toDataURL("image/jpeg", 0.9)); } catch (e) {}
+        k++; next();
+      });
+      v.addEventListener("error", function () { res(out); });
+    }));
+  }
   // the picture without its black bars, top and bottom (letterbox) and either side (pillarbox)
   function unbar(im) {
     var w = 96, h = Math.max(1, Math.round(w * im.naturalHeight / im.naturalWidth)), c = document.createElement("canvas"); c.width = w; c.height = h;
@@ -305,7 +336,9 @@
       } else if (b.type === "image" && b.src) {
         out.push(b.board ? { kind: "board", src: b.src } : { kind: "photo", src: b.src, caption: b.caption });
       } else if (b.type === "video" && b.src) {
-        out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle });
+        var vid = ytId(b.src), st = vid ? ytStills(vid) : { srcs: [], labels: [] }, vkey = "video:" + i;
+        out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle, key: vkey,
+          stills: st.srcs, labels: st.labels, auto: st.srcs[2] || "", photo: picks[vkey] || st.srcs[2] || "" });
       } else if (b.type === "quote" && b.text) {
         out.push({ kind: "quote", text: b.text, cite: b.cite });
       } else if ((b.type === "hand" || b.type === "sign") && b.text) {
@@ -389,8 +422,18 @@
 
     video: function (ctx, s) {
       var id = ytId(s.src);
-      return Promise.all([id ? ytThumb(id) : null, id ? ytInfo(id) : {}, id ? ytFrames(id) : []]).then(function (r) {
-        var v = { thumb: r[0], info: r[1] || {}, frames: r[2] || [] };
+      var own = id ? null : videoStills(s.src).then(function (list) {   // a file: its own stills stand in for YouTube's
+        if (list.length && !s.stills.length) {
+          s.stills = list; s.labels = list.map(function (u, k) { return (5 + 10 * k) + "%"; });
+          s.auto = list[4]; if (!picks[s.key]) s.photo = s.auto;
+          if (slides[at] === s) photos(s);
+        }
+        return Promise.all(list.map(loadImg));
+      });
+      return Promise.all([id ? ytThumb(id) : own.then(function (a) { return a[0]; }), id ? ytInfo(id) : {},
+                          id ? ytFrames(id) : own.then(function (a) { return [a[2], a[5], a[8]].filter(Boolean); }),
+                          s.photo ? (id ? ytImg(s.photo) : loadImg(s.photo)) : null]).then(function (r) {
+        var v = { thumb: r[0], info: r[1] || {}, frames: r[2] || [], pick: r[3] };
         v.title = plain(s.caption) || s.wtitle || v.info.title || "Film";
         v.by = v.info.author_name || "";
         s.light = false;
@@ -566,9 +609,9 @@
   var VIDEOS = {
     // subtitle: one frame edge to edge, the title set as a film subtitle across its foot
     subtitle: function (ctx, s, v) {
-      var im = v.frames[1] || v.thumb; s.light = true;
+      var im = v.pick || v.frames[1] || v.thumb; s.light = true;
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
-      if (im) cover(ctx, im, 0, 0, W, H, 0, unbar(im));
+      if (im) cover(ctx, im, 0, 0, W, H, 0, bare(im) || unbar(im));
       var g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
       ctx.textAlign = "center";
@@ -582,8 +625,10 @@
     // bands: the three frames stacked edge to edge, the title over the last one
     bands: function (ctx, s, v) {
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H); s.light = true;
-      var fr = v.frames.length ? v.frames : [v.thumb], gap = 8, bh = (H - gap * (fr.length - 1)) / fr.length;
-      fr.forEach(function (im, k) { if (im) cover(ctx, im, 0, k * (bh + gap), W, bh, 0, unbar(im)); });
+      var fr = (v.frames.length ? v.frames : [v.thumb]).slice();
+      if (v.pick && s.photo !== s.auto) fr[Math.min(1, fr.length - 1)] = v.pick;
+      var gap = 8, bh = (H - gap * (fr.length - 1)) / fr.length;
+      fr.forEach(function (im, k) { if (im) cover(ctx, im, 0, k * (bh + gap), W, bh, 0, bare(im) || unbar(im)); });
       var g = ctx.createLinearGradient(0, H - 380, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.75)");
       ctx.fillStyle = g; ctx.fillRect(0, H - 380, W, 380);
       fitText(ctx, v.title, 44, SANS, W - 152, false, 500); ctx.fillStyle = "#fff"; ctx.fillText(v.title, 76, H - 140);
@@ -667,29 +712,37 @@
 
   // This slide · Photo: the topic's photos, the rule's pick marked "Auto"
   function photos(s) {
-    var row = $("photoRow"), box = $("photos");
-    row.hidden = !(s.auto && pool.length > 1);
+    var row = $("photoRow"), box = $("photos"), isVideo = s.kind === "video";
+    var first = isVideo ? s.stills : [s.auto], labels = isVideo ? s.labels : ["Auto"];
+    var list = first.concat(pool.filter(function (p) { return first.indexOf(p) < 0; }));
+    row.hidden = !s.auto || list.length < 2;
+    $("photoHead").textContent = isVideo ? "Picture" : "Photo";
     if (row.hidden) return;
     box.innerHTML = "";
-    var list = [s.auto].concat(pool.filter(function (p) { return p !== s.auto; }));
+    function note() {
+      $("photoNote").textContent = s.photo === s.auto
+        ? (isVideo ? "Automatic \u2014 the frame from halfway through." : "Automatic \u2014 the nearest image block.")
+        : (first.indexOf(s.photo) >= 0 ? "A frame from the video." : "A photo from the topic.");
+    }
     list.forEach(function (src, k) {
       var b = document.createElement("button"); b.type = "button"; b.className = "ph";
       b.setAttribute("aria-pressed", String(s.photo === src));
-      b.setAttribute("aria-label", k ? "Photo " + k : "Automatic photo");
-      var im = document.createElement("img"); im.src = src; im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+      b.setAttribute("aria-label", labels[k] ? (isVideo ? "Frame " + labels[k] : "Automatic photo") : "Photo " + (k + 1));
+      var im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+      im.src = src; if (/i\.ytimg\.com/.test(src)) im.onerror = function () { im.onerror = null; im.src = src.replace("maxresdefault", "hqdefault").replace(/maxres(\d)/, "hq$1"); };
       b.appendChild(im);
-      if (!k) { var t = document.createElement("span"); t.textContent = "Auto"; b.appendChild(t); }
+      if (labels[k]) { var t = document.createElement("span"); t.textContent = labels[k] + (src === s.auto && isVideo ? " \u00B7 Auto" : ""); b.appendChild(t); }
       b.addEventListener("click", function () {
         s.photo = src;
         if (src === s.auto) delete picks[s.key]; else picks[s.key] = src;
         [].forEach.call(box.children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-        $("photoNote").textContent = src === s.auto ? "Automatic — the nearest image block." : "Picked by you.";
-        paint(s, slides.indexOf(s));
+        note(); paint(s, slides.indexOf(s));
       });
       box.appendChild(b);
     });
-    $("photoNote").textContent = s.photo === s.auto ? "Automatic — the nearest image block." : "Picked by you.";
+    note();
   }
+
 
   // the style pickers: each choice drawn with this topic's own first text / video slide
   var chipsFor = "";

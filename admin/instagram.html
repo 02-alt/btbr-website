@@ -31,12 +31,12 @@
     .count.warn { color: #d70015; }
 
     /* ---- stage: words · phone · panel ---- */
-    .stage { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 40px; padding: 0 32px 24px; min-height: calc(100vh - 52px); }
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 40px; padding: 0 32px 24px; min-height: calc(100vh - 52px); }
     .intro { justify-self: end; max-width: 320px; }
     .intro h1 { font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; font-weight: 700; margin: 0; }
     .intro p { font-size: 17px; line-height: 1.45; color: var(--ink2); margin: 12px 0 0; }
 
-    .phone { height: var(--phone-h); aspect-ratio: 400 / 820; border-radius: calc(var(--phone-h) * 0.07); background: #111; padding: calc(var(--phone-h) * 0.0146);
+    .phone { height: var(--phone-h); width: calc(var(--phone-h) * 400 / 820); border-radius: calc(var(--phone-h) * 0.07); background: #111; padding: calc(var(--phone-h) * 0.0146);
       box-shadow: 0 30px 80px -20px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.2); }
     .screen { position: relative; height: 100%; border-radius: calc(var(--phone-h) * 0.056); background: #fff; overflow: hidden; display: flex; flex-direction: column; }
     .island { position: absolute; top: 1.4%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.9%; border-radius: 99px; background: #000; z-index: 2; }
@@ -106,7 +106,8 @@
     .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .ph span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.5); padding: 2px 0; text-align: center; }
     .ph[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--blue); }
-    .note { font-size: 11px; color: var(--ink3); }
+    .note { font-size: 11px; color: var(--ink3); margin-top: 6px; }
+    .sub { font-size: 13px; margin: 4px 0 8px; }
 
     .link { border: 0; background: none; padding: 0; color: var(--blue); font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; align-self: flex-start; }
     textarea { width: 100%; min-height: 96px; resize: vertical; padding: 10px 12px; border-radius: 10px; border: 0; background: rgba(0,0,0,0.04);
@@ -121,10 +122,10 @@
     .actions { display: flex; flex-direction: column; gap: 4px; }
 
     /* ---- narrower screens: the words go, then the phone frame (on a phone, the phone is the frame) ---- */
-    @media (max-width: 1180px) { .stage { grid-template-columns: auto 1fr; } .intro { display: none; } }
+    @media (max-width: 1180px) { .stage { grid-template-columns: auto auto; justify-content: center; } .intro { display: none; } }
     @media (max-width: 760px) {
       .stage { display: block; padding: 0 0 24px; }
-      .phone { height: auto; width: 100%; aspect-ratio: auto; border-radius: 0; padding: 0; background: none; box-shadow: none; }
+      .phone { height: auto; width: 100%; border-radius: 0; padding: 0; background: none; box-shadow: none; }
       .screen { border-radius: 0; background: #fff; }
       .island, .status { display: none; }
       .nav { display: none; }
@@ -177,7 +178,7 @@
       <section>
         <h3>This slide <span class="val" id="slideName"></span><button class="link" id="dlOne" type="button">Download</button></h3>
         <div class="row"><span>In the post</span><input class="switch" type="checkbox" role="switch" id="include" /></div>
-        <div id="photoRow"><div class="photos" id="photos" role="group" aria-label="Photo"></div><div class="note" id="photoNote"></div></div>
+        <div id="photoRow"><div class="sub" id="photoHead">Photo</div><div class="photos" id="photos" role="group" aria-label="Photo"></div><div class="note" id="photoNote"></div></div>
       </section>
       <div class="rule"></div>
       <section>
@@ -191,6 +192,6 @@
     </aside>
   </main>
 
-  <script src="/admin/instagram.js?v=14"></script>
+  <script src="/admin/instagram.js?v=16"></script>
 </body>
 </html>
