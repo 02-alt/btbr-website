@@ -17,7 +17,7 @@
   var SITE = "builtoberemembered.com";
 
   var q = new URLSearchParams(location.search);
-  var opts = { slug: q.get("t") || "djh20", textStyle: q.get("style") || "blur", note: q.get("note") || "focus", folio: q.get("folio") !== "0" };
+  var opts = { slug: q.get("t") || "djh20", textStyle: q.get("style") || "blur", folio: q.get("folio") !== "0" };
   var topic = null, slides = [], skip = {}, picks = {}, pool = [];
   var $ = function (id) { return document.getElementById(id); };
 
@@ -397,7 +397,7 @@
     hand: function (ctx, s) {
       return loadImg(s.photo).then(function (im) {
         s.light = false;
-        return (NOTES[opts.note] || NOTES.focus)(ctx, s, im);
+        inkNote(ctx, s, im);
       });
     },
 
@@ -518,7 +518,7 @@
     }
   };
 
-  /* ---------- the handwritten note, five ways ---------- */
+  /* ---------- the handwritten note ---------- */
   // the note in Isaac's hand, as big as fits the box
   function fitHand(text, maxW, maxH, start, min, k) {
     k = k || 1.32;
@@ -527,119 +527,20 @@
       if (linesH(lines, size * k) <= maxH || size === min) return { lines: lines, size: size, lh: size * k, h: linesH(lines, size * k) };
     }
   }
-  function lineText(ln) { return ln.map(function (w) { return w.parts.map(function (p) { return p.t; }).join(""); }).join(" "); }
-  function rotated(ctx, cx, cy, a, fn) { ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.translate(-cx, -cy); fn(); ctx.restore(); }
-  function tape(ctx, x, y, a, w) {
-    rotated(ctx, x, y, a, function () { ctx.fillStyle = "rgba(235,228,205,0.82)"; ctx.fillRect(x - (w || 140) / 2, y - 20, w || 140, 40); });
-  }
   function bleed(ctx, im) { ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H); cover(ctx, im, 0, 0, W, H, 0, bare(im)); }
-  var PAPER = "#fdfcf8";
-  var NOTES = {
-    // 1 · focus: the photo edge to edge, out of focus around a white card
-    focus: function (ctx, s, im) {
-      var f = fitHand(s.text, W - 2 * M - 150, 700, 66, 50);
-      var cw = W - 2 * M - 40, ch = f.h + 150, cx = (W - cw) / 2, cy = (H - FOOT - ch) / 2 + 10;
-      if (im) {
-        bleed(ctx, im);
-        focusPull(ctx, [[cy - 280, 0], [cy - 10, 1], [cy + ch + 10, 1], [cy + ch + 280, 0]]);
-        var g = ctx.createLinearGradient(0, H - 260, 0, H);
-        g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.35)");
-        ctx.fillStyle = g; ctx.fillRect(0, H - 260, W, 260);
-        s.light = true;
-      } else wall(ctx);
-      rotated(ctx, W / 2, cy + ch / 2, -0.018, function () {
-        card(ctx, cx, cy, cw, ch);
-        drawLines(ctx, f.lines, cx + 72, cy + 62, f.size, f.lh, HAND, "#1f1d20");
-      });
-    },
-    // 2 · ink: written straight onto the photo in white, the picture softened and dimmed behind the words
-    ink: function (ctx, s, im) {
-      var f = fitHand(s.text, W - 2 * 96, 760, 92, 60, 1.25), y = (H - f.h) / 2 - 20;
-      if (im) {
-        bleed(ctx, im);
-        focusPull(ctx, [[y - 300, 0], [y, 1], [y + f.h, 1], [y + f.h + 300, 0]]);
-        ctx.fillStyle = "rgba(0,0,0,0.38)"; ctx.fillRect(0, 0, W, H);
-        s.light = true;
-      } else wall(ctx);
-      ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 18;
-      drawLines(ctx, f.lines, 96, y, f.size, f.lh, HAND, im ? "#fbf8f2" : onWall(1));
-      ctx.restore();
-    },
-    // 3 · postcard: the back of a card, the note on the left, the photo as its stamp, addressed to the site
-    postcard: function (ctx, s, im) {
-      wall(ctx);
-      var pw = 980, ph = 660, px = (W - pw) / 2, py = (H - FOOT - ph) / 2 + 10;
-      rotated(ctx, W / 2, py + ph / 2, -0.022, function () {
-        shadowed(ctx, function () { ctx.fillStyle = PAPER; ctx.fillRect(px, py, pw, ph); }, 0.16, 40, 18);
-        var mid = px + pw * 0.56;
-        ctx.fillStyle = "rgba(0,0,0,0.14)"; ctx.fillRect(mid, py + 70, 2, ph - 140);
-        var f = fitHand(s.text, mid - px - 100, ph - 150, 50, 34, 1.3);
-        drawLines(ctx, f.lines, px + 56, py + (ph - f.h) / 2 - 10, f.size, f.lh, HAND, "#1f1d20");
-        // the stamp: the photo in a perforated white border
-        var sw = 190, sh = 230, sx = px + pw - 56 - sw, sy = py + 50;
-        ctx.fillStyle = "#fff"; ctx.fillRect(sx, sy, sw, sh);
-        ctx.fillStyle = PAPER;
-        for (var t = 0; t <= sw; t += 16) { ctx.beginPath(); ctx.arc(sx + t, sy, 5, 0, 7); ctx.arc(sx + t, sy + sh, 5, 0, 7); ctx.fill(); }
-        for (t = 0; t <= sh; t += 16) { ctx.beginPath(); ctx.arc(sx, sy + t, 5, 0, 7); ctx.arc(sx + sw, sy + t, 5, 0, 7); ctx.fill(); }
-        if (im) cover(ctx, im, sx + 14, sy + 14, sw - 28, sh - 28, 0, bare(im));
-        // the postmark, over the stamp's corner
-        var mx = sx - 18, my = sy + sh - 40;
-        ctx.strokeStyle = "rgba(30,28,32,0.45)"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(mx, my, 62, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(mx, my, 50, 0, 7); ctx.stroke();
-        ctx.font = font(17, SANS, false, 600); ctx.fillStyle = "rgba(30,28,32,0.5)"; ctx.textAlign = "center";
-        ctx.fillText(topic.title, mx, my - 2); ctx.font = font(13, SANS); ctx.fillText(String(topic.date || "").replace(/-/g, "."), mx, my + 18);
-        ctx.textAlign = "left";
-        for (var k = 0; k < 4; k++) {
-          ctx.beginPath(); ctx.moveTo(mx + 80 + k * 26, my - 34); ctx.bezierCurveTo(mx + 96 + k * 26, my - 12, mx + 64 + k * 26, my + 12, mx + 80 + k * 26, my + 34); ctx.stroke();
-        }
-        // the address, written in
-        var ax = mid + 44, aw = px + pw - 56 - ax, ay = py + ph - 250;
-        ["you,", "who read it all", SITE].forEach(function (t, k) {
-          var ly = ay + k * 74;
-          ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.fillRect(ax, ly + 14, aw, 2);
-          var sz = 34; ctx.font = font(sz, HAND);
-          while (sz > 20 && ctx.measureText(t).width > aw - 10) { sz -= 2; ctx.font = font(sz, HAND); }
-          ctx.fillStyle = "#1f1d20"; ctx.fillText(t, ax + 6, ly);
-        });
-      });
-    },
-    // 4 · sticky: the photo's window on the wall, a square note stuck over its corner
-    sticky: function (ctx, s, im) {
-      wall(ctx);
-      if (im) shadowed(ctx, function () { contain(ctx, im, 70, 70, W - 140, 760); }, 0.22, 40, 18);
-      var n = 500, nx = 96, ny = H - FOOT - n - 30;
-      rotated(ctx, nx + n / 2, ny + n / 2, -0.04, function () {
-        shadowed(ctx, function () { ctx.fillStyle = "#fbf4d2"; ctx.fillRect(nx, ny, n, n); }, 0.2, 26, 12);
-        var g = ctx.createLinearGradient(0, ny, 0, ny + 60); g.addColorStop(0, "rgba(0,0,0,0.06)"); g.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = g; ctx.fillRect(nx, ny, n, 60);
-        var f = fitHand(s.text, n - 90, n - 110, 52, 34, 1.3);
-        drawLines(ctx, f.lines, nx + 46, ny + (n - f.h) / 2, f.size, f.lh, HAND, "#1f1d20");
-      });
-    },
-    // 5 · letter: a ruled sheet, the note on its lines, the photo tucked behind the corner
-    letter: function (ctx, s, im) {
-      wall(ctx);
-      var lw = 840, rule = 78, f = fitHand(s.text, lw - 200, 8 * rule, 56, 40, rule / 56);
-      var lh0 = Math.max(560, 150 + (f.lines.length + 2) * rule + 40), lx = (W - lw) / 2 - 20, ly = (H - FOOT - lh0) / 2 + 40;
-      if (im) {
-        rotated(ctx, lx + lw - 40, ly + 40, 0.09, function () {
-          var b = bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight }, pw = 360, ph = pw * Math.min(b.h / b.w, 1.2);
-          shadowed(ctx, function () { ctx.fillStyle = "#fff"; ctx.fillRect(lx + lw - 260, ly - 70, pw + 24, ph + 24); }, 0.2, 24, 10);
-          cover(ctx, im, lx + lw - 248, ly - 58, pw, ph, 0, b);
-        });
-      }
-      rotated(ctx, lx + lw / 2, ly + lh0 / 2, 0.012, function () {
-        shadowed(ctx, function () { ctx.fillStyle = PAPER; ctx.fillRect(lx, ly, lw, lh0); }, 0.16, 36, 16);
-        var top = ly + 150;
-        for (var y = top; y < ly + lh0 - 60; y += rule) { ctx.fillStyle = "rgba(70,110,160,0.16)"; ctx.fillRect(lx + 50, y, lw - 100, 2); }
-        ctx.fillStyle = "rgba(200,70,70,0.22)"; ctx.fillRect(lx + 104, ly + 40, 2, lh0 - 80);
-        f.lines.forEach(function (ln, k) {
-          ctx.font = font(f.size, HAND); ctx.fillStyle = "#1f1d20";
-          ctx.fillText(lineText(ln), lx + 130, top - 14 + k * rule);
-        });
-      });
-    }
-  };
+  // written straight onto the photo in white, the picture softened and dimmed behind the words
+  function inkNote(ctx, s, im) {
+    var f = fitHand(s.text, W - 2 * 96, 760, 92, 60, 1.25), y = (H - f.h) / 2 - 20;
+    if (im) {
+      bleed(ctx, im);
+      focusPull(ctx, [[y - 300, 0], [y, 1], [y + f.h, 1], [y + f.h + 300, 0]]);
+      ctx.fillStyle = "rgba(0,0,0,0.38)"; ctx.fillRect(0, 0, W, H);
+      s.light = true;
+    } else wall(ctx);
+    ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 18;
+    drawLines(ctx, f.lines, 96, y, f.size, f.lh, HAND, im ? "#fbf8f2" : onWall(1));
+    ctx.restore();
+  }
 
   /* ---------- caption ---------- */
   function caption() {
@@ -789,14 +690,6 @@
         opts.textStyle = b.dataset.style;
         document.querySelectorAll("[data-style]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
         skip = {}; render();
-      });
-    });
-    document.querySelectorAll("[data-note]").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.note === opts.note));
-      b.addEventListener("click", function () {
-        opts.note = b.dataset.note;
-        document.querySelectorAll("[data-note]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-        render();
       });
     });
     $("folio").checked = opts.folio;
