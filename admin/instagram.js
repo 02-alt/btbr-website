@@ -549,7 +549,7 @@
     ctx.restore();
   }
 
-  /* ---------- the video slide, six ways ---------- */
+  /* ---------- the video slide ---------- */
   function playButton(ctx, cx, cy, r) {
     ctx.fillStyle = "rgba(0,0,0,0.38)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     var k = r / 62; ctx.fillStyle = "#fff"; ctx.beginPath();
@@ -583,7 +583,7 @@
         if (s.caption) { ctx.font = font(24, SANS); ctx.fillStyle = onWall(0.5); ctx.fillText("Watch it — link in bio", X + 6, Y + dh + 116); }
       });
     },
-    // 1 · film strip: the three real frames on a strip of film, sprocket holes and all
+    // film strip: the three real frames on a strip of film, sprocket holes and all
     strip: function (ctx, s, v) {
       ctx.fillStyle = "#121212"; ctx.fillRect(0, 0, W, H); s.light = true;
       var fr = v.frames.length ? v.frames : [v.thumb], fw = 640, fh = fw * 9 / 16, gap = 34, x = (W - fw) / 2;
@@ -597,33 +597,7 @@
       ctx.fillText(v.title, x, H - FOOT + 10);
       ctx.font = font(20, SANS); ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillText("Watch it — link in bio", x, H - FOOT + 42);
     },
-    // 2 · film still: one frame, letterboxed on black, title above and credit below like a still from a festival programme
-    still: function (ctx, s, v) {
-      ctx.fillStyle = "#0e0e0e"; ctx.fillRect(0, 0, W, H); s.light = true;
-      var im = v.frames[1] || v.frames[0] || v.thumb, fh = W / 2.0, y = (H - fh) / 2 - 20;
-      if (im) cover(ctx, im, 0, y, W, fh, 0, unbar(im));
-      ctx.textAlign = "center";
-      fitText(ctx, v.title.toUpperCase(), 30, SANS, W - 160, false, 500); ctx.fillStyle = "rgba(255,255,255,0.92)";
-      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = "4px";
-      ctx.fillText(v.title.toUpperCase(), W / 2, y - 64);
-      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = "0px";
-      ctx.font = font(24, SERIF, true); ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.fillText((v.by ? v.by + "  ·  " : "") + "watch it, link in bio", W / 2, y + fh + 76);
-      ctx.textAlign = "left";
-    },
-    // 3 · board: the three frames as three Quick Look windows, laid out like one of your boards
-    board: function (ctx, s, v) {
-      wall(ctx);
-      var fr = v.frames.length ? v.frames : [v.thumb], t = s.wtitle || v.info.title || "Film";
-      var spots = [[60, 90, 640], [380, 420, 640], [90, 760, 600]];
-      return fr.reduce(function (p, im, k) {
-        return p.then(function () { var sp = spots[k] || spots[0]; return previewWindow(ctx, im, t, sp[0], sp[1], sp[2], k === fr.length - 1 ? 46 : 0); });
-      }, Promise.resolve()).then(function () {
-        fitText(ctx, v.title, 30, SERIF, W - 200, true); ctx.fillStyle = onWall(0.85);
-        ctx.fillText(v.title, 66, H - FOOT + 4);
-      });
-    },
-    // 4 · backdrop: a frame blurred to fill the slide, the video sharp in the middle, title under it in white
+    // backdrop: a frame blurred to fill the slide, the video sharp in the middle, title under it in white
     backdrop: function (ctx, s, v) {
       var im = v.frames[1] || v.thumb; s.light = true;
       ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
@@ -640,7 +614,7 @@
       ctx.font = font(24, SANS); ctx.fillStyle = "rgba(255,255,255,0.6)";
       ctx.fillText((v.by ? v.by + " · " : "") + "link in bio", x + 4, y + fh + 112);
     },
-    // 5 · credits: a film-poster card — the title big, who made it, the three frames in a row
+    // credits: a film-poster card — the title big, who made it, the three frames in a row
     credits: function (ctx, s, v) {
       wall(ctx);
       var x = 76, w = W - 152, y = 110;
@@ -656,6 +630,105 @@
       fr.forEach(function (im, k) { if (im) cover(ctx, im, x + k * (fw + gap), fy, fw, fh, 3, unbar(im)); });
       ctx.font = font(22, SANS); ctx.fillStyle = onWall(0.5);
       ctx.fillText("▶  Watch it — link in bio", x, fy + fh + 50);
+    },
+    // bands: the three frames stacked edge to edge, the title over the last one
+    bands: function (ctx, s, v) {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H); s.light = true;
+      var fr = v.frames.length ? v.frames : [v.thumb], gap = 8, bh = (H - gap * (fr.length - 1)) / fr.length;
+      fr.forEach(function (im, k) { if (im) cover(ctx, im, 0, k * (bh + gap), W, bh, 0, unbar(im)); });
+      var g = ctx.createLinearGradient(0, H - 380, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.75)");
+      ctx.fillStyle = g; ctx.fillRect(0, H - 380, W, 380);
+      fitText(ctx, v.title, 44, SANS, W - 152, false, 500); ctx.fillStyle = "#fff"; ctx.fillText(v.title, 76, H - 140);
+      ctx.font = font(24, SANS); ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.fillText("\u25B6  " + (v.by ? v.by + " \u00B7 " : "") + "link in bio", 76, H - 96);
+    },
+    // contact sheet: the thumbnail and the three frames printed on black, one circled in red grease pencil
+    contact: function (ctx, s, v) {
+      ctx.fillStyle = "#0d0d0d"; ctx.fillRect(0, 0, W, H); s.light = true;
+      var fr = [v.thumb].concat(v.frames).filter(Boolean).slice(0, 4), cw = 460, ch = cw * 9 / 16, gx = 36, gy = 96;
+      var x0 = (W - 2 * cw - gx) / 2, y0 = (H - FOOT - (2 * ch + gy + 150)) / 2 + 40;
+      ctx.font = font(18, SANS, false, 600);
+      fr.forEach(function (im, k) {
+        var x = x0 + (k % 2) * (cw + gx), y = y0 + Math.floor(k / 2) * (ch + gy);
+        cover(ctx, im, x, y, cw, ch, 0, unbar(im));
+        ctx.fillStyle = "rgba(240,190,90,0.85)"; ctx.fillText("\u25B8 " + (k + 1) + "A", x, y + ch + 30);
+        ctx.fillStyle = "rgba(240,190,90,0.45)"; ctx.fillText("BTBR 400", x + cw - 96, y + ch + 30);
+      });
+      // the pick: a hand-drawn loop around the second frame, and a word in Isaac's hand
+      var px = x0 + cw + gx + cw / 2, py = y0 + ch / 2;
+      ctx.strokeStyle = "rgba(225,50,40,0.9)"; ctx.lineWidth = 6; ctx.lineCap = "round";
+      for (var r = 0; r < 2; r++) {
+        ctx.beginPath(); ctx.ellipse(px + r * 6, py - r * 4, cw * 0.58 + r * 8, ch * 0.66 - r * 6, -0.05 + r * 0.04, 0.2 + r, Math.PI * 2 + 0.6 + r); ctx.stroke();
+      }
+      ctx.font = font(44, HAND); ctx.fillStyle = "rgba(225,50,40,0.95)"; ctx.fillText("this one", px - 60, y0 - 46);
+      var ty = y0 + 2 * (ch + gy) + 40;
+      fitText(ctx, v.title, 34, SANS, W - 2 * x0, false, 500); ctx.fillStyle = "#fff"; ctx.fillText(v.title, x0, ty);
+      ctx.font = font(22, SANS); ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillText((v.by ? v.by + " \u00B7 " : "") + "watch it, link in bio", x0, ty + 40);
+    },
+    // ticket: a cinema ticket for the film — a frame on top, ADMIT ONE, the title, a tear-off stub
+    ticket: function (ctx, s, v) {
+      wall(ctx);
+      var lines = wrap(plainRuns(v.title), 54, SANS, 720 - 88).slice(0, 2);
+      var tw = 720, stub = 190, th = 36 + 420 + 70 + 20 + lines.length * 60 + 44 + (v.by ? 70 : 20) + stub;
+      var tx = (W - tw) / 2, ty = (H - FOOT - th) / 2 + 20, im = v.frames[1] || v.thumb;
+      ctx.save(); ctx.translate(W / 2, ty + th / 2); ctx.rotate(-0.03); ctx.translate(-W / 2, -(ty + th / 2));
+      shadowed(ctx, function () { ctx.fillStyle = "#f6f1e6"; ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 18); ctx.fill(); }, 0.2, 40, 18);
+      // notches at the tear line
+      var ly = ty + th - stub; ctx.fillStyle = topic.tone || "#e6e4e6";
+      ctx.beginPath(); ctx.arc(tx, ly, 24, 0, 7); ctx.arc(tx + tw, ly, 24, 0, 7); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
+      ctx.beginPath(); ctx.moveTo(tx + 40, ly); ctx.lineTo(tx + tw - 40, ly); ctx.stroke(); ctx.setLineDash([]);
+      if (im) cover(ctx, im, tx + 36, ty + 36, tw - 72, 420, 8, unbar(im));
+      var y = ty + 36 + 420 + 70;
+      ctx.font = font(20, SANS, false, 600); ctx.fillStyle = "rgba(30,25,20,0.55)";
+      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = "5px";
+      ctx.fillText("ADMIT ONE", tx + 44, y);
+      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = "0px";
+      drawLines(ctx, lines, tx + 44, y + 20, 54, 60, SANS, "#1a1714");
+      y += 20 + lines.length * 60 + 44;
+      if (v.by) { ctx.font = font(28, SERIF, true); ctx.fillStyle = "rgba(30,25,20,0.7)"; ctx.fillText("by " + v.by, tx + 44, y); }
+      ctx.font = font(22, SANS); ctx.fillStyle = "rgba(30,25,20,0.55)";
+      ctx.fillText(topic.title + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), tx + 44, ly + 80);
+      ctx.fillText("Screening: link in bio", tx + 44, ly + 118);
+      ctx.textAlign = "right"; ctx.font = font(22, SANS, false, 600); ctx.fillStyle = "rgba(30,25,20,0.4)";
+      ctx.fillText(String(topic.date || "").replace(/-/g, "."), tx + tw - 44, ly + 80); ctx.textAlign = "left";
+      ctx.restore();
+    },
+    // subtitle: one frame edge to edge with the title set as a film subtitle across its foot
+    subtitle: function (ctx, s, v) {
+      var im = v.frames[1] || v.thumb; s.light = true;
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+      if (im) cover(ctx, im, 0, 0, W, H, 0, unbar(im));
+      var g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = "center";
+      var size = fitText(ctx, v.title, 44, SANS, W - 160, false, 500);
+      ctx.lineJoin = "round"; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.strokeText(v.title, W / 2, H - 200);
+      ctx.fillStyle = "#fff"; ctx.fillText(v.title, W / 2, H - 200);
+      ctx.font = font(24, SANS); ctx.lineWidth = 5; var sub = (v.by ? v.by + " \u00B7 " : "") + "link in bio";
+      ctx.strokeText(sub, W / 2, H - 150); ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.fillText(sub, W / 2, H - 150);
+      ctx.textAlign = "left";
+    },
+    // scrubber: the thumbnail as the player, the three frames hovering over a timeline where they fall (¼ ½ ¾)
+    scrubber: function (ctx, s, v) {
+      ctx.fillStyle = "#0f0f0f"; ctx.fillRect(0, 0, W, H); s.light = true;
+      var x = 60, w = W - 120, ph = w * 9 / 16, y = (H - FOOT - (ph + 300 + 180)) / 2 + 20;
+      if (v.thumb) cover(ctx, v.thumb, x, y, w, ph, 14, unbar(v.thumb));
+      playButton(ctx, x + w / 2, y + ph / 2, 56);
+      var by = y + ph + 300, pw = 204, pv = pw * 9 / 16;
+      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.beginPath(); ctx.roundRect(x, by, w, 8, 4); ctx.fill();
+      ctx.fillStyle = "#ff3b30"; ctx.beginPath(); ctx.roundRect(x, by, w * 0.5, 8, 4); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + w * 0.5, by + 4, 14, 0, 7); ctx.fill();
+      v.frames.forEach(function (im, k) {
+        var cx = x + w * (k + 1) / 4, fx = cx - pw / 2, fy = by - 40 - pv;
+        shadowed(ctx, function () { ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(fx, fy, pw, pv, 8); ctx.fill(); }, 0.5, 20, 8);
+        cover(ctx, im, fx, fy, pw, pv, 8, unbar(im));
+        ctx.strokeStyle = k === 1 ? "#fff" : "rgba(255,255,255,0.35)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(fx, fy, pw, pv, 8); ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fillRect(cx - 1, fy + pv, 2, by - fy - pv);
+        ctx.font = font(20, SANS, false, 600); ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillText(["\u00BC", "\u00BD", "\u00BE"][k], cx, by + 50); ctx.textAlign = "left";
+      });
+      fitText(ctx, v.title, 38, SANS, w, false, 500); ctx.fillStyle = "#fff"; ctx.fillText(v.title, x, by + 130);
+      ctx.font = font(24, SANS); ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.fillText((v.by ? v.by + " \u00B7 " : "") + "link in bio", x, by + 172);
     }
   };
 
