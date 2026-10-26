@@ -341,7 +341,8 @@
       } else if (b.type === "video" && b.src) {
         var vid = ytId(b.src), st = vid ? ytStills(vid) : { srcs: [], labels: [] }, vkey = "video:" + i;
         out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle, key: vkey,
-          stills: st.srcs, labels: st.labels, auto: st.srcs[2] || "", photo: picks[vkey] || st.srcs[2] || "" });
+          stills: st.srcs, labels: st.labels, auto: st.srcs[2] || "", photo: picks[vkey] || st.srcs[2] || "",
+          bands: [0, 1, 2].map(function (k) { return picks[vkey + ":b" + k] || null; }) });
       } else if (b.type === "quote" && b.text) {
         out.push({ kind: "quote", text: b.text, cite: b.cite });
       } else if ((b.type === "hand" || b.type === "sign") && b.text) {
@@ -417,8 +418,9 @@
       });
       return Promise.all([id ? ytThumb(id) : own.then(function (a) { return a[0]; }), id ? ytInfo(id) : {},
                           id ? ytFrames(id) : own.then(function (a) { return [a[2], a[5], a[8]].filter(Boolean); }),
-                          s.photo ? (id ? ytImg(s.photo) : loadImg(s.photo)) : null]).then(function (r) {
-        var v = { thumb: r[0], info: r[1] || {}, frames: r[2] || [], pick: r[3] };
+                          s.photo ? (id ? ytImg(s.photo) : loadImg(s.photo)) : null,
+                          Promise.all((s.bands || []).map(function (src) { return src ? (id ? ytImg(src) : loadImg(src)) : null; }))]).then(function (r) {
+        var v = { thumb: r[0], info: r[1] || {}, frames: r[2] || [], pick: r[3], bandIms: r[4] || [] };
         v.title = plain(s.caption) || s.wtitle || v.info.title || "Film";
         v.by = v.info.author_name || "";
         s.light = false;
@@ -628,7 +630,8 @@
     bands: function (ctx, s, v) {
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H); s.light = true;
       var fr = (v.frames.length ? v.frames : [v.thumb]).slice();
-      if (v.pick && s.photo !== s.auto) fr[Math.min(1, fr.length - 1)] = v.pick;
+      while (fr.length < 3 && fr.length) fr.push(fr[fr.length - 1]);
+      v.bandIms.forEach(function (im, k) { if (im) fr[k] = im; });     // a band picked by hand
       var gap = 8, bh = (H - gap * (fr.length - 1)) / fr.length;
       fr.forEach(function (im, k) { if (im) cover(ctx, im, 0, k * (bh + gap), W, bh, 0, bare(im) || unbar(im)); });
       var g = ctx.createLinearGradient(0, H - 380, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.75)");
@@ -949,48 +952,77 @@
   }
 
   // This slide · Photo: the topic's photos, the rule's pick marked "Auto"
+  // what can be picked on a slide: one picture — or, for Bands, one per band
+  function slots(s) {
+    if (s.kind === "video" && s.video === "bands") {
+      var own = s.stills.length > 4;                                   // a video file: ten stills; YouTube: cover + ¼ ½ ¾
+      return ["Top", "Middle", "Bottom"].map(function (name, k) {
+        var auto = own ? s.stills[[2, 5, 8][k]] : s.stills[k + 1];
+        return { name: name, key: s.key + ":b" + k, auto: auto, get: function () { return s.bands[k] || auto; },
+          set: function (src) { s.bands[k] = src === auto ? null : src; } };
+      });
+    }
+    return [{ name: "", key: s.key, auto: s.auto, get: function () { return s.photo; }, set: function (src) { s.photo = src; } }];
+  }
+  var slotAt = 0, slotFor = null;
   function photos(s) {
     var row = $("photoRow"), isVideo = s.kind === "video";
     var first = isVideo ? s.stills : [s.auto], labels = isVideo ? s.labels : ["Auto"];
     var others = pool.filter(function (p) { return first.indexOf(p) < 0; });
     row.hidden = !s.auto || first.length + others.length < 2;
     if (row.hidden) { closePicker(); return; }
+    var sl = slots(s); if (slotFor !== s) { slotFor = s; slotAt = sl.length > 1 ? 1 : 0; } slotAt = Math.min(slotAt, sl.length - 1);
+    var slot = sl[slotAt];
     function fix(im, src) { if (/i\.ytimg\.com/.test(src)) im.onerror = function () { im.onerror = null; im.src = src.replace("maxresdefault", "hqdefault").replace(/maxres(\d)/, "hq$1"); }; im.src = src; }
-    function label(src) {
+    function label(src, auto) {
       var k = first.indexOf(src);
-      if (src === s.auto) return isVideo ? "Automatic · frame " + labels[k] : "Automatic · nearest image";
-      if (k >= 0) return labels[k] === "Cover" ? "The video\u2019s cover" : "Frame " + labels[k] + " of the video";
+      if (src === auto) return isVideo ? "Automatic · frame " + labels[k] : "Automatic · nearest image";
+      if (k >= 0) return labels[k] === "Cover" ? "The video’s cover" : "Frame " + labels[k] + " of the video";
       return "Photo " + (others.indexOf(src) + 1) + " of the topic";
     }
-    $("photoHead").textContent = isVideo ? "Picture" : "Photo";
-    $("photoNote").textContent = label(s.photo);
-    fix($("pickThumb"), s.photo);
-    $("pickerTitle").textContent = (isVideo ? "Picture" : "Photo") + " · slide " + (slides.indexOf(s) + 1);
-    // the picker's grid: the video's own frames first, then every photo of the topic
+    $("photoHead").textContent = sl.length > 1 ? "Pictures" : isVideo ? "Picture" : "Photo";
+    $("photoNote").textContent = sl.length > 1
+      ? sl.map(function (x) { return x.get() === x.auto ? null : x.name; }).filter(Boolean).join(", ").replace(/^$/, "Automatic") + (sl.some(function (x) { return x.get() !== x.auto; }) ? " picked by you" : " · three frames")
+      : label(s.photo, s.auto);
+    fix($("pickThumb"), slot.get());
+    $("pickerTitle").textContent = (sl.length > 1 ? "Pictures" : isVideo ? "Picture" : "Photo") + " · slide " + (slides.indexOf(s) + 1);
     var body = $("pickerBody"); body.innerHTML = "";
+    // Bands: Top · Middle · Bottom — which band the grid below is choosing for
+    if (sl.length > 1) {
+      var seg = document.createElement("div"); seg.className = "seg slotseg"; seg.setAttribute("role", "tablist"); seg.setAttribute("aria-label", "Band");
+      sl.forEach(function (x, k) {
+        var b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(k === slotAt));
+        var th = document.createElement("img"); th.alt = ""; fix(th, x.get()); b.appendChild(th);
+        b.appendChild(document.createTextNode(x.name));
+        b.addEventListener("click", function () { slotAt = k; photos(s); });
+        seg.appendChild(b);
+      });
+      body.appendChild(seg);
+    }
+    // the grid: the video's own frames first, then every photo of the topic
     [[isVideo ? "From the video" : "Suggested", first, labels], ["From the topic", others, []]].forEach(function (grp) {
       if (!grp[1].length) return;
       var h = document.createElement("h4"); h.textContent = grp[0]; body.appendChild(h);
       var grid = document.createElement("div"); grid.className = "photos"; grid.setAttribute("role", "group"); grid.setAttribute("aria-label", grp[0]);
       grp[1].forEach(function (src, k) {
         var b = document.createElement("button"); b.type = "button"; b.className = "ph";
-        b.setAttribute("aria-pressed", String(s.photo === src));
-        b.setAttribute("aria-label", label(src));
+        b.setAttribute("aria-pressed", String(slot.get() === src));
+        b.setAttribute("aria-label", label(src, slot.auto));
         var im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.decoding = "async"; fix(im, src);
         b.appendChild(im);
-        if (grp[2][k]) { var t = document.createElement("span"); t.textContent = grp[2][k] + (src === s.auto && isVideo ? " · Auto" : ""); b.appendChild(t); }
+        if (grp[2][k]) { var t = document.createElement("span"); t.textContent = grp[2][k] + (src === slot.auto && isVideo ? " · Auto" : ""); b.appendChild(t); }
         b.addEventListener("click", function () {
-          s.photo = src;
-          if (src === s.auto) delete picks[s.key]; else picks[s.key] = src;
-          [].forEach.call(body.querySelectorAll(".ph"), function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-          $("photoNote").textContent = label(src); fix($("pickThumb"), src);
+          slot.set(src);
+          if (src === slot.auto) delete picks[slot.key]; else picks[slot.key] = src;
           paint(s, slides.indexOf(s));
+          var top = body.scrollTop; photos(s); body.scrollTop = top;
         });
         grid.appendChild(b);
       });
       body.appendChild(grid);
     });
   }
+
   // open beside the phone (so the slide stays in view), or as a sheet from the bottom on a small screen
   function placePicker() {
     var pk = $("picker"); if (pk.hidden) return;
