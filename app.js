@@ -375,7 +375,14 @@
   function authorAvatar(name) { var pp = authorPP(name); return pp ? '<img class="cur-avatar" src="' + pp + '" alt="" loading="lazy">' : '<span class="cur-avatar" aria-hidden="true"></span>'; }
   function curBlocksHTML(blocks) {
     var hc = 0;
-    return (blocks || []).map(function (b) {
+    blocks = blocks || [];
+    // trailing hand/sign blocks are the sign-off: centred under a hairline, the
+    // note in soft ink and the name (a sign block, or else the note's last line)
+    // as the signature
+    var tailFrom = blocks.length;
+    while (tailFrom > 0 && /^(hand|sign)$/.test(blocks[tailFrom - 1].type)) tailFrom--;
+    var tailSigned = blocks.slice(tailFrom).some(function (b) { return b.type === "sign"; });
+    var html = blocks.map(function (b, bi) {
       if (b.type === "text") {
         // pasted text can carry the source page's inline fonts/sizes: drop them
         var raw = String(loc(b, "html") || "").replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, "").replace(/<\/?(?:font|span)\b[^>]*>/gi, "");
@@ -420,7 +427,10 @@
         // quotes go straight; anything else falls back to the serif)
         var ht = String(loc(b, "text") || "").replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').trim();
         if (!ht) return "";
-        return '<p class="cur-' + b.type + '">' + htmlEsc(ht).replace(/\n/g, "<br>") + "</p>";
+        var lines = htmlEsc(ht).split("\n");
+        if (bi >= tailFrom && b.type === "hand" && !tailSigned && bi === blocks.length - 1 && lines.length > 1)
+          return '<p class="cur-hand">' + lines.slice(0, -1).join("<br>") + '</p><p class="cur-sign">' + lines[lines.length - 1] + "</p>";
+        return '<p class="cur-' + b.type + '">' + lines.join("<br>") + "</p>";
       }
       if (b.type === "quote") {
         var qt = String(loc(b, "text") || "").replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, "").replace(/<\/?(?:font|span|div|p)\b[^>]*>/gi, " ").trim();
@@ -443,7 +453,9 @@
         return '<figure class="cur-fig2"' + wattr + '><video src="' + esc(b.src) + '" ' + at + "></video>" + cap2 + "</figure>";
       }
       return "";
-    }).join("");
+    });
+    var tail = html.splice(tailFrom).join("");
+    return html.join("") + (tail ? '<div class="cur-signoff">' + tail + "</div>" : "");
   }
   // ---- the room: a topic opens out of its cover tray and closes back into it
   // (clip-path from the tray's rect to the full room, white paper turning into

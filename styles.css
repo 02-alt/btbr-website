@@ -1978,3 +1978,11 @@ img.cur-avatar { object-fit: cover; }
 .cur-modal-content .cur-sign { font-size: 40px; line-height: 1.15; margin: 1.8em 0 0.4em; text-align: right; }
 .cur-modal.is-dark .cur-modal-content .cur-hand,
 .cur-modal.is-dark .cur-modal-content .cur-sign { color: #f4f1ed; }
+/* the sign-off closing an article: centred under a short hairline, the note
+   in soft ink so the signature carries the weight */
+.cur-modal-content > .cur-signoff { max-width: 680px; margin: 2.6em auto 0; text-align: center; }
+.cur-modal-content > .cur-signoff::before { content: ""; display: block; width: 56px; height: 1px; margin: 0 auto 26px; background: #a9adb3; }
+.cur-modal-content .cur-signoff .cur-hand { font-size: 23px; line-height: 1.45; margin: 0; color: #3a3a3e; }
+.cur-modal-content .cur-signoff .cur-sign { font-size: 42px; line-height: 1.15; margin: 0.25em 0 0; text-align: center; }
+.cur-modal.is-dark .cur-modal-content > .cur-signoff::before { background: rgba(255, 255, 255, 0.22); }
+.cur-modal.is-dark .cur-modal-content .cur-signoff .cur-hand { color: #c9c4be; }

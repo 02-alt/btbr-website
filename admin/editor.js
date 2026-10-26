@@ -1122,6 +1122,12 @@
   }
 
   /* ---------- add / remove ---------- */
+  // the usual closing note, signed +3 (plain letters: the hand has no accents);
+  // on the site its last line becomes the signature
+  var SIGNOFF = {
+    en: "Thanks for reading,\nSee you on the next one,\n+3",
+    fr: "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+  };
   function addBlock(type) {
     var b = type === "text" ? { id: uid(), type: "text", head: false, html: "" }
           : type === "image" ? { id: uid(), type: "image", src: "", alt: "", caption: "", inset: false }
@@ -1129,8 +1135,10 @@
           : type === "quote" ? { id: uid(), type: "quote", text: "", cite: "" }
           : type === "hand" ? { id: uid(), type: "hand", text: "" }
           : type === "sign" ? { id: uid(), type: "sign", text: "" }
+          : type === "signoff" ? { id: uid(), type: "hand", text: SIGNOFF.en, fr: { text: SIGNOFF.fr } }
           : { id: uid(), type: "board", bg: "none", items: [], zc: 0 };
-    var i = selectedId ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
+    // the sign-off always closes the article, whatever is selected
+    var i = selectedId && type !== "signoff" ? state.blocks.findIndex(function (x) { return x.id === selectedId; }) : state.blocks.length - 1;
     state.blocks.splice(i + 1, 0, b);
     render(); select(b.id);
   }

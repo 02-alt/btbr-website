@@ -607,6 +607,10 @@ body.view-topics .studio-inspector { display: none; }
 .bsg-text { font-size: 40px; line-height: 1.15; text-align: center; min-height: 1.15em; }
 .bh-text.is-empty::before, .bsg-text.is-empty::before { content: attr(data-ph); color: #c4c4c8; pointer-events: none; }
 .studio-canvas.is-dark-room .bh-text, .studio-canvas.is-dark-room .bsg-text { color: #f4f1ed; }
+/* the trailing note is the article's sign-off: centred under a hairline, as on the site */
+.block.b-hand:not(:has(~ .block:not(.b-hand, .b-sign))) .bh-text { text-align: center; }
+.block.b-hand:not(:has(~ .block:not(.b-hand, .b-sign))) .bh-text::after { content: ""; position: absolute; top: -14px; left: 50%; width: 56px; height: 1px; margin-left: -28px; background: #a9adb3; }
+.block.b-hand:not(:has(~ .block:not(.b-hand, .b-sign))) .bh-text { position: relative; margin-top: 14px; }
 .studio-canvas.is-dark-room .bh-text.is-empty::before, .studio-canvas.is-dark-room .bsg-text.is-empty::before { color: rgba(255, 255, 255, 0.25); }
 
 /* ===== prints (assets/prints.js): board and cover pictures hang as polaroids, as on the site ===== */
