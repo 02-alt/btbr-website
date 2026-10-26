@@ -101,12 +101,35 @@
     .switch:checked { background: #34c759; }
     .switch:checked::after { transform: translateX(15px); }
 
-    .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 3px; margin: -3px; }
-    .photos::-webkit-scrollbar { display: none; }
-    .ph { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 7px; overflow: hidden; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); }
+    /* the picture button in the panel: what's on the slide now; opens the picker beside the phone */
+    .pickbtn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px 6px 6px; border: 0; border-radius: 10px; background: rgba(0,0,0,0.04); text-align: left; transition: background 0.15s ease; }
+    .pickbtn:hover { background: rgba(0,0,0,0.07); }
+    .pickbtn img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex: none; background: #ddd; }
+    .pickbtn b { display: block; font-size: 13px; font-weight: 500; }
+    .pickbtn small { display: block; font-size: 11px; color: var(--ink3); }
+    .pickbtn::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 1.8px solid var(--ink3); border-top: 1.8px solid var(--ink3); transform: rotate(45deg); flex: none; }
+    .pickbtn[aria-expanded="true"] { background: rgba(0,113,227,0.1); }
+
+    /* the picker: a popover beside the phone, so the slide changes in view as you choose */
+    .picker { position: fixed; z-index: 10; width: 344px; display: flex; flex-direction: column; border-radius: 18px; overflow: hidden;
+      background: rgba(255,255,255,0.86); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+      box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1), 0 24px 60px -16px rgba(0,0,0,0.3);
+      transform-origin: left center; animation: pop-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.05); }
+    @keyframes pop-in { from { opacity: 0; transform: scale(0.96) translateX(-8px); } }
+    .picker-head { display: flex; align-items: center; padding: 14px 16px 10px; font-size: 15px; font-weight: 600; }
+    .picker-head button { margin-left: auto; }
+    .picker-body { overflow-y: auto; padding: 0 16px 16px; }
+    .picker h4 { margin: 10px 0 8px; font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; }
+    .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .ph { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); transition: transform 0.1s ease; }
+    .ph:active { transform: scale(0.96); }
     .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .ph span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.5); padding: 2px 0; text-align: center; }
-    .ph[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--blue); }
+    .ph span { position: absolute; left: 6px; bottom: 6px; font-size: 11px; font-weight: 600; color: #fff; background: rgba(0,0,0,0.55); padding: 2px 7px; border-radius: 8px; }
+    .ph[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--blue); }
+    .ph[aria-pressed="true"]::after { content: ""; position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 10.5l2.6 2.6L14 7.6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 20px; box-shadow: 0 0 0 2px #fff; }
+    @media (max-width: 760px) { .picker { left: 8px !important; right: 8px; bottom: 8px; top: auto !important; width: auto; max-height: 70vh !important; transform-origin: bottom center; } }
+    @media (prefers-reduced-motion: reduce) { .picker { animation: none; } }
     .note { font-size: 11px; color: var(--ink3); margin-top: 6px; }
     .sub { font-size: 13px; margin: 4px 0 8px; }
 
@@ -201,7 +224,7 @@
       <section>
         <h3>This slide <span class="val" id="slideName"></span><button class="link" id="dlOne" type="button">Download</button></h3>
         <div class="row"><span>In the post</span><input class="switch" type="checkbox" role="switch" id="include" /></div>
-        <div id="photoRow"><div class="sub" id="photoHead">Photo</div><div class="photos" id="photos" role="group" aria-label="Photo"></div><div class="note" id="photoNote"></div></div>
+        <div id="photoRow"><button class="pickbtn" id="pickBtn" type="button" aria-haspopup="dialog" aria-expanded="false"><img id="pickThumb" alt="" /><span><b id="photoHead">Photo</b><small id="photoNote"></small></span></button></div>
       </section>
       <div class="rule"></div>
       <section>
@@ -215,6 +238,11 @@
     </aside>
   </main>
 
-  <script src="/admin/instagram.js?v=18"></script>
+  <div class="picker" id="picker" role="dialog" aria-label="Choose a picture" hidden>
+    <div class="picker-head"><span id="pickerTitle">Picture</span><button class="link" id="pickerDone" type="button">Done</button></div>
+    <div class="picker-body" id="pickerBody"></div>
+  </div>
+
+  <script src="/admin/instagram.js?v=19"></script>
 </body>
 </html>

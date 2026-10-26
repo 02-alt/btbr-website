@@ -718,36 +718,59 @@
 
   // This slide · Photo: the topic's photos, the rule's pick marked "Auto"
   function photos(s) {
-    var row = $("photoRow"), box = $("photos"), isVideo = s.kind === "video";
+    var row = $("photoRow"), isVideo = s.kind === "video";
     var first = isVideo ? s.stills : [s.auto], labels = isVideo ? s.labels : ["Auto"];
-    var list = first.concat(pool.filter(function (p) { return first.indexOf(p) < 0; }));
-    row.hidden = !s.auto || list.length < 2;
-    $("photoHead").textContent = isVideo ? "Picture" : "Photo";
-    if (row.hidden) return;
-    box.innerHTML = "";
-    function note() {
-      $("photoNote").textContent = s.photo === s.auto
-        ? (isVideo ? "Automatic \u2014 the frame from halfway through." : "Automatic \u2014 the nearest image block.")
-        : (first.indexOf(s.photo) >= 0 ? "A frame from the video." : "A photo from the topic.");
+    var others = pool.filter(function (p) { return first.indexOf(p) < 0; });
+    row.hidden = !s.auto || first.length + others.length < 2;
+    if (row.hidden) { closePicker(); return; }
+    function fix(im, src) { if (/i\.ytimg\.com/.test(src)) im.onerror = function () { im.onerror = null; im.src = src.replace("maxresdefault", "hqdefault").replace(/maxres(\d)/, "hq$1"); }; im.src = src; }
+    function label(src) {
+      var k = first.indexOf(src);
+      if (src === s.auto) return isVideo ? "Automatic · frame " + labels[k] : "Automatic · nearest image";
+      if (k >= 0) return labels[k] === "Cover" ? "The video\u2019s cover" : "Frame " + labels[k] + " of the video";
+      return "Photo " + (others.indexOf(src) + 1) + " of the topic";
     }
-    list.forEach(function (src, k) {
-      var b = document.createElement("button"); b.type = "button"; b.className = "ph";
-      b.setAttribute("aria-pressed", String(s.photo === src));
-      b.setAttribute("aria-label", labels[k] ? (isVideo ? "Frame " + labels[k] : "Automatic photo") : "Photo " + (k + 1));
-      var im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.decoding = "async";
-      im.src = src; if (/i\.ytimg\.com/.test(src)) im.onerror = function () { im.onerror = null; im.src = src.replace("maxresdefault", "hqdefault").replace(/maxres(\d)/, "hq$1"); };
-      b.appendChild(im);
-      if (labels[k]) { var t = document.createElement("span"); t.textContent = labels[k] + (src === s.auto && isVideo ? " \u00B7 Auto" : ""); b.appendChild(t); }
-      b.addEventListener("click", function () {
-        s.photo = src;
-        if (src === s.auto) delete picks[s.key]; else picks[s.key] = src;
-        [].forEach.call(box.children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-        note(); paint(s, slides.indexOf(s));
+    $("photoHead").textContent = isVideo ? "Picture" : "Photo";
+    $("photoNote").textContent = label(s.photo);
+    fix($("pickThumb"), s.photo);
+    $("pickerTitle").textContent = (isVideo ? "Picture" : "Photo") + " · slide " + (slides.indexOf(s) + 1);
+    // the picker's grid: the video's own frames first, then every photo of the topic
+    var body = $("pickerBody"); body.innerHTML = "";
+    [[isVideo ? "From the video" : "Suggested", first, labels], ["From the topic", others, []]].forEach(function (grp) {
+      if (!grp[1].length) return;
+      var h = document.createElement("h4"); h.textContent = grp[0]; body.appendChild(h);
+      var grid = document.createElement("div"); grid.className = "photos"; grid.setAttribute("role", "group"); grid.setAttribute("aria-label", grp[0]);
+      grp[1].forEach(function (src, k) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "ph";
+        b.setAttribute("aria-pressed", String(s.photo === src));
+        b.setAttribute("aria-label", label(src));
+        var im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.decoding = "async"; fix(im, src);
+        b.appendChild(im);
+        if (grp[2][k]) { var t = document.createElement("span"); t.textContent = grp[2][k] + (src === s.auto && isVideo ? " · Auto" : ""); b.appendChild(t); }
+        b.addEventListener("click", function () {
+          s.photo = src;
+          if (src === s.auto) delete picks[s.key]; else picks[s.key] = src;
+          [].forEach.call(body.querySelectorAll(".ph"), function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+          $("photoNote").textContent = label(src); fix($("pickThumb"), src);
+          paint(s, slides.indexOf(s));
+        });
+        grid.appendChild(b);
       });
-      box.appendChild(b);
+      body.appendChild(grid);
     });
-    note();
   }
+  // open beside the phone (so the slide stays in view), or as a sheet from the bottom on a small screen
+  function placePicker() {
+    var pk = $("picker"); if (pk.hidden) return;
+    var ph = document.querySelector(".phone").getBoundingClientRect(), w = 344, gap = 24;
+    var left = ph.right + gap <= innerWidth - w - 16 ? ph.right + gap : Math.max(16, ph.left - gap - w);
+    pk.style.left = left + "px"; pk.style.top = Math.max(16, ph.top) + "px";
+    pk.style.maxHeight = Math.min(ph.height, innerHeight - 32) + "px";
+    pk.style.transformOrigin = left > ph.right ? "left center" : "right center";
+  }
+  function openPicker() { $("picker").hidden = false; $("pickBtn").setAttribute("aria-expanded", "true"); placePicker(); var on = $("pickerBody").querySelector('[aria-pressed="true"]'); (on || $("pickerDone")).focus({ preventScroll: true }); }
+  function closePicker() { if ($("picker").hidden) return; $("picker").hidden = true; $("pickBtn").setAttribute("aria-expanded", "false"); }
+
 
 
   // the style pickers: each choice drawn with this topic's own first text / video slide
@@ -866,6 +889,13 @@
       slides[at].fig.classList.toggle("is-off", !!skip[at]);
       dots(); sync();
     });
+    $("pickBtn").addEventListener("click", function () { $("picker").hidden ? openPicker() : closePicker(); });
+    $("pickerDone").addEventListener("click", function () { closePicker(); $("pickBtn").focus(); });
+    document.addEventListener("pointerdown", function (e) {
+      if (!$("picker").hidden && !$("picker").contains(e.target) && !$("pickBtn").contains(e.target) && !document.querySelector(".post").contains(e.target)) closePicker();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("picker").hidden) { closePicker(); $("pickBtn").focus(); } });
+    addEventListener("resize", placePicker);
     $("dlOne").addEventListener("click", function () { var s = slides[at]; blobOf(s.canvas).then(function (b) { save(b, fileName(at)); }); });
     $("topic").addEventListener("change", function () { location.search = "?t=" + encodeURIComponent(this.value); });
     $("prev").addEventListener("click", function () { go(at - 1); });
@@ -902,7 +932,7 @@
         var o = document.createElement("option"); o.value = t.slug; o.textContent = t.title || t.slug; o.selected = t.slug === topic.slug; sel.appendChild(o);
       });
       document.documentElement.style.setProperty("--tone", topic.tone || "#e6e4e6");
-      document.body.classList.add("lay-" + (q.get("layout") || "trio"));
+      document.body.classList.add("lay-" + (q.get("layout") || "dock"));
       wire(); return render();
     }).catch(function (e) { $("count").textContent = "Couldn’t load “" + opts.slug + "”: " + e.message; });
   }
