@@ -89,6 +89,13 @@
     .rule { height: 1px; background: var(--hair); margin: 0 -20px; }
 
     .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .looks { gap: 12px !important; }
+    .looks-head { display: flex; align-items: center; gap: 16px; justify-content: space-between; }
+    .mini { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink2); white-space: nowrap; }
+    .mini .switch { transform: scale(0.85); }
+    .seg { display: flex; padding: 2px; border-radius: 9px; background: rgba(0,0,0,0.06); align-self: flex-start; }
+    .seg button { border: 0; background: none; padding: 5px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--ink2); white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+    .seg button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06); }
     .chip { width: 56px; padding: 0; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--ink2); }
     .chip canvas { width: 56px; height: 70px; border-radius: 8px; display: block; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); transition: box-shadow 0.15s ease, transform 0.1s ease; }
     .chip[aria-pressed="true"] { color: var(--ink); }
@@ -163,10 +170,18 @@
     .lay-dock .panel > .rule.break { flex-basis: 100%; width: auto; height: 0.5px; margin: 0 -20px; }   /* two rows: the looks, then this slide · caption · share */
     .lay-dock .panel > .row { flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; }
     .lay-dock .panel > section:has(#include) { width: 250px; }
-    .lay-dock .panel > section:has(#caption) { width: 220px; }
-    .lay-dock textarea { min-height: 70px; height: 70px; }
-    .lay-dock .actions { width: 210px; align-self: center; }
+    .lay-dock .panel > section:has(#caption) { width: 240px; }
+    .lay-dock textarea { min-height: 52px; height: 52px; }
+    .lay-dock .actions { width: auto; }
+    .lay-dock .actions .btn.primary { height: 38px; font-size: 14px; }
 
+    @media (max-width: 1420px) {
+      .lay-dock .chips { gap: 6px; }
+      .lay-dock .chip { width: 48px; } .lay-dock .chip canvas { width: 48px; height: 60px; border-radius: 7px; }
+      .lay-dock .panel > section:has(#include) { width: 230px; }
+      .lay-dock .panel > section:has(#caption) { width: 220px; }
+      .lay-dock .panel { gap: 18px 18px; }
+    }
     @media (max-width: 1180px) { .stage { grid-template-columns: auto auto; justify-content: center; } .intro { display: none; } }
     @media (max-width: 760px) {
       .stage { display: block; padding: 0 0 24px; }
@@ -179,6 +194,7 @@
       .lay-dock .rule, .lay-dock .panel > .rule.break { width: auto; height: 1px; flex-basis: auto; margin: 0 -20px; }
       .lay-dock .panel > section, .lay-dock .actions { width: auto !important; }
       .lay-dock .panel > .row { flex-direction: row; align-items: center; }
+      .looks-head { flex-wrap: wrap; }
       .lay-dock .stage { display: block; padding: 0 0 24px; }
     }
     @media (prefers-reduced-motion: reduce) { .switch::after, .nav, .chip canvas, .btn { transition: none; } }
@@ -221,11 +237,17 @@
     </div>
 
     <aside class="panel" aria-label="Post settings">
-      <section id="secCover"><h3>Cover</h3><div class="chips" id="chipsCover" role="group" aria-label="Cover"></div></section>
-      <section id="secText"><h3>Text slides</h3><div class="chips" id="chipsText" role="group" aria-label="Text slides"></div></section>
-      <section id="secVideo"><h3>Video slides</h3><div class="chips" id="chipsVideo" role="group" aria-label="Video slides"></div></section>
-      <div class="row"><span>Page count</span><input class="switch" type="checkbox" role="switch" id="folio" /></div>
-      <div class="rule break"></div>
+      <section class="looks">
+        <div class="looks-head"><div class="seg" role="tablist" aria-label="Look">
+          <button type="button" role="tab" id="tabCover" data-look="cover" aria-controls="chipsCover">Cover</button>
+          <button type="button" role="tab" id="tabText" data-look="text" aria-controls="chipsText">Text slides</button>
+          <button type="button" role="tab" id="tabVideo" data-look="video" aria-controls="chipsVideo">Video slides</button>
+        </div><label class="mini">Page count <input class="switch" type="checkbox" role="switch" id="folio" /></label></div>
+        <div class="chips" id="chipsCover" role="tabpanel" aria-labelledby="tabCover"></div>
+        <div class="chips" id="chipsText" role="tabpanel" aria-labelledby="tabText" hidden></div>
+        <div class="chips" id="chipsVideo" role="tabpanel" aria-labelledby="tabVideo" hidden></div>
+      </section>
+      <div class="rule"></div>
       <section>
         <h3>This slide <span class="val" id="slideName"></span><button class="link" id="dlOne" type="button">Download</button></h3>
         <div class="row"><span>In the post</span><input class="switch" type="checkbox" role="switch" id="include" /></div>
@@ -235,11 +257,11 @@
       <section>
         <h3>Caption <button class="link" id="copyCap" type="button">Copy</button></h3>
         <textarea id="caption" spellcheck="true" aria-label="Caption"></textarea>
-      </section>
-      <div class="actions">
-        <button class="btn primary" id="share" type="button" hidden>Share to Instagram</button>
-        <button class="btn ghost" id="dlZip" type="button">Download images + caption</button>
+        <div class="actions">
+          <button class="btn primary" id="share" type="button" hidden>Share to Instagram</button>
+          <button class="btn ghost" id="dlZip" type="button">Download images + caption</button>
       </div>
+      </section>
     </aside>
   </main>
 
@@ -248,6 +270,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/instagram.js?v=24"></script>
+  <script src="/admin/instagram.js?v=28"></script>
 </body>
 </html>

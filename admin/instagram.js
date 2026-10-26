@@ -918,6 +918,7 @@
     $("count").classList.toggle("warn", k > 20);
     $("dlZip").textContent = "Download " + k + " images + caption";
     photos(s);
+    if (s.kind === "cover" || s.kind === "text" || s.kind === "video") showLook(s.kind);
   }
   var KIND = { cover: "Cover", text: "Text", chapter: "Heading", board: "Board", photo: "Photo", video: "Video", quote: "Quote", hand: "Note", sign: "Signature", sources: "Sources" };
   function go(i) {
@@ -987,9 +988,9 @@
   var chipsFor = "";
   function chips() {
     if (chipsFor === topic.slug) return; chipsFor = topic.slug;
-    [["cover", "chipsCover", "secCover", COVER_NAMES, "cover"],
-     ["text", "chipsText", "secText", ["blur", "strip", "cinema", "half", "polaroid"], "textStyle"],
-     ["video", "chipsVideo", "secVideo", ["subtitle", "bands"], "video"]].forEach(function (g) {
+    [["cover", "chipsCover", "tabCover", COVER_NAMES, "cover"],
+     ["text", "chipsText", "tabText", ["blur", "strip", "cinema", "half", "polaroid"], "textStyle"],
+     ["video", "chipsVideo", "tabVideo", ["subtitle", "bands"], "video"]].forEach(function (g) {
       var kind = g[0], box = $(g[1]), names = g[3], key = g[4];
       var sample = plan(opts).filter(function (s) { return s.kind === kind; })[0];
       $(g[2]).hidden = !sample;
@@ -1018,6 +1019,15 @@
     });
   }
 
+  // Cover · Text slides · Video slides: one row of choices at a time; it follows the slide in view
+  var look = "cover";
+  function showLook(name) {
+    if ($("tab" + name.charAt(0).toUpperCase() + name.slice(1)).hidden) return;
+    look = name;
+    [].forEach.call(document.querySelectorAll("[data-look]"), function (b) { b.setAttribute("aria-selected", String(b.dataset.look === name)); b.tabIndex = b.dataset.look === name ? 0 : -1; });
+    $("chipsCover").hidden = name !== "cover"; $("chipsText").hidden = name !== "text"; $("chipsVideo").hidden = name !== "video";
+    fitPhone();
+  }
   function setCaption(v) { $("caption").value = v; capPreview(); }
   function capPreview() {
     var t = $("caption").value.replace(/\s+/g, " ").trim();
@@ -1109,6 +1119,13 @@
       skip[at] = !this.checked; if (!skip[at]) delete skip[at];
       slides[at].fig.classList.toggle("is-off", !!skip[at]);
       dots(); sync();
+    });
+    [].forEach.call(document.querySelectorAll("[data-look]"), function (b) {
+      b.addEventListener("click", function () { showLook(b.dataset.look); });
+      b.addEventListener("keydown", function (e) {
+        var tabs = [].filter.call(document.querySelectorAll("[data-look]"), function (x) { return !x.hidden; }), k = tabs.indexOf(b);
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") { var n = tabs[(k + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; showLook(n.dataset.look); n.focus(); e.preventDefault(); e.stopPropagation(); }
+      });
     });
     $("pickBtn").addEventListener("click", function () { $("picker").hidden ? openPicker() : closePicker(); });
     $("pickerDone").addEventListener("click", function () { closePicker(); $("pickBtn").focus(); });
