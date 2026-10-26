@@ -2,88 +2,195 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Instagram export — Curation Studio</title>
   <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="theme-color" content="#f5f5f7" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
   <style>
     @font-face { font-family: "My Hand"; src: url("/assets/fonts/MyHand.ttf") format("truetype"); }
-    :root { --tone: #e6e4e6; }
+    :root { --blue: #0071e3; --ink: #1d1d1f; --ink2: #6e6e73; --ink3: #86868b; --hair: rgba(0,0,0,0.08); --phone-h: min(820px, calc(100vh - 92px)); }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--tone); color: #111; font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
-    .bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 22px;
-      background: color-mix(in srgb, var(--tone) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(0,0,0,0.06); }
-    .brand { font-weight: 600; margin-right: 6px; }
-    .brand span { font-weight: 400; color: rgba(17,17,17,0.55); }
-    .brand a { color: inherit; text-decoration: none; }
-    select, button { font: inherit; }
-    select { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: #fff; }
-    .seg { display: inline-flex; background: rgba(0,0,0,0.06); border-radius: 9px; padding: 2px; }
-    .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 7px; cursor: pointer; color: rgba(17,17,17,0.65); }
-    .seg button[aria-pressed="true"] { background: #fff; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
-    .chk { display: inline-flex; gap: 6px; align-items: center; color: rgba(17,17,17,0.75); cursor: pointer; }
-    .count { color: rgba(17,17,17,0.55); }
-    .count.warn { color: #b3261e; }
-    .grow { flex: 1; }
-    .btn { border: 1px solid rgba(0,0,0,0.12); background: #fff; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
-    .btn.primary { background: #111; color: #fff; border-color: #111; }
-    .btn:disabled { opacity: 0.5; cursor: default; }
+    html, body { margin: 0; }
+    body { min-height: 100vh; color: var(--ink); background: radial-gradient(1200px 700px at 50% 0, #fff, #ececf0) fixed;
+      font: 13px/1.38 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; letter-spacing: -0.003em;
+      -webkit-font-smoothing: antialiased; }
+    button, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
 
-    .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 26px 18px; padding: 28px 22px 18px; }
-    .slide { margin: 0; min-width: 0; }
-    .slide canvas { display: block; width: 100%; aspect-ratio: 4 / 5; height: auto; border-radius: 4px; cursor: pointer;
-      box-shadow: 0 1px 1px rgba(40,30,40,0.05), 0 3px 6px rgba(40,30,40,0.05), 0 14px 28px -10px rgba(40,30,40,0.18);
-      transition: opacity 0.2s ease, transform 0.2s ease; }
-    .slide canvas:hover { transform: translateY(-2px); }
-    .slide.is-off canvas { opacity: 0.28; }
-    .slide-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; min-height: 24px; }
-    .slide-pick { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: rgba(17,17,17,0.6); font-variant-numeric: tabular-nums; }
-    .slide-pick span { min-width: 44px; text-align: center; }
-    .slide-pick button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: rgba(0,0,0,0.06); color: #111; font-size: 16px; line-height: 1; cursor: pointer; }
-    .slide-pick button:hover { background: rgba(0,0,0,0.1); }
-    .slide-pick button:active { transform: scale(0.94); }
-    .slide-tag { display: flex; gap: 6px; align-items: center; font-size: 12px; color: rgba(17,17,17,0.6); cursor: pointer; text-transform: capitalize; }
+    /* ---- top bar ---- */
+    .top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 20px; }
+    .back { color: var(--blue); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
+    .back::before { content: ""; width: 8px; height: 8px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-right: 2px; }
+    .topic { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+    .topic:hover { background: rgba(0,0,0,0.05); }
+    .topic::after { content: ""; width: 6px; height: 6px; border-right: 1.6px solid var(--ink2); border-bottom: 1.6px solid var(--ink2); transform: rotate(45deg) translateY(-2px); }
+    .topic select { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .count { color: var(--ink3); margin-left: auto; font-variant-numeric: tabular-nums; }
+    .count.warn { color: #d70015; }
 
-    .cap { max-width: 760px; padding: 6px 22px 48px; }
-    .cap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .cap-head h2 { font-size: 13px; font-weight: 600; margin: 0; }
-    textarea { width: 100%; min-height: 220px; padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); background: #fff;
-      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; resize: vertical; }
-    .hint { color: rgba(17,17,17,0.5); font-size: 12px; margin-top: 8px; }
+    /* ---- stage: words · phone · panel ---- */
+    .stage { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 40px; padding: 0 32px 24px; min-height: calc(100vh - 52px); }
+    .intro { justify-self: end; max-width: 320px; }
+    .intro h1 { font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; font-weight: 700; margin: 0; }
+    .intro p { font-size: 17px; line-height: 1.45; color: var(--ink2); margin: 12px 0 0; }
+
+    .phone { height: var(--phone-h); aspect-ratio: 400 / 820; border-radius: calc(var(--phone-h) * 0.07); background: #111; padding: calc(var(--phone-h) * 0.0146);
+      box-shadow: 0 30px 80px -20px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.2); }
+    .screen { position: relative; height: 100%; border-radius: calc(var(--phone-h) * 0.056); background: #fff; overflow: hidden; display: flex; flex-direction: column; }
+    .island { position: absolute; top: 1.4%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.9%; border-radius: 99px; background: #000; z-index: 2; }
+    .status { height: 6.6%; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 1% 9% 0; font-weight: 600; font-size: 15px; }
+    .status svg { height: 12px; }
+    .ig-head { display: flex; align-items: center; gap: 9px; padding: 8px 12px; flex: none; }
+    .avatar { width: 30px; height: 30px; border-radius: 50%; background: #ddd center / cover; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #d62976; }
+    .ig-head b { font-size: 13px; }
+    .ig-head .dots3 { margin-left: auto; font-weight: 700; letter-spacing: 1px; color: var(--ink); }
+
+    .post { position: relative; flex: none; }
+    .track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+    .track::-webkit-scrollbar { display: none; }
+    .slide { position: relative; margin: 0; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; }
+    .slide canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; background: #eee; transition: opacity 0.2s ease; }
+    .slide.is-off canvas { opacity: 0.25; }
+    .off-badge { position: absolute; inset: 0; display: none; place-items: center; font-weight: 600; font-size: 14px; color: var(--ink2); }
+    .slide.is-off .off-badge { display: grid; }
+    .pill { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #fff; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 12px; font-variant-numeric: tabular-nums; pointer-events: none; }
+    .nav { position: absolute; top: 50%; translate: 0 -50%; width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.85);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25); display: grid; place-items: center; opacity: 0; transition: opacity 0.15s ease, transform 0.1s ease; }
+    .nav::before { content: ""; width: 7px; height: 7px; border-left: 2px solid #333; border-bottom: 2px solid #333; }
+    .nav.prev { left: 8px; } .nav.prev::before { transform: translateX(1px) rotate(45deg); }
+    .nav.next { right: 8px; } .nav.next::before { transform: translateX(-1px) rotate(-135deg); }
+    .post:hover .nav { opacity: 1; }
+    .nav:active { transform: scale(0.92); }
+
+    .ig-acts { position: relative; display: flex; align-items: center; gap: 14px; padding: 10px 12px 6px; flex: none; }
+    .ig-acts svg { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+    .ig-acts .save { margin-left: auto; }
+    .dotrow { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
+    .dotrow i { width: 6px; height: 6px; border-radius: 50%; background: #c7c7cc; transition: background 0.15s ease, transform 0.15s ease; }
+    .dotrow i.off { background: transparent; box-shadow: inset 0 0 0 1px #c7c7cc; }
+    .dotrow i.on { background: #0095f6; transform: scale(1.15); }
+    .ig-cap { padding: 0 12px; font-size: 13px; line-height: 1.35; }
+    .ig-cap b { margin-right: 4px; }
+    .ig-cap .more { color: var(--ink3); }
+
+    /* ---- the panel: a floating material ---- */
+    .panel { justify-self: start; width: 360px; max-height: calc(100vh - 92px); overflow-y: auto; scrollbar-width: none;
+      background: rgba(255,255,255,0.72); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border-radius: 22px; padding: 18px 20px 20px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.08), 0 20px 50px -20px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; gap: 18px; }
+    .panel::-webkit-scrollbar { display: none; }
+    .panel section { display: flex; flex-direction: column; gap: 8px; }
+    .panel h3 { margin: 0; font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
+    .panel h3 .val { text-transform: none; letter-spacing: 0; color: var(--ink2); font-weight: 500; }
+    .panel h3 .link { margin-left: auto; }
+    .rule { height: 1px; background: var(--hair); margin: 0 -20px; }
+
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { width: 56px; padding: 0; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--ink2); }
+    .chip canvas { width: 56px; height: 70px; border-radius: 8px; display: block; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); transition: box-shadow 0.15s ease, transform 0.1s ease; }
+    .chip[aria-pressed="true"] { color: var(--ink); }
+    .chip[aria-pressed="true"] canvas { box-shadow: 0 0 0 2.5px var(--blue); }
+    .chip:active canvas { transform: scale(0.96); }
+
+    .row { display: flex; align-items: center; justify-content: space-between; min-height: 30px; font-size: 13px; }
+    .switch { appearance: none; -webkit-appearance: none; width: 38px; height: 23px; border-radius: 12px; background: #e3e3e8; position: relative; margin: 0; cursor: pointer; transition: background 0.2s ease; flex: none; }
+    .switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform 0.25s cubic-bezier(0.3, 1.3, 0.5, 1); }
+    .switch:checked { background: #34c759; }
+    .switch:checked::after { transform: translateX(15px); }
+
+    .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 3px; margin: -3px; }
+    .photos::-webkit-scrollbar { display: none; }
+    .ph { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 7px; overflow: hidden; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); }
+    .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ph span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.5); padding: 2px 0; text-align: center; }
+    .ph[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--blue); }
+    .note { font-size: 11px; color: var(--ink3); }
+
+    .link { border: 0; background: none; padding: 0; color: var(--blue); font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; align-self: flex-start; }
+    textarea { width: 100%; min-height: 96px; resize: vertical; padding: 10px 12px; border-radius: 10px; border: 0; background: rgba(0,0,0,0.04);
+      font: 13px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; outline: none; }
+    textarea:focus { box-shadow: 0 0 0 3px rgba(0,113,227,0.3); background: #fff; }
+
+    .btn { width: 100%; height: 44px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 600; transition: transform 0.1s ease, opacity 0.15s ease; }
+    .btn.primary { background: var(--blue); color: #fff; }
+    .btn.ghost { background: none; color: var(--blue); height: 32px; font-size: 13px; font-weight: 500; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; }
+    .actions { display: flex; flex-direction: column; gap: 4px; }
+
+    /* ---- narrower screens: the words go, then the phone frame (on a phone, the phone is the frame) ---- */
+    @media (max-width: 1180px) { .stage { grid-template-columns: auto 1fr; } .intro { display: none; } }
+    @media (max-width: 760px) {
+      .stage { display: block; padding: 0 0 24px; }
+      .phone { height: auto; width: 100%; aspect-ratio: auto; border-radius: 0; padding: 0; background: none; box-shadow: none; }
+      .screen { border-radius: 0; background: #fff; }
+      .island, .status { display: none; }
+      .nav { display: none; }
+      .panel { width: auto; max-height: none; margin: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .switch::after, .nav, .chip canvas, .btn { transition: none; } }
+    @media (prefers-reduced-transparency: reduce) { .panel { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; } }
   </style>
 </head>
 <body>
-  <header class="bar">
-    <div class="brand"><a href="/admin/">Studio</a> <span>/ Instagram</span></div>
-    <select id="topic" aria-label="Topic"></select>
-    <div class="seg" role="group" aria-label="Text slides">
-      <button type="button" data-style="blur" title="Text card over the nearest photo, out of focus">Blur</button>
-      <button type="button" data-style="strip" title="Nearest photo as a strip above the text card">Strip</button>
-      <button type="button" data-style="cinema" title="The photo edge to edge, the words over its darkened foot">Cinema</button>
-      <button type="button" data-style="half" title="The photo bleeds off the top, the words on paper below">Half</button>
-      <button type="button" data-style="polaroid" title="A print taped over the label card, its note in your hand">Polaroid</button>
-    </div>
-    <div class="seg" role="group" aria-label="Video slides">
-      <button type="button" data-video="subtitle" title="One frame edge to edge, the title as a subtitle">Subtitle</button>
-      <button type="button" data-video="bands" title="The three frames stacked edge to edge">Bands</button>
-    </div>
-    <label class="chk"><input type="checkbox" id="folio" /> Page count</label>
+  <header class="top">
+    <a class="back" href="/admin/">Studio</a>
+    <label class="topic"><span id="topicName">…</span><select id="topic" aria-label="Topic"></select></label>
     <span class="count" id="count">Loading…</span>
-    <span class="grow"></span>
-    <button class="btn" id="share" type="button" hidden>Share to Instagram…</button>
-    <button class="btn primary" id="dlZip" type="button">Download ZIP</button>
   </header>
 
-  <main>
-    <div class="strip" id="strip"></div>
-    <section class="cap">
-      <div class="cap-head"><h2>Caption</h2><button class="btn" id="copyCap" type="button">Copy caption</button></div>
-      <textarea id="caption" spellcheck="true"></textarea>
-      <div class="hint">Click a slide to download it alone; untick it to leave it out. Under a text slide, ‹ › changes its photo (“auto” is the nearest image block). The ZIP holds the ticked slides, numbered in order, plus this caption.</div>
+  <main class="stage">
+    <section class="intro">
+      <h1 id="title">…</h1>
+      <p>Swipe the post on the phone. Every change you make on the right shows up there first.</p>
     </section>
+
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><svg viewBox="0 0 40 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><rect x="23" y="1" width="15" height="10" rx="3" fill="none" stroke="#000"/><rect x="25" y="3" width="10" height="6" rx="1.5"/></svg></div>
+        <div class="ig-head"><span class="avatar" id="avatar"></span><b>builtoberemembered</b><span class="dots3">···</span></div>
+        <div class="post">
+          <div class="track" id="track" tabindex="0" aria-label="Slides" aria-roledescription="carousel"></div>
+          <span class="pill" id="pill">1/1</span>
+          <button class="nav prev" id="prev" type="button" aria-label="Previous slide"></button>
+          <button class="nav next" id="next" type="button" aria-label="Next slide"></button>
+        </div>
+        <div class="ig-acts" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3.3-6.5L20 4l-1 3.6A8 8 0 0 1 20 12z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></svg>
+          <span class="dotrow" id="dots"></span>
+          <svg class="save" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-5-6 5z"/></svg>
+        </div>
+        <div class="ig-cap"><b>builtoberemembered</b><span id="capPreview"></span> <span class="more">more</span></div>
+      </div>
+    </div>
+
+    <aside class="panel" aria-label="Post settings">
+      <section id="secText"><h3>Text slides</h3><div class="chips" id="chipsText" role="group" aria-label="Text slides"></div></section>
+      <section id="secVideo"><h3>Video slides</h3><div class="chips" id="chipsVideo" role="group" aria-label="Video slides"></div></section>
+      <div class="row"><span>Page count</span><input class="switch" type="checkbox" role="switch" id="folio" /></div>
+      <div class="rule"></div>
+      <section>
+        <h3>This slide <span class="val" id="slideName"></span><button class="link" id="dlOne" type="button">Download</button></h3>
+        <div class="row"><span>In the post</span><input class="switch" type="checkbox" role="switch" id="include" /></div>
+        <div id="photoRow"><div class="photos" id="photos" role="group" aria-label="Photo"></div><div class="note" id="photoNote"></div></div>
+      </section>
+      <div class="rule"></div>
+      <section>
+        <h3>Caption <button class="link" id="copyCap" type="button">Copy</button></h3>
+        <textarea id="caption" spellcheck="true" aria-label="Caption"></textarea>
+      </section>
+      <div class="actions">
+        <button class="btn primary" id="share" type="button" hidden>Share to Instagram</button>
+        <button class="btn ghost" id="dlZip" type="button">Download images + caption</button>
+      </div>
+    </aside>
   </main>
 
-  <script src="/admin/instagram.js?v=13"></script>
+  <script src="/admin/instagram.js?v=14"></script>
 </body>
 </html>

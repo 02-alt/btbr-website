@@ -269,9 +269,8 @@
     half:     { family: SERIF, size: 38, min: 34, lh: 1.45, w: W - 2 * 84, maxH: 560 },
     polaroid: { family: SERIF, size: 38, min: 34, lh: 1.48, w: W - 2 * M - 128, maxH: 520 }
   };
-  function style() { return STYLES[opts.textStyle] || STYLES.blur; }
-  function textPages(words) {
-    var st = style(), innerW = st.w, maxH = st.maxH, family = st.family;
+  function textPages(words, name) {
+    var st = STYLES[name] || STYLES.blur, innerW = st.w, maxH = st.maxH, family = st.family;
     for (var s = st.size; s >= st.min; s -= 2) {
       var lines = wrap(words, s, family, innerW);
       if (linesH(lines, s * st.lh) <= maxH) return [{ lines: lines, size: s }];
@@ -288,7 +287,8 @@
     if (cur.length) pages.push({ lines: cur, size: s2 });
     return pages;
   }
-  function plan() {
+  function plan(o) {
+    o = o || opts;
     var out = [{ kind: "cover" }], blocks = topic.blocks || [];
     var tailFrom = blocks.length;                    // trailing hand/sign close the carousel, after the sources
     while (tailFrom > 0 && /^(hand|sign)$/.test(blocks[tailFrom - 1].type)) tailFrom--;
@@ -297,15 +297,15 @@
       if (b.type === "text") {
         var words = runsFromHTML(b.html); if (!words.length) return;
         if (b.head) { out.push({ kind: "chapter", words: words }); return; }
-        var pages = textPages(words), photos = nearestPhotos(blocks, i);
+        var pages = textPages(words, o.textStyle), photos = nearestPhotos(blocks, i);
         pages.forEach(function (p, k) {
           var key = i + ":" + k, auto = photos[k % photos.length];
-          out.push({ kind: "text", key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
+          out.push({ kind: "text", style: o.textStyle, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
         });
       } else if (b.type === "image" && b.src) {
         out.push(b.board ? { kind: "board", src: b.src } : { kind: "photo", src: b.src, caption: b.caption });
       } else if (b.type === "video" && b.src) {
-        out.push({ kind: "video", src: b.src, caption: b.caption, wtitle: b.wtitle });
+        out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle });
       } else if (b.type === "quote" && b.text) {
         out.push({ kind: "quote", text: b.text, cite: b.cite });
       } else if ((b.type === "hand" || b.type === "sign") && b.text) {
@@ -349,7 +349,7 @@
     text: function (ctx, s) {
       return loadImg(s.photo).then(function (im) {
         s.light = false;
-        return (TEXTS[opts.textStyle] || TEXTS.blur)(ctx, s, im, style());
+        return (TEXTS[s.style] || TEXTS.blur)(ctx, s, im, STYLES[s.style] || STYLES.blur);
       });
     },
 
@@ -394,7 +394,7 @@
         v.title = plain(s.caption) || s.wtitle || v.info.title || "Film";
         v.by = v.info.author_name || "";
         s.light = false;
-        return (VIDEOS[opts.video] || VIDEOS.subtitle)(ctx, s, v);
+        return (VIDEOS[s.video] || VIDEOS.subtitle)(ctx, s, v);
       });
     },
 
@@ -601,35 +601,30 @@
     return parts.filter(Boolean).join("\n\n").slice(0, 2200);
   }
 
-  /* ---------- render ---------- */
-  var token = 0;
+  /* ---------- render: the post, as it will look on a phone ---------- */
+  var token = 0, at = 0;
   function render() {
     var my = ++token;
     slides = plan(); pool = photoPool();
-    var strip = $("strip"); strip.innerHTML = "";
-    $("count").textContent = slides.length + " slides" + (slides.length > 20 ? " — Instagram allows 20: untick some" : "");
-    $("count").classList.toggle("warn", slides.length > 20);
-    var jobs = slides.map(function (s, i) {
+    var track = $("track"); track.innerHTML = "";
+    slides.forEach(function (s, i) {
       var c = document.createElement("canvas"); c.width = W; c.height = H; s.canvas = c;
       var fig = document.createElement("figure"); fig.className = "slide" + (skip[i] ? " is-off" : "");
-      var tag = document.createElement("label"); tag.className = "slide-tag";
-      var cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !skip[i];
-      cb.addEventListener("change", function () { skip[i] = !cb.checked; fig.classList.toggle("is-off", !!skip[i]); });
-      tag.appendChild(cb); tag.appendChild(document.createTextNode(" " + pad(i + 1) + " · " + s.kind));
-      var foot = document.createElement("div"); foot.className = "slide-foot"; foot.appendChild(tag);
-      if (s.auto && pool.length > 1) foot.appendChild(picker(s, i));
-      fig.appendChild(c); fig.appendChild(foot); strip.appendChild(fig);
-      c.title = "Click to download this slide";
-      c.addEventListener("click", function () { blobOf(c).then(function (b) { save(b, fileName(i)); }); });
-      return s;
+      fig.setAttribute("aria-label", "Slide " + (i + 1) + ", " + s.kind);
+      var off = document.createElement("span"); off.className = "off-badge"; off.textContent = "Not in the post";
+      fig.appendChild(c); fig.appendChild(off); track.appendChild(fig);
+      s.fig = fig;
     });
-    var n = slides.length;
+    at = Math.min(at, slides.length - 1);
+    track.scrollLeft = at * track.clientWidth;
+    dots(); sync();
     // draw in order (each slide waits on its own images only)
-    return jobs.reduce(function (p, s, i) {
+    return slides.reduce(function (p, s, i) {
       return p.then(function () { if (my === token) return paint(s, i); });
     }, Promise.resolve()).then(function () {
       if (my !== token) return;
-      var cap = $("caption"); cap.value = caption(); cap.style.height = ""; cap.style.height = (cap.scrollHeight + 4) + "px";
+      if (!$("caption").value) setCaption(caption());
+      chips();
       if (q.get("dump")) {                           // dev: hand the slides to a headless browser
         var pre = document.createElement("pre"); pre.id = "dump"; pre.dataset.kinds = slides.map(function (s) { return s.kind; }).join(",");
         pre.textContent = slides.map(function (s) { return s.canvas.toDataURL("image/jpeg", 0.9); }).join("\n");
@@ -637,34 +632,103 @@
       }
     });
   }
-
   function paint(s, i) {
     var ctx = s.canvas.getContext("2d");
     ctx.clearRect(0, 0, W, H);
     return (draw[s.kind] || function () { return Promise.resolve(); })(ctx, s).then(function () { folio(ctx, i, slides.length, s.light); })
       .catch(function (e) { console.error(e); });
   }
-  // ‹ Photo 3 / 18 › — step a text slide through the topic's photos; back on the rule's choice it says "auto"
-  function picker(s, i) {
-    var wrap = document.createElement("span"); wrap.className = "slide-pick";
-    var prev = document.createElement("button"), next = document.createElement("button"), lab = document.createElement("span");
-    prev.type = next.type = "button"; prev.textContent = "\u2039"; next.textContent = "\u203A";
-    prev.setAttribute("aria-label", "Previous photo"); next.setAttribute("aria-label", "Next photo");
-    function label() {
-      var at = pool.indexOf(s.photo);
-      lab.textContent = s.photo === s.auto ? "auto" : (at + 1) + " / " + pool.length;
-      lab.title = s.photo === s.auto ? "Picked by the nearest image block" : "Picked by hand";
-    }
-    function step(d) {
-      var at = pool.indexOf(s.photo); at = ((at < 0 ? 0 : at + d) % pool.length + pool.length) % pool.length;
-      s.photo = pool[at];
-      if (s.photo === s.auto) delete picks[s.key]; else picks[s.key] = s.photo;
-      label(); paint(s, i);
-    }
-    prev.addEventListener("click", function () { step(-1); });
-    next.addEventListener("click", function () { step(1); });
-    label(); wrap.appendChild(prev); wrap.appendChild(lab); wrap.appendChild(next);
-    return wrap;
+
+  // the carousel: pill, dots, and the panel's "This slide" follow the slide in view
+  function kept() { return slides.filter(function (s, i) { return !skip[i]; }).length; }
+  function dots() {
+    var d = $("dots"); d.innerHTML = "";
+    slides.forEach(function (s, i) { var e = document.createElement("i"); if (skip[i]) e.className = "off"; d.appendChild(e); });
+  }
+  function sync() {
+    var n = slides.length, s = slides[at]; if (!s) return;
+    $("pill").textContent = (at + 1) + "/" + n;
+    [].forEach.call($("dots").children, function (e, i) { e.classList.toggle("on", i === at); });
+    $("prev").hidden = at === 0; $("next").hidden = at === n - 1;
+    $("slideName").textContent = (at + 1) + " · " + KIND[s.kind];
+    $("include").checked = !skip[at];
+    var k = kept();
+    $("count").textContent = k + " of " + n + " slides" + (k > 20 ? " — Instagram takes 20" : "");
+    $("count").classList.toggle("warn", k > 20);
+    $("dlZip").textContent = "Download " + k + " images + caption";
+    photos(s);
+  }
+  var KIND = { cover: "Cover", text: "Text", chapter: "Heading", board: "Board", photo: "Photo", video: "Video", quote: "Quote", hand: "Note", sign: "Signature", sources: "Sources" };
+  function go(i) {
+    var track = $("track"); at = Math.max(0, Math.min(slides.length - 1, i));
+    track.scrollTo({ left: at * track.clientWidth, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    sync();
+  }
+
+  // This slide · Photo: the topic's photos, the rule's pick marked "Auto"
+  function photos(s) {
+    var row = $("photoRow"), box = $("photos");
+    row.hidden = !(s.auto && pool.length > 1);
+    if (row.hidden) return;
+    box.innerHTML = "";
+    var list = [s.auto].concat(pool.filter(function (p) { return p !== s.auto; }));
+    list.forEach(function (src, k) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "ph";
+      b.setAttribute("aria-pressed", String(s.photo === src));
+      b.setAttribute("aria-label", k ? "Photo " + k : "Automatic photo");
+      var im = document.createElement("img"); im.src = src; im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+      b.appendChild(im);
+      if (!k) { var t = document.createElement("span"); t.textContent = "Auto"; b.appendChild(t); }
+      b.addEventListener("click", function () {
+        s.photo = src;
+        if (src === s.auto) delete picks[s.key]; else picks[s.key] = src;
+        [].forEach.call(box.children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        $("photoNote").textContent = src === s.auto ? "Automatic — the nearest image block." : "Picked by you.";
+        paint(s, slides.indexOf(s));
+      });
+      box.appendChild(b);
+    });
+    $("photoNote").textContent = s.photo === s.auto ? "Automatic — the nearest image block." : "Picked by you.";
+  }
+
+  // the style pickers: each choice drawn with this topic's own first text / video slide
+  var chipsFor = "";
+  function chips() {
+    if (chipsFor === topic.slug) return; chipsFor = topic.slug;
+    [["text", "chipsText", "secText", ["blur", "strip", "cinema", "half", "polaroid"], "textStyle"],
+     ["video", "chipsVideo", "secVideo", ["subtitle", "bands"], "video"]].forEach(function (g) {
+      var kind = g[0], box = $(g[1]), names = g[3], key = g[4];
+      var sample = plan(opts).filter(function (s) { return s.kind === kind; })[0];
+      $(g[2]).hidden = !sample;
+      if (!sample) return;
+      box.innerHTML = "";
+      names.reduce(function (p, name) {
+        var o = { textStyle: opts.textStyle, video: opts.video }; o[key] = name;
+        var s = plan(o).filter(function (x) { return x.kind === kind; })[0];
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.name = name;
+        b.setAttribute("aria-pressed", String(opts[key] === name));
+        var c = document.createElement("canvas"); c.width = 216; c.height = 270;
+        var lab = document.createElement("span"); lab.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+        b.appendChild(c); b.appendChild(lab); box.appendChild(b);
+        b.addEventListener("click", function () {
+          opts[key] = name;
+          [].forEach.call(box.children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+          render();
+        });
+        var full = document.createElement("canvas"); full.width = W; full.height = H;
+        return p.then(function () {
+          return draw[kind](full.getContext("2d"), s).then(function () {
+            var t = c.getContext("2d"); t.imageSmoothingQuality = "high"; t.drawImage(full, 0, 0, c.width, c.height);
+          });
+        });
+      }, Promise.resolve());
+    });
+  }
+
+  function setCaption(v) { $("caption").value = v; capPreview(); }
+  function capPreview() {
+    var t = $("caption").value.replace(/\s+/g, " ").trim();
+    $("capPreview").textContent = t.length > 96 ? t.slice(0, 96).replace(/\s\S*$/, "") + "…" : t;
   }
 
   /* ---------- export ---------- */
@@ -720,7 +784,9 @@
     });
     var share = $("share");
     var probe = new File([new Blob([""], { type: "image/jpeg" })], "x.jpg", { type: "image/jpeg" });
-    if (navigator.canShare && navigator.canShare({ files: [probe] })) share.hidden = false;
+    var canShare = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+    share.hidden = !canShare;
+    $("dlZip").classList.toggle("primary", !canShare); $("dlZip").classList.toggle("ghost", canShare);
     share.addEventListener("click", function () {
       var btn = this, was = btn.textContent; busy(btn, true, "Preparing…");
       chosen().then(function (files) {
@@ -730,28 +796,35 @@
     });
     $("copyCap").addEventListener("click", function () {
       var btn = this; navigator.clipboard.writeText($("caption").value).then(function () {
-        btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy caption"; }, 1400);
+        btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1400);
       });
     });
-    document.querySelectorAll("[data-style]").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.style === opts.textStyle));
-      b.addEventListener("click", function () {
-        opts.textStyle = b.dataset.style;
-        document.querySelectorAll("[data-style]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-        skip = {}; render();
-      });
-    });
-    document.querySelectorAll("[data-video]").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.video === opts.video));
-      b.addEventListener("click", function () {
-        opts.video = b.dataset.video;
-        document.querySelectorAll("[data-video]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-        render();
-      });
-    });
+    $("caption").addEventListener("input", capPreview);
     $("folio").checked = opts.folio;
     $("folio").addEventListener("change", function () { opts.folio = this.checked; render(); });
+    $("include").addEventListener("change", function () {
+      skip[at] = !this.checked; if (!skip[at]) delete skip[at];
+      slides[at].fig.classList.toggle("is-off", !!skip[at]);
+      dots(); sync();
+    });
+    $("dlOne").addEventListener("click", function () { var s = slides[at]; blobOf(s.canvas).then(function (b) { save(b, fileName(at)); }); });
     $("topic").addEventListener("change", function () { location.search = "?t=" + encodeURIComponent(this.value); });
+    $("prev").addEventListener("click", function () { go(at - 1); });
+    $("next").addEventListener("click", function () { go(at + 1); });
+    var track = $("track"), raf = 0;
+    track.addEventListener("scroll", function () {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () {
+        var i = Math.round(track.scrollLeft / track.clientWidth);
+        if (i !== at && i >= 0 && i < slides.length) { at = i; sync(); }
+      });
+    }, { passive: true });
+    document.addEventListener("keydown", function (e) {
+      if (/^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)) return;
+      if (e.key === "ArrowRight") { go(at + 1); e.preventDefault(); }
+      if (e.key === "ArrowLeft") { go(at - 1); e.preventDefault(); }
+    });
+    addEventListener("resize", function () { track.scrollLeft = at * track.clientWidth; });
   }
 
   function start() {
@@ -764,12 +837,14 @@
     ]).then(function (r) {
       topic = r[0];
       var list = Array.isArray(r[1]) ? r[1] : (r[1].topics || []), sel = $("topic");
+      $("title").textContent = topic.title; $("topicName").textContent = topic.title;
+      $("avatar").style.backgroundImage = topic.cover ? "url('" + topic.cover + "')" : "";
       (list.length ? list : [{ slug: topic.slug, title: topic.title }]).forEach(function (t) {
         var o = document.createElement("option"); o.value = t.slug; o.textContent = t.title || t.slug; o.selected = t.slug === topic.slug; sel.appendChild(o);
       });
       document.documentElement.style.setProperty("--tone", topic.tone || "#e6e4e6");
       wire(); return render();
-    }).catch(function (e) { $("count").textContent = "Couldn't load “" + opts.slug + "”: " + e.message; });
+    }).catch(function (e) { $("count").textContent = "Couldn’t load “" + opts.slug + "”: " + e.message; });
   }
   start();
 })();
