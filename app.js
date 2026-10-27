@@ -993,24 +993,27 @@
   var TRAYS = {
     // one print, taped, the topic's name written on it
     print: function (t, p) { return trayPrint(p[0], "tp-one", -2.4, "top", loc(t, "title")); },
-    // three prints fanned out, the top one straight
-    stack: function (t, p) { return trayPrint(p[2] || p[0], "tp-fan tp-f3", 7, "corner") + trayPrint(p[1] || p[0], "tp-fan tp-f2", -6, "corner") + trayPrint(p[0], "tp-fan tp-f1", 1.2, "top", loc(t, "title")); },
-    // four prints scattered across the well, as on a board
-    scatter: function (t, p) { var q = [0, 1, 2, 3].map(function (k) { return p[k % p.length]; }); return trayPrint(q[0], "tp-sc tp-s1", -4, "top") + trayPrint(q[1], "tp-sc tp-s2", 5, "corner") + trayPrint(q[2], "tp-sc tp-s3", -2, "both") + trayPrint(q[3], "tp-sc tp-s4", 3.5, "top"); },
-    // one print hung on a pin; it swings a little on hover
-    pin: function (t, p) { return '<span class="tp-pinwrap">' + trayPrint(p[0], "tp-one tp-pinned", 0, "none", loc(t, "title")) + '<i class="tp-pin"></i></span>'; },
-    // the photo fills the whole tray, edge to edge
-    bleed: function (t, p) { return '<span class="tb-bleed">' + trayImg(p[0]) + "</span>"; },
     // a museum frame: thin black moulding, a wide white mat, hung on the wall of the well
     frame: function (t, p) { return '<span class="tf-frame"><span class="tf-mat">' + trayImg(p[0]) + "</span></span>"; },
-    // a 35mm slide: white plastic mount, the title written on it
-    slide: function (t, p) { return '<span class="ts-slide"><span class="ts-win">' + trayImg(p[0]) + '</span><span class="ts-label">' + htmlEsc(loc(t, "title")) + '</span><span class="ts-no">' + htmlEsc(curNo(t) || "") + "</span></span>"; },
-    // a strip of film, three frames from the topic
-    film: function (t, p) { return '<span class="tfl-strip">' + [0, 1, 2].map(function (k) { return '<span class="tfl-frame">' + trayImg(p[k % p.length]) + "</span>"; }).join("") + "</span>"; },
-    // a photo-lab envelope with the prints sliding out
-    envelope: function (t, p) { return '<span class="te-wrap">' + trayPrint(p[1] || p[0], "te-print te-p2", 6, "none") + trayPrint(p[0], "te-print te-p1", -3, "none") + '<span class="te-env"><span class="te-flap"></span><span class="te-title">' + htmlEsc(loc(t, "title")) + '</span><span class="te-sub">' + htmlEsc(String(loc(t, "desc") || "")) + "</span></span></span>"; },
-    // four photos in a square grid, like a contact sheet
-    grid: function (t, p) { return '<span class="tg-grid">' + [0, 1, 2, 3].map(function (k) { return '<span class="tg-cell">' + trayImg(p[k % p.length]) + "</span>"; }).join("") + "</span>"; }
+    // a print in a frame: the polaroid itself, taped onto the mat behind glass
+    framedprint: function (t, p) { return '<span class="tf-frame tf-deep"><span class="tf-mat tf-mat-print">' + trayPrint(p[0], "tp-inframe", -1.6, "top", loc(t, "title")) + '</span><span class="tf-glass"></span></span>'; },
+    // a darkroom line: prints drying on a string, held by wooden pegs
+    line: function (t, p) {
+      var q = [0, 1, 2].map(function (k) { return p[k % p.length]; });
+      return '<span class="tl-line"></span>' + trayPrint(q[0], "tl-p tl-p1", -3, "none") + trayPrint(q[1], "tl-p tl-p2", 2.5, "none") + trayPrint(q[2], "tl-p tl-p3", -1.5, "none")
+        + '<i class="tl-peg tl-g1"></i><i class="tl-peg tl-g2"></i><i class="tl-peg tl-g3"></i>';
+    },
+    // a photo book: cloth cover, the photograph tipped in, the title stamped below
+    book: function (t, p) { return '<span class="tk-book"><span class="tk-spine"></span><span class="tk-tip">' + trayImg(p[0]) + '</span><span class="tk-title">' + htmlEsc(loc(t, "title")) + '</span><span class="tk-sub">' + htmlEsc(t.author || "") + "</span></span>"; },
+    // the museum wall: a framed photograph, its small label beside it — as in the room
+    museum: function (t, p) {
+      return '<span class="tm-wall"><span class="tf-frame tm-frame"><span class="tf-mat">' + trayImg(p[0]) + '</span></span><span class="tm-label"><b>' + htmlEsc(t.author || "") + ',</b> ' + htmlEsc(loc(t, "title"))
+        + (loc(t, "desc") ? ", " + htmlEsc(String(loc(t, "desc"))) : "") + '<i>' + htmlEsc(curNo(t) || "") + "</i></span></span>";
+    },
+    // a lightbox: three slides lit from below
+    lightbox: function (t, p) {
+      return '<span class="tx-box">' + [0, 1, 2].map(function (k) { return '<span class="tx-slide tx-s' + (k + 1) + '"><span class="ts-win">' + trayImg(p[k % p.length]) + "</span></span>"; }).join("") + "</span>";
+    }
   };
   function dressTrays(root) {
     if (!TRAYS[TRAY]) return;
