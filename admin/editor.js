@@ -895,6 +895,19 @@
     });
     return out;
   }
+  // a picture as a plain photo (a board window loses its Preview frame), for the share card
+  function barePhotoURL(src) {
+    return new Promise(function (res) {
+      if (!window.Prints || !Prints.isWindow(src)) { res(src); return; }
+      var im = new Image(); im.crossOrigin = "anonymous";
+      im.onload = function () {
+        var r = Prints.bare(im), c = document.createElement("canvas"); c.width = Math.round(r.w); c.height = Math.round(r.h);
+        c.getContext("2d").drawImage(im, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
+        c.toBlob(function (b) { res(b ? URL.createObjectURL(b) : src); }, "image/jpeg", 0.92);
+      };
+      im.onerror = function () { res(src); }; im.src = src;
+    });
+  }
   function feedField() {
     var wrap = document.createElement("div"), pics = topicPictures();
     if (!pics.length) { var e = document.createElement("div"); e.className = "insp-empty"; e.textContent = "Add a picture or a board to the topic first."; wrap.appendChild(e); return wrap; }
@@ -918,7 +931,7 @@
       grid.appendChild(b);
     });
     var note = document.createElement("div"); note.className = "insp-empty"; note.style.marginTop = "8px";
-    note.textContent = "The photo hung in the frame on the curation page.";
+    note.textContent = "Hangs in the frame on the curation page; also the link preview and the Instagram cover.";
     wrap.appendChild(grid); wrap.appendChild(note);
     return wrap;
   }
@@ -1015,8 +1028,7 @@
     if (inspTab === "block") { renderBlockInspector(); return; }
     var docSec = document.createElement("div"); docSec.className = "insp-section";
     docSec.appendChild(field("Author", authorSelect()));
-    docSec.appendChild(field("Cover", coverField()));
-    docSec.appendChild(field("Feed photo", feedField()));
+    docSec.appendChild(field("Cover photo", feedField()));
     var descTa = document.createElement("textarea"); descTa.className = "insp-input insp-textarea"; descTa.rows = 3;
     descTa.placeholder = "Short blurb shown on the card (leave empty to auto-use the opening line)";
     descTa.value = state.desc || "";
@@ -1671,13 +1683,12 @@
         }
       }
     }
-    if (state.cover) {
-      if (typeof state.cover === "string") {
-        if (state.cover.indexOf("/curation/media/") === 0) { cover = coverLocal = state.cover; }
-        else { var cbl = await blobFromSrc(state.cover), cext = extFromType(cbl.type), cp = "curation/media/" + slug + "/cover." + cext; files.push({ path: cp, base64: await blobToBase64(cbl) }); cover = "/" + cp; coverLocal = URL.createObjectURL(cbl); }
-      } else if (state.cover.items && state.cover.items.length) {
-        var cbb = await coverToPNGBlob(state.cover); var cpb = "curation/media/" + slug + "/cover.png"; files.push({ path: cpb, base64: await blobToBase64(cbb) }); cover = "/" + cpb; coverLocal = URL.createObjectURL(cbb);
-      }
+    // the cover photo: one picture of the topic (picked, or the first) — the frame on the feed,
+    // the link preview and the Instagram cover all use it
+    var coverPics = topicPictures(), coverPick = state.feed && coverPics.indexOf(state.feed) >= 0 ? state.feed : coverPics[0];
+    if (coverPick && (placed[coverPick] || coverPick.indexOf("/curation/media/") === 0)) {
+      cover = placed[coverPick] || coverPick;
+      coverLocal = await barePhotoURL(coverPick);
     }
     var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
     var desc = (state.desc || "").trim() || (firstText ? plain(firstText.html).slice(0, 160) : "");
@@ -1689,7 +1700,7 @@
     });
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
     if (state.tone) topic.tone = state.tone;
-    if (state.feed && (placed[state.feed] || state.feed.indexOf("/curation/media/") === 0)) topic.feed = placed[state.feed] || state.feed;
+    if (cover) topic.feed = cover;
     if (state.song && youtubeId(state.song.src)) {
       var sg = state.song; topic.song = { src: sg.src, title: (sg.title || "").trim(), artist: (sg.artist || "").trim() };
       if ((sg.album || "").trim()) topic.song.album = sg.album.trim(); if (sg.art) topic.song.art = sg.art; if (+sg.start) topic.song.start = +sg.start;

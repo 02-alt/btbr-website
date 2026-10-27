@@ -321,7 +321,7 @@
   function plan(o) {
     o = o || opts;
     var everyPhoto = photoPool(), blocks = topic.blocks || [], nth = 0;
-    var hero = /\.(jpe?g|webp)($|\?)/i.test(topic.cover || "") ? topic.cover : (everyPhoto[0] || topic.cover);
+    var hero = topic.feed || (/\.(jpe?g|webp)($|\?)/i.test(topic.cover || "") ? topic.cover : (everyPhoto[0] || topic.cover));
     var out = [{ kind: "cover", cover: o.cover || "museum", key: "cover", auto: hero, photo: picks.cover || hero }];
     var tailFrom = blocks.length;                    // trailing hand/sign close the carousel, after the sources
     while (tailFrom > 0 && /^(hand|sign)$/.test(blocks[tailFrom - 1].type)) tailFrom--;
@@ -715,17 +715,18 @@
   var COVERS = {
     museum: function (ctx, s) {
       wall(ctx);
-      return loadImg(s.photo === s.auto ? topic.cover : s.photo).then(function (im) {
+      return loadImg(s.photo).then(function (im) {
+        var bx = im ? (bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight }) : null;
         // the museum label, overlapping the photo's foot: "Author, / Title, desc"
         var desc = String(topic.desc || "").trim().replace(/[.,;:]+$/, "");
         var words = plainRuns(topic.author + ",").concat([{ br: true }], plainRuns(topic.title + (desc ? ", " + desc : "")));
         var cw = 680, size = 50, lines = wrap(words, size, SANS, cw - 84), lh = size * 1.13, ch = 44 + linesH(lines, lh) + 96;
-        var k = im ? Math.min((W - 2 * M) / im.naturalWidth, 800 / im.naturalHeight) : 0, w = im ? im.naturalWidth * k : 0, h = im ? im.naturalHeight * k : 0;
+        var k = im ? Math.min((W - 2 * M) / bx.w, 800 / bx.h) : 0, w = im ? bx.w * k : 0, h = im ? bx.h * k : 0;
         var y = Math.max(70, (H - FOOT - (h + ch - 80)) / 2), bottom = y;
         if (im) {
           ctx.save(); ctx.shadowColor = "rgba(40,30,40,0.18)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 24;
-          ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(M, y, w, h, 6); ctx.fill(); ctx.restore();
-          cover(ctx, im, M, y, w, h, 6); bottom = y + h;
+          var px = (W - w) / 2; ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(px, y, w, h, 6); ctx.fill(); ctx.restore();
+          cover(ctx, im, px, y, w, h, 6, bx); bottom = y + h;
         }
         var cy = Math.min(bottom - 80, H - FOOT - ch - 40);
         card(ctx, M, cy, cw, ch);
