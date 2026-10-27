@@ -2081,3 +2081,19 @@ img.cur-avatar { object-fit: cover; }
 .tx-s1 { left: 6%; top: 8%; transform: rotate(-4deg); } .tx-s2 { right: 6%; top: 26%; transform: rotate(3deg); } .tx-s3 { left: 16%; bottom: 7%; transform: rotate(-1deg); }
 .cur-card:hover .tx-s1 { transform: rotate(-7deg) translate(-3%, -3%); } .cur-card:hover .tx-s2 { transform: rotate(6deg) translate(3%, -2%); } .cur-card:hover .tx-s3 { transform: rotate(-2deg) translateY(3%); }
 @media (prefers-reduced-motion: reduce) { .tray-art * { transition: none !important; } }
+
+/* ===== about, bare: a white page, a clock, a photo, a few plain lines ===== */
+body:has(.about-bare) { background: #fff; padding: 0; }
+.frame.about-bare { border-radius: 0; background: #fff; min-height: 100vh; min-height: 100dvh; padding: 20px 22px 60px; animation: none; }
+.bare-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; letter-spacing: 0; color: #000; }
+.bare-clock { font-variant-numeric: tabular-nums; min-height: 1em; }
+.bare-lang { border: 0; width: auto; height: auto; color: #000; font-size: 13px; font-weight: 400; letter-spacing: 0; }
+.bare-lang:hover { color: #000; text-decoration: underline; }
+.bare-page { margin-top: 120px; }
+.bare-photo { display: block; width: min(620px, 100%); height: auto; }
+.bare-list { list-style: none; margin: 22px 0 0; padding: 0; font-size: 13px; line-height: 1; letter-spacing: 0; color: #000; text-transform: uppercase; }
+.bare-list li + li { margin-top: 22px; }
+.bare-links { margin-top: 44px; }
+.bare-list a { color: inherit; text-decoration: none; }
+.bare-list a:hover { text-decoration: underline; }
+@media (max-width: 560px) { .bare-page { margin-top: 64px; } .bare-list { line-height: 1.3; } .bare-list li + li { margin-top: 14px; } }

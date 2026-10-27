@@ -112,6 +112,16 @@
 
   // ---- (re)bind page-specific controls after each navigation ----
   function bindPage() {
+    // the about page's clock: day month year, hours:minutes:seconds, ticking
+    var clock = document.getElementById("bareClock");
+    clearInterval(window.__bareClock);
+    if (clock) {
+      var tick = function () {
+        var d = new Date(), p2 = function (n) { return (n < 10 ? "0" : "") + n; };
+        clock.textContent = d.getDate() + " " + (d.getMonth() + 1) + " " + d.getFullYear() + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()) + ":" + p2(d.getSeconds());
+      };
+      tick(); window.__bareClock = setInterval(tick, 1000);
+    }
     var play = document.getElementById("play");
     if (play) {
       reflect();

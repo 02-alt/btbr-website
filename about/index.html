@@ -23,7 +23,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-light.png?v=5" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />
-  <link rel="stylesheet" href="/styles.css?v=11" />
+  <link rel="stylesheet" href="/styles.css?v=45" />
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"ProfilePage","url":"https://buildtoberemembered.com/about/","name":"About — builtoberemembered","inLanguage":"en","isPartOf":{"@id":"https://buildtoberemembered.com/#website"},"about":{"@type":"Person","name":"Isaac","alternateName":"isaaaaaaaac","url":"https://buildtoberemembered.com/about/","description":"The maker behind builtoberemembered — a small collection of free, minimal macOS apps.","worksFor":{"@id":"https://buildtoberemembered.com/#org"}}}
   </script>
@@ -32,33 +32,30 @@
   </script>
 </head>
 <body>
-  <div class="frame about-frame">
-    <button class="lang-btn lang-corner" type="button" aria-label="Lire en français" title="Lire en français">EN</button>
-    <header class="topnav">
-      <a class="back" href="/" aria-label="Back home">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-      </a>
-      <span></span>
-      <span></span>
+  <div class="frame about-frame about-bare">
+    <header class="bare-top">
+      <span class="bare-clock" id="bareClock" aria-hidden="true"></span>
+      <button class="lang-btn bare-lang" type="button" aria-label="Lire en français" title="Lire en français">EN</button>
     </header>
 
-    <main class="about-page">
+    <main class="bare-page">
       <h1 class="sr-only">About builtoberemembered</h1>
-      <img class="about-photo" src="/assets/about-photo.jpg" alt="isaaaaaaaac, the maker behind builtoberemembered" />
-
-      <p class="about-message">
-        Hi, I'm isaaaaaaaac. I'm trying to do good things, and to help as
-        much as I can. <span class="soft">I hope I can make things a little easier
-        for you.</span>
-      </p>
-
-      <!-- play button -->
-      <div class="player">
-        <button class="song-btn" id="play">Play song</button>
-      </div>
+      <img class="bare-photo" src="/assets/about-photo.jpg" alt="isaaaaaaaac, the maker behind builtoberemembered" />
+      <ul class="bare-list">
+        <li>Hi, I'm isaaaaaaaac.</li>
+        <li>I'm trying to do good things,</li>
+        <li>and to help as much as I can.</li>
+        <li>I hope I can make things a little easier for you.</li>
+      </ul>
+      <ul class="bare-list bare-links">
+        <li><a href="/apps/">Apps</a></li>
+        <li><a href="/curation/">Curation</a></li>
+        <li><a href="mailto:isaaaaaaaac@pm.me">Email</a></li>
+        <li><a href="/">Back</a></li>
+      </ul>
     </main>
   </div>
 
-  <script src="/app.js?v=5"></script>
+  <script src="/app.js?v=35"></script>
 </body>
 </html>
