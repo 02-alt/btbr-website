@@ -19,17 +19,8 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "none",
+        "bg": "#ebebef",
         "items": [
-          {
-            "src": "/curation/media/gnuhr/board-1-1.png",
-            "x": 5.882,
-            "y": 3.824,
-            "w": 42,
-            "h": 66.362,
-            "name": "Gnuhr_ Gorp Lord.png",
-            "note": "Gnuhr_ Gorp Lord"
-          },
           {
             "src": "/curation/media/gnuhr/board-1-2.png",
             "x": 38.971,
@@ -47,6 +38,15 @@
             "h": 58.676,
             "name": "Gnuhr_ 2 bag swag.png",
             "note": "Gnuhr_ 2 bag swag"
+          },
+          {
+            "src": "/curation/media/gnuhr/board-1-1.png",
+            "x": 5.882,
+            "y": 3.824,
+            "w": 42,
+            "h": 66.362,
+            "name": "Gnuhr_ Gorp Lord.png",
+            "note": "Gnuhr_ Gorp Lord"
           }
         ]
       }
@@ -63,14 +63,14 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "none",
+        "bg": "#ebebef",
         "items": [
           {
             "src": "/curation/media/gnuhr/board-2-1.png",
             "x": 4.853,
             "y": 3.456,
             "w": 42,
-            "h": 50.828,
+            "h": 50.75,
             "name": "Gnuhr_Warp T Tank_2.png",
             "note": "Gnuhr_Warp T Tank_2"
           },
@@ -107,7 +107,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "none",
+        "bg": "#ebebef",
         "items": [
           {
             "src": "/curation/media/gnuhr/board-3-1.png",
@@ -119,15 +119,6 @@
             "note": "Gnuhr_Fit_2"
           },
           {
-            "src": "/curation/media/gnuhr/board-3-2.png",
-            "x": 58,
-            "y": 0.627,
-            "w": 42,
-            "h": 58.893,
-            "name": "Gnuhr_Gearmaxxxing.png",
-            "note": "Gnuhr_Gearmaxxxing"
-          },
-          {
             "src": "/curation/media/gnuhr/board-3-3.png",
             "x": 2.574,
             "y": 3.382,
@@ -135,6 +126,15 @@
             "h": 58.893,
             "name": "Gnuhr_Warp Short Pockets.png",
             "note": "Gnuhr_Warp Short Pockets"
+          },
+          {
+            "src": "/curation/media/gnuhr/board-3-2.png",
+            "x": 58,
+            "y": 0.627,
+            "w": 42,
+            "h": 58.979,
+            "name": "Gnuhr_Gearmaxxxing.png",
+            "note": "Gnuhr_Gearmaxxxing"
           }
         ]
       }
@@ -153,7 +153,7 @@
             "x": 28.971,
             "y": 31.691,
             "w": 42,
-            "h": 58.893,
+            "h": 58.979,
             "name": "Gnuhr_Winter.png",
             "note": "Gnuhr_Winter"
           },
@@ -201,7 +201,7 @@
       "caption": "",
       "inset": false,
       "board": {
-        "bg": "none",
+        "bg": "#ebebef",
         "items": [
           {
             "src": "/curation/media/gnuhr/board-5-1.png",
@@ -241,6 +241,7 @@
       }
     }
   ],
+  "feed": "/curation/media/gnuhr/board-4-3.png",
   "song": {
     "src": "https://www.youtube.com/watch?v=nZ3wV6Z68Vk",
     "title": "Oregon, 1850",
