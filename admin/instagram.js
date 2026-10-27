@@ -870,11 +870,23 @@
   }
 
   /* ---------- caption ---------- */
+  // the caption's closing line says what the topic really holds: "The full topic, with 4 videos, 15 pictures and 6 sources"
+  function whatsOnSite() {
+    var blocks = topic.blocks || [], vids = 0, pics = 0, n = function (k, one, many) { return k + " " + (k === 1 ? one : many); };
+    blocks.forEach(function (b) {
+      if (b.type === "video" && b.src) vids++;
+      if (b.type === "image" && b.src) pics += b.board && b.board.items && b.board.items.length ? b.board.items.length : 1;
+    });
+    var srcs = String(topic.inspiration || "").split(/\n+/).filter(function (l) { l = l.trim(); return l && !/^(inspirations?|sources?)\s*:?$/i.test(l); }).length;
+    var bits = [vids ? n(vids, "video", "videos") : "", pics ? n(pics, "picture", "pictures") : "", srcs ? n(srcs, "source", "sources") : ""].filter(Boolean);
+    var list = bits.length > 1 ? bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] : bits[0];
+    return list ? "The full topic, with " + list : "Read the full topic";
+  }
   function caption() {
     var first = (topic.blocks || []).filter(function (b) { return b.type === "text" && !b.head; })[0];
     var lead = first ? plain(String(first.html).replace(/<\/p>|<br\s*\/?>/gi, "\n")).replace(/\n{3,}/g, "\n\n") : "";
     var parts = [topic.title + (topic.desc ? " — " + topic.desc : ""), lead];
-    parts.push("The full topic, with the film and every source: link in bio → " + SITE + "/curation/" + topic.slug);
+    parts.push(whatsOnSite() + " — link in bio → " + SITE + "/curation/" + topic.slug);
     if (topic.song && topic.song.title) parts.push("♪ " + topic.song.title + (topic.song.artist ? " — " + topic.song.artist : ""));
     return parts.filter(Boolean).join("\n\n").slice(0, 2200);
   }
