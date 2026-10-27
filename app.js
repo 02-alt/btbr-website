@@ -954,7 +954,7 @@
     return '<div class="cur-empty"><p class="cur-empty-title">' + ui("emptyT") + '</p><p class="cur-empty-sub">' + ui("emptyS") + "</p></div>";
   }
   // ---- the cover tray, ten ways (trying them: /curation/?tray=<name>; "plate" is the photo resting in its well)
-  var TRAY = (new URLSearchParams(location.search).get("tray") || "plate").toLowerCase();
+  var TRAY = (new URLSearchParams(location.search).get("tray") || "frame").toLowerCase();
   var topicCache = {}, bareCache = {};
   function topicData(slug) {
     return topicCache[slug] || (topicCache[slug] = fetch("/curation/topics/" + encodeURIComponent(slug) + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).catch(function () { return {}; }));
