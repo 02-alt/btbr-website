@@ -953,6 +953,77 @@
   function curEmptyHTML() {
     return '<div class="cur-empty"><p class="cur-empty-title">' + ui("emptyT") + '</p><p class="cur-empty-sub">' + ui("emptyS") + "</p></div>";
   }
+  // ---- the cover tray, ten ways (trying them: /curation/?tray=<name>; "plate" is the photo resting in its well)
+  var TRAY = (new URLSearchParams(location.search).get("tray") || "plate").toLowerCase();
+  var topicCache = {}, bareCache = {};
+  function topicData(slug) {
+    return topicCache[slug] || (topicCache[slug] = fetch("/curation/topics/" + encodeURIComponent(slug) + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).catch(function () { return {}; }));
+  }
+  // a board window (MacWin's Preview window baked at 2×) → just its photo, as a blob URL
+  function bareURL(src) {
+    if (!/\/board-\d+-\d+\.png($|\?)/.test(src)) return Promise.resolve(src);
+    return bareCache[src] || (bareCache[src] = new Promise(function (res) {
+      var im = new Image(); im.onload = function () {
+        var nw = im.naturalWidth, nh = im.naturalHeight, k = Math.max(nw / 726, nh / 760), e = 5 * k, x = 3 * k + e, y = 37 * k + e, w = nw - 2 * x, h = nh - 40 * k - 2 * e;
+        var c = document.createElement("canvas"); c.width = Math.round(Math.min(w, 900)); c.height = Math.round(c.width * h / w);
+        c.getContext("2d").drawImage(im, x, y, w, h, 0, 0, c.width, c.height);
+        c.toBlob(function (b) { res(b ? URL.createObjectURL(b) : src); }, "image/jpeg", 0.9);
+      };
+      im.onerror = function () { res(src); }; im.src = src;
+    }));
+  }
+  // the topic's photographs: the cover when it is one, then every picture on its boards
+  function topicPhotos(t) {
+    return topicData(t.slug).then(function (d) {
+      var list = [];
+      if (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "")) list.push(t.cover);
+      (d.blocks || []).forEach(function (b) {
+        if (b.type !== "image") return;
+        (b.board && b.board.items && b.board.items.length ? b.board.items.map(function (it) { return it.src; }) : [b.src]).forEach(function (u) { if (u && list.indexOf(u) < 0) list.push(u); });
+      });
+      if (!list.length && t.cover) list.push(t.cover);
+      return Promise.all(list.slice(0, 6).map(bareURL));
+    });
+  }
+  function trayImg(u) { return '<img src="' + esc(u) + '" alt="">'; }
+  function trayPrint(u, cls, tilt, tape, note) {
+    return '<span class="tp ' + (cls || "") + ' tape-' + (tape || "top") + '" style="--tilt:' + (tilt || 0) + 'deg"><span class="tp-in"><span class="tp-ph">' + trayImg(u) + "</span>"
+      + '<span class="tp-note">' + htmlEsc(note || "") + "</span></span></span>";
+  }
+  var TRAYS = {
+    // one print, taped, the topic's name written on it
+    print: function (t, p) { return trayPrint(p[0], "tp-one", -2.4, "top", loc(t, "title")); },
+    // three prints fanned out, the top one straight
+    stack: function (t, p) { return trayPrint(p[2] || p[0], "tp-fan tp-f3", 7, "corner") + trayPrint(p[1] || p[0], "tp-fan tp-f2", -6, "corner") + trayPrint(p[0], "tp-fan tp-f1", 1.2, "top", loc(t, "title")); },
+    // four prints scattered across the well, as on a board
+    scatter: function (t, p) { var q = [0, 1, 2, 3].map(function (k) { return p[k % p.length]; }); return trayPrint(q[0], "tp-sc tp-s1", -4, "top") + trayPrint(q[1], "tp-sc tp-s2", 5, "corner") + trayPrint(q[2], "tp-sc tp-s3", -2, "both") + trayPrint(q[3], "tp-sc tp-s4", 3.5, "top"); },
+    // one print hung on a pin; it swings a little on hover
+    pin: function (t, p) { return '<span class="tp-pinwrap">' + trayPrint(p[0], "tp-one tp-pinned", 0, "none", loc(t, "title")) + '<i class="tp-pin"></i></span>'; },
+    // the photo fills the whole tray, edge to edge
+    bleed: function (t, p) { return '<span class="tb-bleed">' + trayImg(p[0]) + "</span>"; },
+    // a museum frame: thin black moulding, a wide white mat, hung on the wall of the well
+    frame: function (t, p) { return '<span class="tf-frame"><span class="tf-mat">' + trayImg(p[0]) + "</span></span>"; },
+    // a 35mm slide: white plastic mount, the title written on it
+    slide: function (t, p) { return '<span class="ts-slide"><span class="ts-win">' + trayImg(p[0]) + '</span><span class="ts-label">' + htmlEsc(loc(t, "title")) + '</span><span class="ts-no">' + htmlEsc(curNo(t) || "") + "</span></span>"; },
+    // a strip of film, three frames from the topic
+    film: function (t, p) { return '<span class="tfl-strip">' + [0, 1, 2].map(function (k) { return '<span class="tfl-frame">' + trayImg(p[k % p.length]) + "</span>"; }).join("") + "</span>"; },
+    // a photo-lab envelope with the prints sliding out
+    envelope: function (t, p) { return '<span class="te-wrap">' + trayPrint(p[1] || p[0], "te-print te-p2", 6, "none") + trayPrint(p[0], "te-print te-p1", -3, "none") + '<span class="te-env"><span class="te-flap"></span><span class="te-title">' + htmlEsc(loc(t, "title")) + '</span><span class="te-sub">' + htmlEsc(String(loc(t, "desc") || "")) + "</span></span></span>"; },
+    // four photos in a square grid, like a contact sheet
+    grid: function (t, p) { return '<span class="tg-grid">' + [0, 1, 2, 3].map(function (k) { return '<span class="tg-cell">' + trayImg(p[k % p.length]) + "</span>"; }).join("") + "</span>"; }
+  };
+  function dressTrays(root) {
+    if (!TRAYS[TRAY]) return;
+    document.body.classList.add("tray-" + TRAY);
+    [].forEach.call(root.querySelectorAll(".cur-card"), function (card) {
+      var t = (curList || []).filter(function (x) { return x.slug === card.dataset.slug; })[0], well = card.querySelector(".cur-well");
+      if (!t || !well) return;
+      topicPhotos(t).then(function (p) {
+        if (!p.length) return;
+        well.innerHTML = '<div class="cur-media tray-art">' + TRAYS[TRAY](t, p) + "</div>";
+      });
+    });
+  }
   function initCuration() {
     var feed = document.querySelector("[data-curation]");
     if (!feed || feed.dataset.loaded) return;
@@ -961,6 +1032,7 @@
       curList = list || [];
       if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
       feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
+      dressTrays(feed);
       // after the grid, not in it, so a short row of cards stays centred
       feed.insertAdjacentHTML("afterend", '<p class="cur-end">' + ui("end") + "</p>");
       openFromHash();
