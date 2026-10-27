@@ -1874,7 +1874,26 @@ img.cur-avatar { object-fit: cover; }
 .cur-vprint-hole > iframe, .cur-vprint-hole > video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0 !important; display: block; object-fit: cover; }
 .cur-vprint-note { min-height: 9cqw; padding: 2cqw 0.4cqw 2.4cqw; font: 3.4cqw/1.15 "My Hand", Charter, Georgia, serif; color: #1f1d20; }
 .cur-vprint > .cur-cap { display: none; }
-.cur-focus-img.is-print { border-radius: 2px; box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.55); }
+/* the tape: peeled off (lifting from one end, curling, gone) when a print is opened; pressed back when it returns */
+.cur-print.is-peeled::before { animation: tape-peel 0.3s cubic-bezier(0.4, 0, 0.7, 0.2) forwards; }
+.cur-print.is-peeled::after { animation: tape-peel-r 0.3s cubic-bezier(0.4, 0, 0.7, 0.2) 0.04s forwards; }
+.cur-print.tape-top.is-peeled::before { transform-origin: 0 50%; }
+.cur-print.is-peeled .cur-print-in { animation: print-lift 0.3s ease-out forwards; }
+@keyframes tape-peel {
+  0% { opacity: 1; }
+  45% { opacity: 1; translate: 3cqw -2.5cqw; rotate: -14deg; scale: 0.96 0.9; }
+  100% { opacity: 0; translate: 10cqw -12cqw; rotate: -32deg; scale: 0.8 0.6; }
+}
+@keyframes tape-peel-r {
+  0% { opacity: 1; }
+  45% { opacity: 1; translate: -3cqw -2.5cqw; rotate: 14deg; scale: 0.96 0.9; }
+  100% { opacity: 0; translate: -10cqw -12cqw; rotate: 32deg; scale: 0.8 0.6; }
+}
+@keyframes print-lift { to { transform: translateY(-1.5%) scale(1.02); box-shadow: 0 2px 4px rgba(30, 25, 30, 0.12), 0 26px 40px -14px rgba(30, 25, 30, 0.38); } }
+.cur-print.is-sticking::before, .cur-print.is-sticking::after { animation: tape-stick 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes tape-stick { from { opacity: 0; scale: 1.12; } }
+
+.cur-focus-img.is-print { border-radius: 1px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 30px 70px -20px rgba(0, 0, 0, 0.55); }
 @media (prefers-reduced-motion: reduce) { .cur-print, .cur-print-photo img { transition: none; } }
 
 /* a window from a board is a cut-out (transparent corners): its shadow follows the shape */

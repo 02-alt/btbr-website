@@ -546,8 +546,15 @@
     var tw = Math.min(maxW, (vh - 2 * m - capH) * nw / nh), th = tw * nh / nw;
     return { l: (vw - tw) / 2, t: (vh - capH - th) / 2, w: tw, h: th, noteW: noteW, vw: vw };
   }
-  function focusRect(el) { var ph = el.querySelector && el.querySelector(".cur-print-photo"); return (ph || el).getBoundingClientRect(); }
-  function lift(f, r) { return "translate(" + (r.left - f.t.l) + "px, " + (r.top - f.t.t) + "px) scale(" + (r.width / f.t.w) + ")"; }
+  function focusRect(el) {
+    var card = el.querySelector && el.querySelector(".cur-print-in");
+    if (!card || !el.hasAttribute("data-on-print")) { var ph = el.querySelector && el.querySelector(".cur-print-photo"); return (ph || el).getBoundingClientRect(); }
+    // a print hangs turned: its own (unturned) size, centred where it is on screen
+    var b = card.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight, cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+    return { left: cx - w / 2, top: cy - h / 2, width: w, height: h, right: cx + w / 2, bottom: cy + h / 2 };
+  }
+  function tiltOf(el) { return el.hasAttribute && el.hasAttribute("data-on-print") ? parseFloat(getComputedStyle(el).getPropertyValue("--tilt")) || 0 : 0; }
+  function lift(f, r) { return "translate(" + (r.left - f.t.l) + "px, " + (r.top - f.t.t) + "px) scale(" + (r.width / f.t.w) + ")" + (f.rot ? " rotate(" + f.rot + "deg)" : ""); }
   function openFocus(el) {
     if (focusState) return;
     var hot = el.classList.contains("cur-hot");
@@ -565,7 +572,7 @@
     if (!img.complete || !img.naturalWidth) return;
     var room = el.closest(".cur-modal"); if (!room) return;
     var r = focusRect(el);
-    var note = el.getAttribute("data-note") || "";
+    var note = el.hasAttribute("data-on-print") ? "" : el.getAttribute("data-note") || "";
     var ov = document.createElement("div");
     ov.className = "cur-focus"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", img.alt || "Image");
     ov.innerHTML = '<div class="cur-focus-back"></div><img class="cur-focus-img" alt="" draggable="false">'
@@ -581,12 +588,12 @@
     big.style.cssText = "left:" + t.l + "px;top:" + t.t + "px;width:" + t.w + "px;height:" + t.h + "px";
     if (noteEl) { noteEl.style.left = (t.vw - t.noteW) / 2 + "px"; noteEl.style.top = (t.t + t.h + 18) + "px"; }
     // `img` = the picture to show, `src` = what it grows out of (and returns to)
-    var f = focusState = { ov: ov, big: big, img: el, note: noteEl, noteBox: noteBox, count: ov.querySelector(".cur-focus-count"), back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
+    var f = focusState = { rot: tiltOf(el), ov: ov, big: big, img: el, note: noteEl, noteBox: noteBox, count: ov.querySelector(".cur-focus-count"), back: ov.querySelector(".cur-focus-back"), close: ov.querySelector(".cur-focus-close"), t: t, anims: [] };
     focusCount(f);
     // a window on a board keeps its Preview-window corner (16pt at 726pt wide)
     f.srcR = hot ? 0 : parseFloat(getComputedStyle(img).borderTopLeftRadius) || 0;
     f.toR = hot ? 0 : 14;
-    if (!hot) el.style.visibility = "hidden";
+    if (!hot || el.hasAttribute("data-on-print")) el.style.visibility = "hidden";   // the print itself lifts off the board
     var k = r.width / t.w, chrome = [f.close, f.count].concat(noteEl ? [noteEl] : []);
     if (reduceMotion || !big.animate) {
       f.anims = [ov.animate ? ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "both" }) : null].filter(Boolean);
@@ -637,8 +644,8 @@
         // close lands back on it
         f.img.style.visibility = "";
         el.scrollIntoView({ block: "center" });
-        var note = el.getAttribute("data-note") || "";
-        f.noteBox.textContent = note; f.noteBox.hidden = !note;
+        var note = el.hasAttribute("data-on-print") ? "" : el.getAttribute("data-note") || "";
+        f.noteBox.textContent = note; f.noteBox.hidden = !note; f.rot = tiltOf(el);
         f.noteBox.getAnimations && f.noteBox.getAnimations().forEach(function (a) { a.cancel(); });
         var t = focusTarget(img, note ? f.noteBox : null, hot ? focusRect(el) : null);
         f.big.src = img.src; f.big.alt = hot ? el.getAttribute("aria-label") || "" : el.alt || "";
@@ -650,7 +657,7 @@
         f.t = t; f.img = el; f.note = note ? f.noteBox : null;
         f.srcR = hot ? 0 : parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
         f.toR = hot ? 0 : 14;
-        if (!hot) el.style.visibility = "hidden";
+        if (!hot || el.hasAttribute("data-on-print")) el.style.visibility = "hidden";
         focusCount(f);
         if (!calm) {
           f.anims = [f.big.animate([{ opacity: 0, transform: "translateX(" + dir * 18 + "px)" }, { opacity: 1, transform: "none" }], { duration: 300, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" })];
@@ -662,6 +669,7 @@
     };
     img.src = hot ? el.getAttribute("data-src") : (el.currentSrc || el.src);
   }
+  function restick(doc) { [].forEach.call(doc.querySelectorAll(".cur-print.is-peeled"), function (p) { p.classList.remove("is-peeled"); p.classList.add("is-sticking"); setTimeout(function () { p.classList.remove("is-sticking"); }, 400); }); }
   function settleFocus(f) { f.anims.forEach(function (a) { try { a.finish(); } catch (e) {} }); f.anims = []; }
   function closeFocus() {
     var f = focusState; if (!f) return false;
@@ -670,7 +678,7 @@
     var backFrom = getComputedStyle(f.back).opacity;
     f.anims.forEach(function (a) { a.cancel(); }); f.anims = [];
     var r = focusRect(f.img), onScreen = r.width && r.bottom > 0 && r.top < window.innerHeight;
-    function done() { f.img.style.visibility = ""; f.ov.remove(); if (focusState === f) focusState = null; try { f.img.focus({ preventScroll: true }); } catch (e) {} }
+    function done() { f.img.style.visibility = ""; f.ov.remove(); restick(f.ov.ownerDocument); if (focusState === f) focusState = null; try { f.img.focus({ preventScroll: true }); } catch (e) {} }
     if (reduceMotion || !f.big.animate) { done(); return true; }
     var k = r.width / f.t.w;
     var to = onScreen ? { transform: lift(f, r), borderRadius: f.srcR / k + "px", opacity: 1 } : { transform: "translateY(48px) scale(0.94)", borderRadius: f.toR + "px", opacity: 0 };
@@ -787,16 +795,53 @@
         var box = im.parentNode; box.style.aspectRatio = (w / h).toFixed(4);
         im.style.cssText = "width:" + (nw / w * 100) + "%;height:" + (nh / h * 100) + "%;left:" + (-x / w * 100) + "%;top:" + (-y / h * 100) + "%";
         im.classList.add("is-in");
-        try {
-          var c = document.createElement("canvas"); c.width = Math.round(w); c.height = Math.round(h);
-          c.getContext("2d").drawImage(im, x, y, w, h, 0, 0, c.width, c.height);
-          c.toBlob(function (b) { if (b) im.closest(".cur-print").setAttribute("data-src", URL.createObjectURL(b)); }, "image/jpeg", 0.92);
-        } catch (err) {}
+        var card = im.closest(".cur-print");
+        (document.fonts && document.fonts.load ? document.fonts.load('40px "My Hand"') : Promise.resolve()).catch(function () {}).then(function () {
+          try { polaroid(im, x, y, w, h, card.getAttribute("data-note") || "", function (url) { card.setAttribute("data-src", url); card.setAttribute("data-on-print", ""); }); } catch (err) {}
+        });
       }
       if (im.complete && im.naturalWidth) crop(); else im.addEventListener("load", crop, { once: true });
     });
   }
   // a video hangs as a print too: the player on white card, its title written underneath, a strip of tape
+  // the print as one picture — white border, the photo, the note in Isaac's hand on the strip below
+  function polaroid(im, x, y, w, h, note, done) {
+    var pw = Math.round(w), ph = Math.round(h), fr = Math.round(pw * 0.048), bottom = Math.round(pw * 0.21);
+    var c = document.createElement("canvas"); c.width = pw + 2 * fr; c.height = ph + fr + bottom;
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = "#fdfcf9"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.imageSmoothingQuality = "high"; ctx.drawImage(im, x, y, w, h, fr, fr, pw, ph);
+    if (note) {
+      var size = Math.round(pw * 0.058), maxW = pw - 8, lines = [], cur = "";
+      ctx.font = size + 'px "My Hand", Charter, Georgia, serif'; ctx.fillStyle = "#1f1d20"; ctx.textBaseline = "alphabetic";
+      note.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').split(/\s+/).forEach(function (wd) {
+        var t = cur ? cur + " " + wd : wd;
+        if (cur && ctx.measureText(t).width > maxW) { lines.push(cur); cur = wd; } else cur = t;
+      });
+      if (cur) lines.push(cur);
+      lines.slice(0, 2).forEach(function (ln, k) { ctx.fillText(ln, fr + 4, ph + fr + size * 1.3 + k * size * 1.12); });
+    }
+    c.toBlob(function (b) { if (b) done(URL.createObjectURL(b)); }, "image/jpeg", 0.92);
+  }
+  // pulling the tape off: a short dry crackle, made on the spot (Web Audio, no file), quiet
+  var audioCtx = null;
+  function peelSound() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var ac = audioCtx, dur = 0.32, n = Math.round(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) {
+        var t = i / n, env = Math.pow(t, 0.35) * Math.pow(1 - t, 1.6);          // rises as it lets go, then falls away
+        var crackle = Math.random() < 0.06 + 0.25 * t ? (Math.random() * 2 - 1) * 1.8 : (Math.random() * 2 - 1) * 0.35;
+        d[i] = crackle * env;
+      }
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.7;
+      var hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 900;
+      var g = ac.createGain(); g.gain.value = 0.22;
+      src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(ac.destination);
+      src.start();
+    } catch (e) {}
+  }
   function frameVideos(root) {
     [].forEach.call(root.querySelectorAll("figure[data-win]:not(.is-framed)"), function (fig, i) {
       var media = fig.querySelector("iframe, video"); if (!media) return;
@@ -1096,7 +1141,14 @@
     var sh = t.closest(".cur-modal-share");
     if (sh) { shareTopic(sh); return; }
     var zt = t.closest(".cur-zoomable, .cur-hot");
-    if (zt && zt.closest(".cur-modal-content")) { openFocus(zt); return; }
+    if (zt && zt.closest(".cur-modal-content")) {
+      if (zt.classList.contains("cur-print") && !reduceMotion && !focusState && !zt.classList.contains("is-peeled")) {
+        zt.classList.add("is-peeled"); peelSound();
+        setTimeout(function () { openFocus(zt); }, 260);
+        return;
+      }
+      openFocus(zt); return;
+    }
     if (t.closest(".cur-modal-close") || t.classList.contains("cur-modal-backdrop")) closeCurModal();
   });
   document.addEventListener("pointerover", function (e) {
