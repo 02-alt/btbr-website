@@ -2022,6 +2022,12 @@ img.cur-avatar { object-fit: cover; }
 .tp.tape-none::before { display: none; }
 .tp-one { left: 6%; right: 6%; top: 12%; }
 .cur-card:hover .tp-one { transform: rotate(calc(var(--tilt) * 0.3)) translateY(-3%); }
+/* pin */
+.tp-pinwrap { position: absolute; inset: 0; transform-origin: 50% 10%; transition: transform 0.9s cubic-bezier(0.3, 1.6, 0.4, 1); }
+.cur-card:hover .tp-pinwrap { transform: rotate(-3deg); }
+.tp-pinned { top: 11%; }
+.tp-pin { position: absolute; top: 8.6%; left: 50%; width: 6.5cqw; height: 6.5cqw; margin-left: -3.25cqw; border-radius: 50%; z-index: 2;
+  background: radial-gradient(circle at 35% 30%, #ff8a7a, #d23a2a 55%, #8e1d12); box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35), 1.2cqw 2.4cqw 2cqw -0.6cqw rgba(0, 0, 0, 0.25); }
 /* museum frame */
 .tf-frame { position: absolute; left: 6%; right: 6%; top: 10%; bottom: 10%; display: block; padding: 2.2cqw; background: #1b1a1a;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25), 0 18px 30px -12px rgba(0, 0, 0, 0.4); transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }

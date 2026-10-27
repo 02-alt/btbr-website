@@ -993,6 +993,8 @@
   var TRAYS = {
     // one print, taped, the topic's name written on it
     print: function (t, p) { return trayPrint(p[0], "tp-one", -2.4, "top", loc(t, "title")); },
+    // one print hung on a pin; it swings a little on hover
+    pin: function (t, p) { return '<span class="tp-pinwrap">' + trayPrint(p[0], "tp-one tp-pinned", 0, "none", loc(t, "title")) + '<i class="tp-pin"></i></span>'; },
     // a museum frame: thin black moulding, a wide white mat, hung on the wall of the well
     frame: function (t, p) { return '<span class="tf-frame"><span class="tf-mat">' + trayImg(p[0]) + "</span></span>"; },
     // a print in a frame: the polaroid itself, taped onto the mat behind glass
