@@ -983,11 +983,37 @@
     wrap.appendChild(h);
     return wrap;
   }
+  // Topic · Block: the panel shows one or the other. Selecting a block opens Block;
+  // clicking the empty page opens Topic; the tabs switch by hand any time.
+  var inspTab = "topic", inspSeen = null;
+  function blockName(b) {
+    var n = ({ hand: "Handwritten", sign: "Signature" })[b.type] || (b.type.charAt(0).toUpperCase() + b.type.slice(1));
+    var same = state.blocks.filter(function (x) { return x.type === b.type; });
+    if (same.length > 1) n += " " + (same.indexOf(b) + 1);
+    if (b.type === "board") n += " \u00B7 " + b.items.length + (b.items.length === 1 ? " picture" : " pictures");
+    return n;
+  }
+  function inspTabs() {
+    var seg = document.createElement("div"); seg.className = "insp-tabs"; seg.setAttribute("role", "tablist");
+    var b = selectedId && blockById(selectedId);
+    [["topic", "Topic"], ["block", "Block"]].forEach(function (t) {
+      var btn = document.createElement("button"); btn.type = "button"; btn.setAttribute("role", "tab");
+      btn.textContent = t[1]; btn.setAttribute("aria-selected", String(inspTab === t[0]));
+      btn.addEventListener("click", function () { inspTab = t[0]; renderInspector(); });
+      seg.appendChild(btn);
+    });
+    var wrap = document.createElement("div"); wrap.className = "insp-head"; wrap.appendChild(seg);
+    var crumb = document.createElement("div"); crumb.className = "insp-crumb";
+    crumb.textContent = inspTab === "topic" ? (state.title || "Untitled topic") : b ? blockName(b) : "No block selected";
+    wrap.appendChild(crumb);
+    return wrap;
+  }
   function renderInspector() {
     inspectorEl.innerHTML = "";
-    // document settings (always)
+    if (selectedId !== inspSeen) { inspSeen = selectedId; inspTab = selectedId ? "block" : "topic"; }
+    inspectorEl.appendChild(inspTabs());
+    if (inspTab === "block") { renderBlockInspector(); return; }
     var docSec = document.createElement("div"); docSec.className = "insp-section";
-    var dt = document.createElement("div"); dt.className = "insp-title"; dt.textContent = "Topic"; docSec.appendChild(dt);
     docSec.appendChild(field("Author", authorSelect()));
     docSec.appendChild(field("Cover", coverField()));
     docSec.appendChild(field("Feed photo", feedField()));
@@ -1004,7 +1030,8 @@
     docSec.appendChild(field("Room tone", toneField()));
     docSec.appendChild(field("Soundtrack (optional)", soundtrackField()));
     inspectorEl.appendChild(docSec);
-
+  }
+  function renderBlockInspector() {
     var b = selectedId && blockById(selectedId);
     var sec = document.createElement("div"); sec.className = "insp-section";
     var st = document.createElement("div"); st.className = "insp-title";
@@ -1027,14 +1054,12 @@
         });
         sec.appendChild(exp);
       } else {
-        st.textContent = "Block"; sec.appendChild(st);
         var e = document.createElement("div"); e.className = "insp-empty";
-        e.textContent = "Select a block to edit its settings, or press + to add one.";
+        e.textContent = "Click a block on the page to edit it, or press + to add one.";
         sec.appendChild(e);
       }
       inspectorEl.appendChild(sec); return;
     }
-    st.textContent = ({ hand: "Handwritten", sign: "Signature" })[b.type] || (b.type.charAt(0).toUpperCase() + b.type.slice(1)); sec.appendChild(st);
 
     if (b.type === "text") {
       var seg = document.createElement("div"); seg.className = "insp-seg";
@@ -1142,7 +1167,7 @@
       sec.appendChild(addRow);
       if (full) { var mx = document.createElement("div"); mx.className = "insp-empty"; mx.style.marginTop = "6px"; mx.textContent = "Maximum 6 items."; sec.appendChild(mx); }
       var bh = document.createElement("div"); bh.className = "insp-empty"; bh.style.marginTop = "10px";
-      bh.textContent = "Drop or add images and videos — they arrive in a Preview window (pick a ratio; Fill crops the picture into it). Add text makes a TextEdit window. Drag to place, drag the ⤡ corner to resize.";
+      bh.textContent = "Drop or add images and videos — each picture hangs as a print, its note written underneath. Drag to place, drag the ⤡ corner to resize.";
       sec.appendChild(bh);
       var hasVid = boardHasVideo(b);
       var bexp = document.createElement("button"); bexp.className = "sbtn primary"; bexp.type = "button"; bexp.style.marginTop = "12px";
