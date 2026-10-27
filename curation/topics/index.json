@@ -1,5 +1,19 @@
 [
   {
+    "slug": "gnuhr",
+    "no": 3,
+    "title": "Gnuhr",
+    "author": "Isaaaaaaaac",
+    "date": "2026-10-27",
+    "cover": "/curation/media/gnuhr/cover.png",
+    "desc": "Design as a Solution",
+    "langs": [
+      "en",
+      "fr"
+    ],
+    "fr": {}
+  },
+  {
     "slug": "riots",
     "no": 1,
     "title": "RIOTS",
