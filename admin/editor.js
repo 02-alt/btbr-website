@@ -883,6 +883,45 @@
     canvasEl.style.backgroundColor = c;
     canvasEl.classList.toggle("is-dark-room", toneDark(c));
   }
+  // the photograph that hangs in the frame on the curation feed: any picture of the topic (Auto = the first one)
+  function topicPictures() {
+    var out = [];
+    // as the site picks it: a photo cover first, then the topic's pictures in order
+    if (typeof state.cover === "string" && state.cover && !/\.png($|\?)/i.test(state.cover)) out.push(state.cover);
+    state.blocks.forEach(function (b) {
+      if (b.type === "image" && b.src && out.indexOf(b.src) < 0) out.push(b.src);
+      if (b.type === "board") b.items.slice().sort(function (a, d) { return (a.z || 0) - (d.z || 0); })
+        .forEach(function (it) { if (it.kind !== "video" && it.src && out.indexOf(it.src) < 0) out.push(it.src); });
+    });
+    return out;
+  }
+  function feedField() {
+    var wrap = document.createElement("div"), pics = topicPictures();
+    if (!pics.length) { var e = document.createElement("div"); e.className = "insp-empty"; e.textContent = "Add a picture or a board to the topic first."; wrap.appendChild(e); return wrap; }
+    if (state.feed && pics.indexOf(state.feed) < 0) state.feed = "";
+    var grid = document.createElement("div"); grid.className = "feed-pics";
+    pics.forEach(function (src, k) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "feed-pic";
+      var on = state.feed ? state.feed === src : k === 0;
+      b.setAttribute("aria-pressed", String(on)); b.title = k === 0 ? "Automatic" : "Picture " + (k + 1);
+      var im = document.createElement("img"); im.alt = ""; im.draggable = false; b.appendChild(im);
+      if (window.Prints && Prints.isWindow(src)) {
+        im.addEventListener("load", function () {           // a window: show just its photo
+          if (im.dataset.cut) return; im.dataset.cut = "1";
+          var r = Prints.bare(im), c = document.createElement("canvas"); c.width = 160; c.height = Math.round(160 * r.h / r.w);
+          c.getContext("2d").drawImage(im, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height); im.src = c.toDataURL("image/jpeg", 0.85);
+        });
+      }
+      im.src = src;
+      if (k === 0) { var t = document.createElement("span"); t.textContent = "Auto"; b.appendChild(t); }
+      b.addEventListener("click", function () { state.feed = k === 0 ? "" : src; renderInspector(); });
+      grid.appendChild(b);
+    });
+    var note = document.createElement("div"); note.className = "insp-empty"; note.style.marginTop = "8px";
+    note.textContent = "The photo hung in the frame on the curation page.";
+    wrap.appendChild(grid); wrap.appendChild(note);
+    return wrap;
+  }
   function toneName(tone) { var t = TONES.filter(function (x) { return x[0] === (tone || ""); })[0]; return t ? t[2] : "Custom"; }
   function toneField() {
     var wrap = document.createElement("div");
@@ -951,6 +990,7 @@
     var dt = document.createElement("div"); dt.className = "insp-title"; dt.textContent = "Topic"; docSec.appendChild(dt);
     docSec.appendChild(field("Author", authorSelect()));
     docSec.appendChild(field("Cover", coverField()));
+    docSec.appendChild(field("Feed photo", feedField()));
     var descTa = document.createElement("textarea"); descTa.className = "insp-input insp-textarea"; descTa.rows = 3;
     descTa.placeholder = "Short blurb shown on the card (leave empty to auto-use the opening line)";
     descTa.value = state.desc || "";
@@ -1556,6 +1596,7 @@
     var slug = editingSlug || slugify(state.title) || ("topic-" + Date.now());
     var date = new Date().toISOString().slice(0, 10);
     var files = [], outBlocks = [], cover = null, coverLocal = null, mi = 0;
+    var placed = {};
     for (var i = 0; i < state.blocks.length; i++) {
       var b = state.blocks[i];
       if (b.type === "text") { outBlocks.push(withFr({ type: "text", head: !!b.head, html: b.html || "" }, b, ["html"])); }
@@ -1564,9 +1605,9 @@
       else if (b.type === "quote") { if (plain(b.text)) outBlocks.push(withFr({ type: "quote", text: cleanRich(b.text || ""), cite: (b.cite || "").trim() }, b, ["text", "cite"])); }
       else if (b.type === "image") {
         if (!b.src) continue;
-        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) { cover = b.src; coverLocal = b.src; } outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"])); continue; }
+        if (b.src.indexOf("/curation/media/") === 0) { if (!cover) { cover = b.src; coverLocal = b.src; } placed[b.src] = b.src; outBlocks.push(withFr({ type: "image", src: b.src, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"])); continue; }
         var bl = await blobFromSrc(b.src), ext = extFromType(bl.type), p = "curation/media/" + slug + "/img-" + (++mi) + "." + ext;
-        files.push({ path: p, base64: await blobToBase64(bl) }); if (!cover) { cover = "/" + p; coverLocal = URL.createObjectURL(bl); }
+        files.push({ path: p, base64: await blobToBase64(bl) }); placed[b.src] = "/" + p; if (!cover) { cover = "/" + p; coverLocal = URL.createObjectURL(bl); }
         outBlocks.push(withFr({ type: "image", src: "/" + p, alt: b.alt || "", caption: b.caption || "", note: b.note || "", inset: !!b.inset }, b, ["alt", "caption", "note"]));
       } else if (b.type === "video") {
         if (!b.src) continue;
@@ -1595,6 +1636,7 @@
               files.push({ path: ipath.slice(1), base64: await blobToBase64(ibl) });
             }
             var dim = await new Promise(function (res) { var im = new Image(); im.onload = function () { res({ w: im.naturalWidth, h: im.naturalHeight }); }; im.onerror = function () { res({ w: 1, h: 1 }); }; im.src = it.src; });
+            placed[it.src] = ipath;
             var bo = { src: ipath, x: +it.x.toFixed(3), y: +it.y.toFixed(3), w: +it.w.toFixed(3), h: +(it.w * dim.h / dim.w).toFixed(3), name: (it.win && it.win.title) || it.name || "" };
             if (it.note) bo.note = it.note;
             if (it.fr && it.fr.note) bo.fr = { note: it.fr.note };
@@ -1622,6 +1664,7 @@
     });
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
     if (state.tone) topic.tone = state.tone;
+    if (state.feed && (placed[state.feed] || state.feed.indexOf("/curation/media/") === 0)) topic.feed = placed[state.feed] || state.feed;
     if (state.song && youtubeId(state.song.src)) {
       var sg = state.song; topic.song = { src: sg.src, title: (sg.title || "").trim(), artist: (sg.artist || "").trim() };
       if ((sg.album || "").trim()) topic.song.album = sg.album.trim(); if (sg.art) topic.song.art = sg.art; if (+sg.start) topic.song.start = +sg.start;
@@ -1651,6 +1694,7 @@
     index = index.filter(function (t) { return t.slug !== slug; });
     var entry = { slug: slug, no: no, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
     if (topic.tone) entry.tone = topic.tone;
+    if (topic.feed) entry.feed = topic.feed;
     if (topic.fr) {
       var firstFr = outBlocks.filter(function (b) { return b.type === "text" && b.fr && b.fr.html; })[0];
       entry.fr = {};
@@ -1748,6 +1792,7 @@
       state.desc = t.desc || "";
       state.inspiration = t.inspiration || "";
       state.tone = t.tone || "";
+      state.feed = t.feed || "";
       state.song = t.song || null;
       (t.blocks || []).forEach(function (pb) { if (pb.type === "song" && !state.song) state.song = { src: pb.src, title: pb.title, artist: pb.artist, album: pb.album, art: pb.art, start: pb.start }; });
       state.blocks = (t.blocks || []).filter(function (pb) { return pb.type !== "song"; }).map(blockFromPublished);
@@ -1760,7 +1805,7 @@
   }
   function newTopic() {
     editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = ""; state.song = null;
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = ""; state.feed = ""; state.song = null;
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render();
@@ -1812,7 +1857,7 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", song: state.song, editingSlug: editingSlug, cover: null, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", feed: /^\/curation\//.test(state.feed || "") ? state.feed : "", song: state.song, editingSlug: editingSlug, cover: null, blocks: [] };
     if (state.cover) {
       if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
       else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
@@ -1839,7 +1884,7 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || ""; state.song = d.song || null;
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || ""; state.feed = d.feed || ""; state.song = d.song || null;
     editingSlug = d.editingSlug || null;
     // an older draft's song block becomes the topic's soundtrack
     (d.blocks || []).forEach(function (b) { if (b.type === "song" && !state.song && b.src) state.song = { src: b.src, title: b.title || "", artist: b.artist || "", album: b.album || "", art: b.art || "", start: +b.start || 0 }; });

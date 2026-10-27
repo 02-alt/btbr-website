@@ -640,3 +640,10 @@ body.view-topics .studio-inspector { display: none; }
 .vprint-hole { position: relative; aspect-ratio: 16 / 9; background: #000; overflow: hidden; }
 .vprint-hole > iframe, .vprint-hole > video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; object-fit: cover; border-radius: 0; }
 .vprint-note { text-transform: none; letter-spacing: 0; font-weight: 400; text-align: left; min-height: 9cqw; padding: 2cqw 0.4cqw 2.4cqw; font: 3.4cqw/1.15 "My Hand", Charter, Georgia, serif; color: #1f1d20; }
+
+/* feed photo: the picture hung in the frame on the curation page */
+.feed-pics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.feed-pic { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 6px; overflow: hidden; background: #eee; cursor: pointer; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); }
+.feed-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.feed-pic span { position: absolute; left: 3px; bottom: 3px; font-size: 9px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.55); padding: 1px 5px; border-radius: 6px; }
+.feed-pic[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--accent); }

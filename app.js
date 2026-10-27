@@ -976,7 +976,8 @@
   function topicPhotos(t) {
     return topicData(t.slug).then(function (d) {
       var list = [];
-      if (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "")) list.push(t.cover);
+      if (t.feed || d.feed) list.push(t.feed || d.feed);              // chosen in Studio
+      if (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "") && list.indexOf(t.cover) < 0) list.push(t.cover);
       (d.blocks || []).forEach(function (b) {
         if (b.type !== "image") return;
         (b.board && b.board.items && b.board.items.length ? b.board.items.map(function (it) { return it.src; }) : [b.src]).forEach(function (u) { if (u && list.indexOf(u) < 0) list.push(u); });
