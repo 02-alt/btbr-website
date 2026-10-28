@@ -833,25 +833,6 @@
     }
     c.toBlob(function (b) { if (b) done(URL.createObjectURL(b)); }, "image/jpeg", 0.92);
   }
-  // pulling the tape off: a short dry crackle, made on the spot (Web Audio, no file), quiet
-  var audioCtx = null;
-  function peelSound() {
-    try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      var ac = audioCtx, dur = 0.32, n = Math.round(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
-      for (var i = 0; i < n; i++) {
-        var t = i / n, env = Math.pow(t, 0.35) * Math.pow(1 - t, 1.6);          // rises as it lets go, then falls away
-        var crackle = Math.random() < 0.06 + 0.25 * t ? (Math.random() * 2 - 1) * 1.8 : (Math.random() * 2 - 1) * 0.35;
-        d[i] = crackle * env;
-      }
-      var src = ac.createBufferSource(); src.buffer = buf;
-      var bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.7;
-      var hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 900;
-      var g = ac.createGain(); g.gain.value = 0.22;
-      src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(ac.destination);
-      src.start();
-    } catch (e) {}
-  }
   function frameVideos(root) {
     [].forEach.call(root.querySelectorAll("figure[data-win]:not(.is-framed)"), function (fig, i) {
       var media = fig.querySelector("iframe, video"); if (!media) return;
@@ -1234,7 +1215,7 @@
     var zt = t.closest(".cur-zoomable, .cur-hot");
     if (zt && zt.closest(".cur-modal-content")) {
       if (zt.classList.contains("cur-print") && !reduceMotion && !focusState && !zt.classList.contains("is-peeled")) {
-        zt.classList.add("is-peeled"); peelSound();
+        zt.classList.add("is-peeled");
         setTimeout(function () { openFocus(zt); }, 260);
         return;
       }
