@@ -618,12 +618,15 @@
       if (im) cover(ctx, im, 0, 0, W, H, 0, bare(im) || unbar(im));
       var g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      // a soft fall to black under the words, instead of an outline round them
+      var fb = ctx.createLinearGradient(0, H - 460, 0, H);
+      fb.addColorStop(0, "rgba(0,0,0,0)"); fb.addColorStop(0.55, "rgba(0,0,0,0.45)"); fb.addColorStop(1, "rgba(0,0,0,0.78)");
+      ctx.fillStyle = fb; ctx.fillRect(0, H - 460, W, 460);
       ctx.textAlign = "center";
       fitText(ctx, v.title, 44, SANS, W - 160, false, 500);
-      ctx.lineJoin = "round"; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.strokeText(v.title, W / 2, H - 200);
       ctx.fillStyle = "#fff"; ctx.fillText(v.title, W / 2, H - 200);
-      ctx.font = font(24, SANS); ctx.lineWidth = 5; var sub = (v.by ? v.by + " \u00B7 " : "") + "link in bio";
-      ctx.strokeText(sub, W / 2, H - 150); ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.fillText(sub, W / 2, H - 150);
+      ctx.font = font(24, SANS); var sub = (v.by ? v.by + " \u00B7 " : "") + "link in bio";
+      ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.fillText(sub, W / 2, H - 150);
       ctx.textAlign = "left";
     },
     // bands: the three frames stacked edge to edge, the title over the last one
