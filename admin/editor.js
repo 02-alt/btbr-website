@@ -1607,7 +1607,7 @@
   var SHARE_RESERVED = ["media", "topics"];
   function sharePage(t) {
     var e = function (v) { return String(v || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
-    var slug = t.slug, url = "https://buildtoberemembered.com/curation/" + slug + "/", img = "https://buildtoberemembered.com/curation/media/" + slug + "/share.jpg";
+    var slug = t.slug, url = "https://buildtoberemembered.com/curation/" + slug + "/", img = "https://buildtoberemembered.com/curation/media/" + slug + "/share.jpg?v=" + Date.now().toString(36); // a fresh address per publish, so link previews pick up the new picture
     var desc = (t.desc || "").trim(), ogd = (t.author ? t.author + " — " : "") + desc;
     return '<!doctype html>\n<html lang="en">\n<head>\n  <meta charset="utf-8" />\n'
       + '  <!-- a topic\'s shareable address: link previews read the tags below, people are sent straight into the room -->\n'
