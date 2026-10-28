@@ -276,7 +276,7 @@
   window.addEventListener("popstate", function () {
     fetch(location.href, { cache: "no-cache" })
       .then(function (r) { return r.text(); })
-      .then(function (html) { swap(html); });
+      .then(function (html) { if (!swap(html)) location.reload(); });
   });
 
   // ---- curation: data-driven feed + in-tab reading pop-up ----
@@ -1055,8 +1055,11 @@
     }).catch(function () { curList = []; feed.insertAdjacentHTML("beforeend", curEmptyHTML()); });
   }
   // deep links: /curation/#slug opens that topic (out of its tray, once the
-  // table is laid out); the address follows the open room without adding
-  // history entries, so Back still leaves the page as before
+  // table is laid out). While a room is open the address shows the topic's own
+  // page, /curation/<slug>/ — the one carrying its link preview — so a link
+  // copied from the address bar previews like the Share button's; that page
+  // sends people back here as #slug. No history entries are added, so Back
+  // still leaves the page as before
   function hashSlug() { return decodeURIComponent((location.hash || "").slice(1)); }
   function openFromHash() {
     var slug = hashSlug();
@@ -1068,7 +1071,7 @@
   }
   function setRoomHash(slug) {
     if (!document.querySelector(".curation-frame")) return;
-    var url = location.pathname + location.search + (slug ? "#" + encodeURIComponent(slug) : "");
+    var url = "/curation/" + (slug ? encodeURIComponent(slug) + "/" : "") + location.search;
     try { history.replaceState(history.state, "", url); } catch (e) {}
   }
   window.addEventListener("hashchange", openFromHash);
