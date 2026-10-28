@@ -1026,7 +1026,9 @@
     if (!feed || feed.dataset.loaded) return;
     feed.dataset.loaded = "1";
     fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
-      curList = list || [];
+      // newest catalogue number first (the index keeps publish order, so a
+      // re-published topic would otherwise jump to the top); unnumbered first
+      curList = (list || []).slice().sort(function (a, b) { return (+b.no || 1e9) - (+a.no || 1e9); });
       if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
       feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
       dressTrays(feed);
