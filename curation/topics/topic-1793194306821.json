@@ -1,0 +1,140 @@
+{
+  "slug": "topic-1793194306821",
+  "title": "Untitled",
+  "author": "Isaaaaaaaac",
+  "date": "2026-10-28",
+  "cover": "/curation/media/topic-1793194306821/board-1-1.png",
+  "desc": "Beyond the Familiar: Bungie’s High-Concept Gamble with Marathon",
+  "inspiration": "https://www.readergrev.com/p/exit-interview-joseph-cross-marathon\n\nhttps://www.youtube.com/watch?v=IpRkNYyObBw\n\nhttps://www.thedesignersrepublic.com/wipeout\n\nhttps://www.sciencedirect.com/topics/social-sciences/public-acceptance",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>For the last decade, the AAA industry has felt trapped in a state of aesthetic stagnation. We’ve stopped making anything truly new, recycling the same visual languages until they’ve become the default.&nbsp;</p><p><br></p><p>Until Marathon.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/topic-1793194306821/board-1.png",
+      "alt": "",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/topic-1793194306821/board-1-1.png",
+            "x": 5.956,
+            "y": 7.794,
+            "w": 42,
+            "h": 25.715,
+            "name": "marathon_trailer_3.jpg",
+            "note": "Marathon trailer"
+          },
+          {
+            "src": "/curation/media/topic-1793194306821/board-1-2.png",
+            "x": 48.088,
+            "y": 10.662,
+            "w": 50.515,
+            "h": 44.531,
+            "name": "marathon_trailer_4.jpg",
+            "note": "Marathon trailer"
+          },
+          {
+            "src": "/curation/media/topic-1793194306821/board-1-3.png",
+            "x": 6.029,
+            "y": 44.559,
+            "w": 56.985,
+            "h": 34.968,
+            "name": "marathon_trailer_1.jpg",
+            "note": "Marathon trailer"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>While it shares a lineage with&nbsp;<i>Wipeout</i>,&nbsp;<i>Marathon</i>&nbsp;transcends it. It feels like a radical departure, a “love it or hate it” direction that represents a team making a true, fine expression of themselves. It moves away from the “cluttered” sci-fi tropes of the past toward what Joseph Cross calls&nbsp;<b>“Graphic Realism.”</b><b></b></p><p><br></p><p>In this philosophy, every asset is a canvas. Inspired by the “intervention” of Virgil Abloh, the goal is to take a world that feels grounded and layered with high-level graphic design to re-reveal it. It is a “Product Design” approach, sterile, precise, and functional, like a surgery room. It’s not about glowing lights for the sake of it; it’s about intentionality.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/topic-1793194306821/board-2.png",
+      "alt": "",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/topic-1793194306821/board-2-1.png",
+            "x": 3.75,
+            "y": 3.824,
+            "w": 53.904,
+            "h": 38.609,
+            "name": "OFF_WHITE_FLAGSHIP_MIAMI.jpg",
+            "note": "OFF_WHITE MIAMI FLAGSHIP STORE"
+          },
+          {
+            "src": "/curation/media/topic-1793194306821/board-2-2.png",
+            "x": 3.824,
+            "y": 56.544,
+            "w": 42,
+            "h": 23.14,
+            "name": "marathon_trailer_2.jpg",
+            "note": "Marathon Trailer"
+          },
+          {
+            "src": "/curation/media/topic-1793194306821/board-2-3.png",
+            "x": 50,
+            "y": 48.456,
+            "w": 42,
+            "h": 43.967,
+            "name": "marathon_trailer_6.jpg",
+            "note": "Marathon Trailer"
+          },
+          {
+            "src": "/curation/media/topic-1793194306821/board-2-4.png",
+            "x": 53.015,
+            "y": 5,
+            "w": 42,
+            "h": 43.793,
+            "name": "OFF_WHITE_IKEA.jpg",
+            "note": "OFF_WHITE MIAMI FLAGSHIP STORE"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>We see the fingerprints of the early 2000s “Designer’s Republic” here, evolved through Alberto Mielgo’s aggressive, distinct motion. The challenge for Bungie is&nbsp;<b>pedagogical</b>: they must guide the public. By taking the familiar and layering this new aesthetic on top, they are leading the audience on a journey toward a style they haven’t seen before.</p><p><br></p><p>By committing 100 percent to the Tiger engine, Bungie is taking a massive gamble. They are betting on a new way of seeing the world, moving beyond the safe defaults of the AAA industry to create something genuinely new.</p>"
+    },
+    {
+      "type": "video",
+      "src": "https://www.youtube.com/watch?v=fvbEnWLRo1s",
+      "caption": "",
+      "wtitle": "Marathon trailer"
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3",
+      "fr": {
+        "text": "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+      }
+    }
+  ],
+  "feed": "/curation/media/topic-1793194306821/board-1-1.png",
+  "song": {
+    "src": "https://www.youtube.com/watch?v=yGqg1PGp1Vc&list=PLml527USuL711E6pP8s37-TVWq_mDOr4D",
+    "title": "Code Race",
+    "artist": "Ryan Lott",
+    "album": "Marathon, Vol. I: Somewhere in the Heavens",
+    "art": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/16/b7/dc/16b7dcf6-9e03-17d1-fc4b-df885918ce13/196874104835.jpg/600x600bb.jpg"
+  },
+  "fr": {},
+  "langs": [
+    "en",
+    "fr"
+  ],
+  "no": 4
+}
