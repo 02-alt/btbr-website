@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nothing here — builtoberemembered</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-dark.png?v=5" media="(prefers-color-scheme: light)" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-light.png?v=5" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=4" />
+  <!-- served by GitHub Pages for any address that doesn't exist, so every path here is absolute.
+       Self-contained on purpose: no app.js, so the soft navigation never swaps this page in or out. -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    .panel { position: relative; height: 100%; touch-action: none; cursor: default;
+      /* without WebGL: the same diodes, still (blue left; green over red right) */
+      background:
+        linear-gradient(to right, transparent 0 66.7%, #000 66.7% 69%, transparent 69%) 0 0 / 9px 9px,
+        linear-gradient(to bottom, #000 0 9%, transparent 9% 41%, #000 41% 55%, transparent 55% 79%, #000 79%) 0 0 / 9px 9px,
+        linear-gradient(to right, #000 0 2%, #1d1d1f 2% 25%, #000 25% 53%, #1d1d1f 53% 71%, #000 71%) 0 0 / 9px 9px; }
+    .panel canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+      pointer-events: none; text-align: center; color: #f5f5f7; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .msg h1 { margin: 0; font-size: clamp(34px, 6vw, 64px); font-weight: 500; letter-spacing: -0.03em; line-height: 1; }
+    .msg a { pointer-events: auto; color: #f5f5f7; font-size: 13px; text-transform: uppercase; text-decoration: none; opacity: 0.8; }
+    .msg a:hover { opacity: 1; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <canvas aria-hidden="true"></canvas>
+    <div class="msg">
+      <h1 data-fr="Il n’y a rien ici.">Nothing here.</h1>
+      <a href="/" data-fr="Retour à l’accueil">Back home</a>
+    </div>
+  </main>
+  <script>
+  // the site's language choice (app.js keeps it in localStorage btbr_lang)
+  try { if (localStorage.getItem("btbr_lang") === "fr") { document.documentElement.lang = "fr";
+    document.querySelectorAll("[data-fr]").forEach(function (el) { el.textContent = el.dataset.fr; }); } } catch (e) {}
+  </script>
+  <script>
+/* A wall of diodes, each pixel a blue, a green and a red light (the PROLED
+   layout: a tall blue on the left, green above red on the right), all dimly
+   grey at rest. The pointer stirs a small fluid simulation underneath; where
+   it flows, each light glows in its own colour and swells a little, then the
+   swirl settles and they go dark again. A click sends out rings. */
+(function () {
+  "use strict";
+  var P = {
+    cols: innerWidth > 1440 ? 151 : innerWidth > 1068 ? 108 : 88,   // pixels across
+    sim: 128,                           // fluid grid
+    velDiss: 0.965, denDiss: 0.93,      // per frame at 60fps: how long the swirl lasts
+    forceRadius: 0.045, denRadius: 0.028, denAmount: 1.8,
+    speedScale: 7,                      // how much flow it takes to light a diode
+    colorThreshold: 2, hoverScale: 0.5, hoverBrightness: 0.033,
+    rest: [29 / 255, 29 / 255, 31 / 255],
+    ripple: { amp: 4.96, scale: 1.08, speed: 0.17, width: 0.04, gap: 0.039, rings: 3, life: 1.2 }
+  };
+  var canvas = document.querySelector(".panel canvas");
+  var calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
+  if (!gl || !gl.getExtension("EXT_color_buffer_float")) { canvas.remove(); return; }   // the CSS grid underneath stays
+
+  var VERT = "#version 300 es\nin vec2 aPos; out vec2 vUv; void main(){ vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }";
+  function prog(frag) {
+    function sh(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
+    var p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, "#version 300 es\nprecision highp float; in vec2 vUv; out vec4 o;\n" + frag));
+    gl.bindAttribLocation(p, 0, "aPos"); gl.linkProgram(p);
+    var u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (var i = 0; i < n; i++) { var a = gl.getActiveUniform(p, i); u[a.name] = gl.getUniformLocation(p, a.name); }
+    return { p: p, u: u };
+  }
+  var advect = prog("uniform sampler2D uVel, uSrc; uniform float uDt, uDiss;"
+    + "void main(){ vec2 c = vUv - uDt * texture(uVel, vUv).xy; o = uDiss * texture(uSrc, c); }");
+  var splat = prog("uniform sampler2D uSrc; uniform vec2 uPoint; uniform vec3 uValue; uniform float uRadius, uAspect;"
+    + "void main(){ vec2 p = vUv - uPoint; p.x *= uAspect; o = texture(uSrc, vUv) + vec4(uValue * exp(-dot(p, p) / (uRadius * uRadius)), 0.0); }");
+  var diverge = prog("uniform sampler2D uVel; uniform vec2 uT;"
+    + "void main(){ float L = texture(uVel, vUv - vec2(uT.x, 0)).x, R = texture(uVel, vUv + vec2(uT.x, 0)).x,"
+    + " B = texture(uVel, vUv - vec2(0, uT.y)).y, T = texture(uVel, vUv + vec2(0, uT.y)).y; o = vec4(0.5 * (R - L + T - B), 0, 0, 1); }");
+  var jacobi = prog("uniform sampler2D uP, uDiv; uniform vec2 uT;"
+    + "void main(){ float L = texture(uP, vUv - vec2(uT.x, 0)).x, R = texture(uP, vUv + vec2(uT.x, 0)).x,"
+    + " B = texture(uP, vUv - vec2(0, uT.y)).x, T = texture(uP, vUv + vec2(0, uT.y)).x;"
+    + " o = vec4((L + R + B + T - texture(uDiv, vUv).x) * 0.25, 0, 0, 1); }");
+  var gradient = prog("uniform sampler2D uP, uVel; uniform vec2 uT;"
+    + "void main(){ float L = texture(uP, vUv - vec2(uT.x, 0)).x, R = texture(uP, vUv + vec2(uT.x, 0)).x,"
+    + " B = texture(uP, vUv - vec2(0, uT.y)).x, T = texture(uP, vUv + vec2(0, uT.y)).x;"
+    + " o = vec4(texture(uVel, vUv).xy - 0.5 * vec2(R - L, T - B), 0, 1); }");
+  var scaleP = prog("uniform sampler2D uSrc; uniform float uK; void main(){ o = uK * texture(uSrc, vUv); }");
+  var R = P.ripple;
+  var draw = prog("uniform sampler2D uVel, uDen; uniform vec2 uRes; uniform float uCell, uSpeedScale, uThreshold, uHoverScale, uBright;"
+    + "uniform vec3 uRest; uniform vec4 uRip; uniform float uAspect;"
+    + "bool inside(vec2 l, vec4 r, float k){ vec2 c = r.xy + r.zw * 0.5, h = r.zw * 0.5 * k; return all(lessThan(abs(l - c), h)); }"
+    + "float ripple(vec2 uv){ if (uRip.w < 0.5) return 0.0; float age = uRip.z, d = length((uv - uRip.xy) * vec2(uAspect, 1.0)), a = 0.0;"
+    + " for (int k = 0; k < " + R.rings + "; k++) { float r = age * " + R.speed.toFixed(3) + " * 1.6 - float(k) * " + R.gap.toFixed(3) + ";"
+    + "  if (r > 0.0) a = max(a, 1.0 - smoothstep(0.0, " + R.width.toFixed(3) + " * 0.5, abs(d - r))); }"
+    + " return a * clamp(1.0 - age / " + R.life.toFixed(2) + ", 0.0, 1.0); }"
+    + "void main(){ vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);"
+    + " vec2 cell = floor(px / uCell), l = fract(px / uCell) * (9.0 / 8.0);"      // element 8/9 of the pitch, then a gap
+    + " vec2 uv = (cell + 0.5) * uCell / uRes; uv.y = 1.0 - uv.y;"
+    + " float speed = length(texture(uVel, uv).xy), den = texture(uDen, uv).x, rip = ripple(uv);"
+    + " float spin = clamp(speed * uSpeedScale, 0.0, 1.5), inf = min(clamp(speed * uSpeedScale + den, 0.0, 1.8) + rip * " + R.amp.toFixed(2) + ", 1.8);"
+    + " float k = 1.0 + spin * uHoverScale + rip * " + R.scale.toFixed(2) + ", on = clamp(inf / uThreshold, 0.0, 1.0);"
+    + " vec3 ch = vec3(-1.0);"
+    + " if (inside(l, vec4(0.02, 0.17, 0.23, 0.54), k)) ch = vec3(0, 0, 1);"
+    + " else if (inside(l, vec4(0.6, 0.1, 0.2, 0.29), k)) ch = vec3(0, 1, 0);"
+    + " else if (inside(l, vec4(0.6, 0.62, 0.2, 0.24), k)) ch = vec3(1, 0, 0);"
+    + " o = ch.x < 0.0 ? vec4(0, 0, 0, 1) : vec4(mix(uRest, ch, on) + inf * uBright, 1); }");
+
+  var quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  function target(n) {
+    var t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, n, n, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    var f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    return { t: t, f: f };
+  }
+  function pair(n) { var a = target(n), b = target(n); return { r: a, w: b, swap: function () { var x = this.r; this.r = this.w; this.w = x; } }; }
+  var N = P.sim, vel = pair(N), den = pair(N), pre = pair(N), div = target(N), T = [1 / N, 1 / N];
+
+  function run(pr, out, tex, uni) {
+    gl.useProgram(pr.p);
+    var unit = 0;
+    for (var k in tex) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex[k]); gl.uniform1i(pr.u[k], unit++); }
+    for (var k2 in uni) { var v = uni[k2], loc = pr.u[k2]; if (!loc) continue;
+      if (typeof v === "number") gl.uniform1f(loc, v); else if (v.length === 2) gl.uniform2fv(loc, v); else if (v.length === 3) gl.uniform3fv(loc, v); else gl.uniform4fv(loc, v); }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, out ? out.f : null);
+    if (out) gl.viewport(0, 0, N, N); else gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  // the pointer, in the simulation's space (y up)
+  var ptr = { x: 0, y: 0, dx: 0, dy: 0, moved: false, seen: false }, rip = [0, 0, 0, 0];
+  function uvOf(e) { var r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height]; }
+  if (!calm) canvas.parentNode.addEventListener("pointermove", function (e) {
+    var p = uvOf(e);
+    if (ptr.seen) { ptr.dx += p[0] - ptr.x; ptr.dy += p[1] - ptr.y; ptr.moved = true; }
+    ptr.x = p[0]; ptr.y = p[1]; ptr.seen = true; wake();
+  });
+  canvas.parentNode.addEventListener("pointerleave", function () { ptr.seen = false; });
+  if (!calm) canvas.parentNode.addEventListener("pointerdown", function (e) { if (e.target.closest("a")) return; var p = uvOf(e); rip = [p[0], p[1], 0, 1]; wake(); });
+  if (!calm) rip = [0.5, 0.5, -0.25, 1];               // the panel switches on with one ring from the middle
+
+  var aspect = 1, cell = 1;
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), r = canvas.getBoundingClientRect();
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    aspect = r.width / r.height; cell = canvas.width / P.cols;
+  }
+  window.addEventListener("resize", function () { resize(); wake(); }); resize();
+
+  var last = 0, raf = 0, still = 0;
+  function frame(now) {
+    var dt = Math.min((now - (last || now)) / 1000, 1 / 30) || 1 / 60; last = now;
+    var f = dt * 60;
+    if (ptr.moved) {
+      var vx = ptr.dx / dt, vy = ptr.dy / dt;            // uv per second, as the cursor moved
+      run(splat, vel.w, { uSrc: vel.r.t }, { uPoint: [ptr.x, ptr.y], uValue: [vx, vy, 0], uRadius: P.forceRadius, uAspect: aspect }); vel.swap();
+      run(splat, den.w, { uSrc: den.r.t }, { uPoint: [ptr.x, ptr.y], uValue: [P.denAmount * f, 0, 0], uRadius: P.denRadius, uAspect: aspect }); den.swap();
+      ptr.dx = ptr.dy = 0; ptr.moved = false; still = 0;
+    } else still += dt;
+    run(advect, vel.w, { uVel: vel.r.t, uSrc: vel.r.t }, { uDt: dt, uDiss: Math.pow(P.velDiss, f) }); vel.swap();
+    run(diverge, div, { uVel: vel.r.t }, { uT: T });
+    run(scaleP, pre.w, { uSrc: pre.r.t }, { uK: 0.8 }); pre.swap();
+    for (var i = 0; i < 12; i++) { run(jacobi, pre.w, { uP: pre.r.t, uDiv: div.t }, { uT: T }); pre.swap(); }
+    run(gradient, vel.w, { uP: pre.r.t, uVel: vel.r.t }, { uT: T }); vel.swap();
+    run(advect, den.w, { uVel: vel.r.t, uSrc: den.r.t }, { uDt: dt, uDiss: Math.pow(P.denDiss, f) }); den.swap();
+    if (rip[3]) { rip[2] += dt; if (rip[2] > P.ripple.life) rip[3] = 0; }
+    run(draw, null, { uVel: vel.r.t, uDen: den.r.t }, { uRes: [canvas.width, canvas.height], uCell: cell, uSpeedScale: P.speedScale,
+      uThreshold: P.colorThreshold, uHoverScale: P.hoverScale, uBright: P.hoverBrightness, uRest: P.rest, uRip: rip, uAspect: aspect });
+    // sleep once everything has settled (a few seconds without movement or rings)
+    raf = still < 4 || rip[3] ? requestAnimationFrame(frame) : 0;
+  }
+  function wake() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
+  wake();
+})();
+</script>
+</body>
+</html>
