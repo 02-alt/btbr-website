@@ -1,6 +1,7 @@
 /* The link-preview picture for a curation topic (1200×630): the topic as it
-   lies on the table — its white museum label on the left, the cover resting
-   in its tray on the right, on the table's grey. Shared by Studio (drawn at
+   lies on the table — its white museum label on the left, the cover framed
+   in its tray on the right (the feed's "frame": black moulding, wide white
+   mat), on the table's grey. Shared by Studio (drawn at
    publish) and any page that needs to redraw one.
    window.BtbrShareCard.draw({ author, title, desc, date, no }, coverURL) → Promise<canvas> */
 (function () {
@@ -15,6 +16,14 @@
       im.onload = function () { res(im); }; im.onerror = function () { res(null); };
       im.src = src;
     });
+  }
+  // a board window (MacWin's Preview window baked at 2×) → the part holding
+  // just its photo, as the feed shows it (same crop as app.js bareURL)
+  function photoRect(im, src) {
+    var nw = im.naturalWidth, nh = im.naturalHeight;
+    if (!/\/board-\d+-\d+\.png($|\?)/.test(src || "")) return [0, 0, nw, nh];
+    var k = Math.max(nw / 726, nh / 760), e = 5 * k, x = 3 * k + e, y = 37 * k + e;
+    return [x, y, nw - 2 * x, nh - 40 * k - 2 * e];
   }
   // the white objects: matte, square-cut, lit from above (as on the site)
   function paper(ctx, x, y, w, h) {
@@ -86,18 +95,30 @@
       var wi = 0.036, wx = tx + cw * wi, wy = top + ch * wi, ww = cw * (1 - 2 * wi), wh = ch * (1 - 2 * wi);
       ctx.save(); rrect(ctx, wx, wy, ww, wh, 14); ctx.fillStyle = "#fafafa"; ctx.fill();
       ctx.strokeStyle = "rgba(40, 30, 40, 0.06)"; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
-      var mh = wh * 0.74, mw = mh * 3 / 5, mx = wx + (ww - mw) / 2, my = wy + (wh - mh) / 2;
+      // the frame, hung in the well as on the feed (styles.css .tray-art/.tf-*)
+      var ah = wh * 0.84, aw = ah * 3 / 4.2, ax = wx + (ww - aw) / 2, ay = wy + (wh - ah) / 2, cq = aw / 100;
+      var fx = ax + aw * 0.06, fy = ay + ah * 0.1, fw = aw * 0.88, fh = ah * 0.8;
       ctx.save();
-      ctx.shadowColor = "rgba(0, 0, 0, 0.22)"; ctx.shadowBlur = 22; ctx.shadowOffsetY = 10;
-      rrect(ctx, mx, my, mw, mh, 3); ctx.fillStyle = "#ebebef"; ctx.fill();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.4)"; ctx.shadowBlur = 30; ctx.shadowOffsetY = 18;
+      ctx.fillStyle = "#1b1a1a"; ctx.fillRect(fx + 12, fy + 12, fw - 24, fh - 24);
+      ctx.shadowColor = "rgba(0, 0, 0, 0.25)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 2;
+      ctx.fillRect(fx, fy, fw, fh);
       ctx.restore();
+      var bx = fx + 2.2 * cq, by = fy + 2.2 * cq, bw = fw - 4.4 * cq, bh = fh - 4.4 * cq;
+      ctx.fillStyle = "#fbfaf7"; ctx.fillRect(bx, by, bw, bh);
+      var g = ctx.createLinearGradient(0, by, 0, by + 8);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.12)"); g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g; ctx.fillRect(bx, by, bw, 8);
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.06)"; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+      var px = bx + 10 * cq, py = by + 12 * cq, pw = bw - 20 * cq, ph = bh - 24 * cq;
+      ctx.fillStyle = "#ebebef"; ctx.fillRect(px, py, pw, ph);
       if (cover) {
-        ctx.save(); rrect(ctx, mx, my, mw, mh, 3); ctx.clip();
-        var s = Math.max(mw / cover.naturalWidth, mh / cover.naturalHeight);
-        var dw = cover.naturalWidth * s, dh = cover.naturalHeight * s;
-        ctx.drawImage(cover, mx + (mw - dw) / 2, my + (mh - dh) / 2, dw, dh);
+        var r = photoRect(cover, coverURL), s = Math.max(pw / r[2], ph / r[3]), sw = pw / s, sh = ph / s;
+        ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+        ctx.drawImage(cover, r[0] + (r[2] - sw) / 2, r[1] + (r[3] - sh) / 2, sw, sh, px, py, pw, ph);
         ctx.restore();
       }
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.08)"; ctx.strokeRect(px - 0.5, py - 0.5, pw + 1, ph + 1);
       return c;
     });
   }
