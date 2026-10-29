@@ -1,0 +1,159 @@
+{
+  "slug": "phones-personal-journey",
+  "title": "Phones personal Journey",
+  "author": "Isaaaaaaaac",
+  "date": "2026-10-29",
+  "cover": "/curation/media/phones-personal-journey/board-1-1.png",
+  "desc": "Beyond the Touchscreens",
+  "inspiration": "",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>It’s been maybe two or three years that I’ve had my MPO2. It’s a DumbPhone created by Punkt, a company from Switzerland. I’m loving it. I decided to go for the MPO2 because I was looking for something less distracting, but overall, I’m not a big fan of touchscreens like smartphones. I really like to have different types of objects that master one way for each topic. I’m not a fan of one object that can do books, music videos, communication, etc.</p>\n<p><br></p>\n<p>With the MPO2, I learned to navigate space in a better way because I didn’t have a phone on me with a map. I was like, ‘Okay, I need to take some marks and check before going somewhere… I’m going to take that subway, and I need to check the streets.’ It’s something that makes me more aware of my environment.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/phones-personal-journey/board-1.png",
+      "alt": "Phones personal Journey",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/phones-personal-journey/board-1-1.png",
+            "x": 27.132,
+            "y": 6.912,
+            "w": 45.798,
+            "h": 84.687,
+            "name": "Punkt_MP02.png",
+            "note": "My MP02 - from Punkt"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>There’s a lot of things that catch my attention because the MPO2 is pretty great, but I don’t want to be that guy who looks like he’s just using an alternative second phone—which is not my case, because I’m using it as my first and only phone. I was trying to get another phone that could maybe do maps, maybe bank apps, or something like that. Today, we can’t live in a society without a bank app, and it’s not possible with the MPO2.</p>\n<p><br></p>\n<p>These days, I was looking for new phones and I just discovered there are so many form factors now, which really pleased me. It’s like a step back from the ‘run’ that a lot of companies had with only the touchscreens that Apple started. I love what a lot of companies did because while I was having the MPO2 three or four years ago, I also started to buy old iPods, and I was like, ‘Okay, it’s really something that looks good and it’s something that I like to use.’</p>\n<p><br></p>\n<p>I discovered a lot of phones that were completely on that side, using the same form factor and usability as the Blackberries. I’m thinking about the Click Communicator, and there’s also the Minimal Phone that’s really interesting. Or even the SidePhone, which is a new thing where you can have different types of accessories for different uses. The usability is amazing. There’s also the new Light Phone that I’ve been looking at recently; I really like the e-ink monitor screen.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/phones-personal-journey/board-2.png",
+      "alt": "Phones personal Journey",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/phones-personal-journey/board-2-1.png",
+            "x": 3.235,
+            "y": 5.294,
+            "w": 55.368,
+            "h": 33.937,
+            "name": "Light_Phone_1.jpg",
+            "note": "Light_Phone"
+          },
+          {
+            "src": "/curation/media/phones-personal-journey/board-2-2.png",
+            "x": 49.044,
+            "y": 8.162,
+            "w": 42,
+            "h": 58.462,
+            "name": "Minimal_Phone_4.jpeg",
+            "note": "Minimal_Phone"
+          },
+          {
+            "src": "/curation/media/phones-personal-journey/board-2-3.png",
+            "x": 5.294,
+            "y": 51.985,
+            "w": 42,
+            "h": 30.14,
+            "name": "Light_Phone3_1.jpg",
+            "note": "Light_Phone_3"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>It’s something I see getting more popularity, and I don’t know, there’s something really good about not having the same companies making the same stuff. Not having only the big companies, but having options that are closer to where we are. For example, I chose the Punkt MPO2 a couple of years ago because it was made in Switzerland, and they decided to take people from Italy, so it’s closer to where we are. It’s pretty interesting in a world where a lot of people are trying to choose where they want the thing they’re using to come from.</p>\n<p><br></p>\n<p>That’s why I used it, because there was a lot of Punkt making a lot of accessories in Italy and also other parts in China, because there are still things made in China that we still cannot do in Europe. It’s really galvanizing for designers because it’s a new design for apps, new screens, new ratios, and it just gives a lot of new ways to think. It’s really something I love, and I don’t know, if you haven’t tried it and you have the money to try one, I really recommend it.”</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/phones-personal-journey/board-3.png",
+      "alt": "Phones personal Journey",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/phones-personal-journey/board-3-1.png",
+            "x": 46.765,
+            "y": 4.559,
+            "w": 53.162,
+            "h": 23.459,
+            "name": "Minimal_Phone_1.webp",
+            "note": "Minimal_Phone"
+          },
+          {
+            "src": "/curation/media/phones-personal-journey/board-3-2.png",
+            "x": 5.956,
+            "y": 3.309,
+            "w": 42,
+            "h": 43.967,
+            "name": "Minimal_Phone_2.webp",
+            "note": "Minimal_Phone"
+          },
+          {
+            "src": "/curation/media/phones-personal-journey/board-3-3.png",
+            "x": 3.162,
+            "y": 39.412,
+            "w": 42,
+            "h": 43.967,
+            "name": "Side_Phone_2.webp",
+            "note": "Side_Phone"
+          },
+          {
+            "src": "/curation/media/phones-personal-journey/board-3-4.png",
+            "x": 53.75,
+            "y": 39.412,
+            "w": 42,
+            "h": 47.59,
+            "name": "Click_Communicator_1.avif",
+            "note": "Click_Communicator"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>Seeing all the phones that have been held out there, I think the one that I’m going to be looking for is the Minimal Phone 2. It looks really good, and I don’t know, it looks like the perfect form factor for me. I really like keyboards; they look like they have good switches, et cetera, and the usability looks really cool.</p>"
+    },
+    {
+      "type": "video",
+      "src": "https://www.youtube.com/watch?v=BwtLALItaMo",
+      "caption": "",
+      "wtitle": "Minimal Phone 2"
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3",
+      "fr": {
+        "text": "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+      }
+    }
+  ],
+  "feed": "/curation/media/phones-personal-journey/board-1-1.png",
+  "fr": {},
+  "langs": [
+    "en",
+    "fr"
+  ],
+  "no": 5
+}
