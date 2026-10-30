@@ -1,0 +1,124 @@
+{
+  "slug": "are-na",
+  "title": "Are.na",
+  "author": "Isaaaaaaaac",
+  "date": "2026-10-30",
+  "cover": "/curation/media/are-na/board-1-3.png",
+  "desc": "The Art of the Hunt",
+  "inspiration": "Are.na\n\nCosmos.so\n\nhttps://www.pinterest.com",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>The Misconception I’ve noticed that people often struggle to understand why I use Are.na. They assume I’m just looking for something “non-mainstream” or they compare it to Cosmos or Pinterest. But it’s not just about the look of the platform; it’s about the fact that it has no algorithm. I don’t think people realize how much that actually matters.</p>\n<p><br></p>\n<p>The Algorithm as a Trap When you use platforms like Pinterest or Instagram, the algorithm is designed to show you exactly what you already like. It creates a loop where you think you’re finding niche inspiration, but you’re actually just being fed a curated trend. It’s designed to keep you comfortable and keep you scrolling, but that’s the opposite of creation. If the platform is always pleasing you, it’s no longer challenging you.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/are-na/board-1.png",
+      "alt": "Are.na",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/are-na/board-1-1.png",
+            "x": 4.118,
+            "y": 3.824,
+            "w": 57.416,
+            "h": 38.926,
+            "name": "Are.na Profile.png",
+            "note": "Are.na Profile"
+          },
+          {
+            "src": "/curation/media/are-na/board-1-2.png",
+            "x": 37.941,
+            "y": 40.441,
+            "w": 57.647,
+            "h": 39.082,
+            "name": "Are.na Channels.png",
+            "note": "Are.na channel"
+          },
+          {
+            "src": "/curation/media/are-na/board-1-3.png",
+            "x": 58.529,
+            "y": 21.029,
+            "w": 20.882,
+            "h": 21.86,
+            "name": "logo arena.png",
+            "note": "are.na logo"
+          }
+        ]
+      }
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/are-na/board-2.png",
+      "alt": "Are.na",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/are-na/board-2-1.png",
+            "x": 5.588,
+            "y": 4.412,
+            "w": 72.941,
+            "h": 49.451,
+            "name": "Cosmos.png",
+            "note": "Cosmos"
+          },
+          {
+            "src": "/curation/media/are-na/board-2-2.png",
+            "x": 43.309,
+            "y": 45.294,
+            "w": 51.985,
+            "h": 35.244,
+            "name": "Are.na Explore.png",
+            "note": "Are.na Explore"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>Choosing vs. Being Fed When an algorithm picks for you, you aren’t choosing from the internet; you’re choosing from a pre-selected bucket of “what everyone likes.” Are.na is different. Because there is no algorithm, you have to spend more time at the beginning. You have to dig into PDFs, websites, and texts. You have to hunt for information. It forces you to be curious, and that’s where the real discovery happens.</p>\n<p><br></p>\n<p>The Depth of the Hunt Are.na reminds me that a lot of what we <i>think</i> we like is just what we’ve been conditioned to see. On Are.na, the feed is just a chronological stream of what people are actually doing/bringing things from their daily lives and deep niches. It’s not about what’s popular; it’s about what’s real. That’s why, for my blog, I want to create something that isn’t born from an algorithm, but from actual intent.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/are-na/board-3.png",
+      "alt": "Are.na",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/are-na/board-3-1.png",
+            "x": 10.074,
+            "y": 3.235,
+            "w": 79.853,
+            "h": 84.348,
+            "name": "WHY ARE.NA.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3",
+      "fr": {
+        "text": "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+      }
+    }
+  ],
+  "feed": "/curation/media/are-na/board-1-3.png",
+  "fr": {},
+  "langs": [
+    "en",
+    "fr"
+  ],
+  "no": 6
+}
