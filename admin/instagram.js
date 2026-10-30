@@ -328,26 +328,28 @@
     blocks.forEach(function (b, i) {
       if (i === tailFrom && topic.inspiration) out.push({ kind: "sources" });
       if (b.type === "text") {
-        var words = runsFromHTML(b.html); if (!words.length) return;
-        if (b.head) { out.push({ kind: "chapter", words: words }); return; }
+        var words = edits["t:" + i] != null ? runsFromHTML(textToHTML(edits["t:" + i])) : runsFromHTML(b.html); if (!words.length) return;
+        if (b.head) { out.push({ kind: "chapter", words: words, ekey: "t:" + i, bi: i }); return; }
         var pages = textPages(words, o.textStyle), photos = nearestPhotos(blocks, i);
         pages.forEach(function (p, k) {
           var key = i + ":" + k, auto = photos[k % photos.length];
           var second = photos.length > 1 ? photos[(k + 1) % photos.length] : everyPhoto[(everyPhoto.indexOf(auto) + 1) % everyPhoto.length];
-          out.push({ kind: "text", style: o.textStyle, nth: nth++, photo2: second, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
+          out.push({ kind: "text", ekey: "t:" + i, bi: i, style: o.textStyle, nth: nth++, photo2: second, key: key, auto: auto, photo: picks[key] || auto, lines: p.lines, size: p.size, part: pages.length > 1 ? (k + 1) + "/" + pages.length : "" });
         });
       } else if (b.type === "image" && b.src) {
         out.push(b.board ? { kind: "board", src: b.src, items: b.board.items || [], prints: true } : { kind: "photo", src: b.src, caption: b.caption });
       } else if (b.type === "video" && b.src) {
         var vid = ytId(b.src), st = vid ? ytStills(vid) : { srcs: [], labels: [] }, vkey = "video:" + i;
-        out.push({ kind: "video", video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle, key: vkey,
+        var ve = edits["v:" + i] || {};
+        out.push({ kind: "video", ekey: "v:" + i, bi: i, etitle: ve.title, eby: ve.by, video: o.video, src: b.src, caption: b.caption, wtitle: b.wtitle, key: vkey,
           stills: st.srcs, labels: st.labels, auto: st.srcs[2] || "", photo: picks[vkey] || st.srcs[2] || "",
           bands: [0, 1, 2].map(function (k) { return picks[vkey + ":b" + k] || null; }) });
       } else if (b.type === "quote" && b.text) {
-        out.push({ kind: "quote", text: b.text, cite: b.cite });
+        var qe = edits["q:" + i] || {};
+        out.push({ kind: "quote", ekey: "q:" + i, bi: i, text: qe.text != null ? qe.text : b.text, cite: qe.cite != null ? qe.cite : b.cite });
       } else if ((b.type === "hand" || b.type === "sign") && b.text) {
         var last = photoPool().filter(function (p) { return p !== topic.cover; }).pop() || topic.cover;
-        out.push({ kind: b.type, text: b.text, key: "note:" + i, auto: last, photo: picks["note:" + i] || last });
+        out.push({ kind: b.type, ekey: "h:" + i, bi: i, text: edits["h:" + i] != null ? edits["h:" + i] : b.text, key: "note:" + i, auto: last, photo: picks["note:" + i] || last });
       }
     });
     if (tailFrom === blocks.length && topic.inspiration) out.push({ kind: "sources" });
@@ -421,8 +423,9 @@
                           s.photo ? (id ? ytImg(s.photo) : loadImg(s.photo)) : null,
                           Promise.all((s.bands || []).map(function (src) { return src ? (id ? ytImg(src) : loadImg(src)) : null; }))]).then(function (r) {
         var v = { thumb: r[0], info: r[1] || {}, frames: r[2] || [], pick: r[3], bandIms: r[4] || [] };
-        v.title = plain(s.caption) || s.wtitle || v.info.title || "Film";
-        v.by = v.info.author_name || "";
+        v.title = s.etitle != null ? s.etitle : plain(s.caption) || s.wtitle || v.info.title || "Film";
+        v.by = s.eby != null ? s.eby : v.info.author_name || "";
+        s.lastTitle = plain(s.caption) || s.wtitle || v.info.title || "Film"; s.lastBy = v.info.author_name || "";   // the unedited words
         s.light = false;
         return (VIDEOS[s.video] || VIDEOS.subtitle)(ctx, s, v);
       });
@@ -956,7 +959,7 @@
     $("count").textContent = k + " of " + n + " slides" + (k > 20 ? " — Instagram takes 20" : "");
     $("count").classList.toggle("warn", k > 20);
     $("dlZip").textContent = "Download " + k + " images + caption";
-    photos(s);
+    photos(s); texter();
     if (at !== lookAt) { lookAt = at; if (/^(cover|text|video)$/.test(s.kind)) showLook(s.kind); }
   }
   var lookAt = -1;
@@ -1040,15 +1043,91 @@
   }
 
   // open beside the phone (so the slide stays in view), or as a sheet from the bottom on a small screen
-  function placePicker() {
-    var pk = $("picker"); if (pk.hidden) return;
+  /* ---------- editing a slide's words (kept for this export only; the topic itself is untouched) ---------- */
+  var edits = {}, orig = null;
+  function textToHTML(t) {
+    return String(t || "").replace(/\r/g, "").split(/\n\s*\n/).map(function (p) {
+      return "<p>" + p.trim().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>") + "</p>";
+    }).join("");
+  }
+  function htmlToText(h) { return plain(String(h || "").replace(/<\/p>\s*<p[^>]*>/gi, "\n\n").replace(/<br\s*\/?>/gi, "\n")).replace(/\n{3,}/g, "\n\n").trim(); }
+  // what can be edited on a slide: [label, value, set(v), multiline]
+  function textFields(s) {
+    if (!s) return [];
+    var blk = s.bi != null ? (topic.blocks || [])[s.bi] : null;
+    if (s.kind === "cover") {
+      orig = orig || { title: topic.title, desc: topic.desc, author: topic.author };
+      return [["Author", topic.author, function (v) { topic.author = v; }], ["Title", topic.title, function (v) { topic.title = v; }], ["Description", topic.desc || "", function (v) { topic.desc = v; }, true]];
+    }
+    if (s.kind === "text" || s.kind === "chapter")
+      return [["Text", edits[s.ekey] != null ? edits[s.ekey] : htmlToText(blk && blk.html), function (v) { edits[s.ekey] = v; }, true]];
+    if (s.kind === "video") {
+      var e = edits[s.ekey] = edits[s.ekey] || {};
+      return [["Title", s.etitle != null ? s.etitle : (s.lastTitle || plain(s.caption) || s.wtitle || ""), function (v) { e.title = v; }], ["Line under it", s.eby != null ? s.eby : (s.lastBy || ""), function (v) { e.by = v; }]];
+    }
+    if (s.kind === "quote") {
+      var q = edits[s.ekey] = edits[s.ekey] || {};
+      return [["Quote", s.text, function (v) { q.text = v; }, true], ["Credit", s.cite || "", function (v) { q.cite = v; }]];
+    }
+    if (s.kind === "hand" || s.kind === "sign") return [["Note", s.text, function (v) { edits[s.ekey] = v; }, true]];
+    return [];
+  }
+  function resetText(s) {
+    if (s.kind === "cover" && orig) { topic.title = orig.title; topic.desc = orig.desc; topic.author = orig.author; }
+    else delete edits[s.ekey];
+  }
+  var texterFor = null, texterDeb = 0;
+  function texter() {
+    var s = slides[at], fields = textFields(s);
+    $("textRow").hidden = !fields.length;
+    if (!fields.length) {                                       // a slide without words: the editor stays open, waiting
+      if (!$("texter").hidden && texterFor !== "none") {
+        texterFor = "none"; $("texterTitle").textContent = "Text \u00B7 slide " + (at + 1);
+        $("texterBody").innerHTML = '<p class="tx-note" style="font-size:13px">No text on this slide. Swipe to a cover, text, video or note slide.</p>';
+      }
+      return;
+    }
+    $("textNote").textContent = s.kind === "text" && s.part ? "Spans " + s.part.split("/")[1] + " slides" : (s.kind === "cover" ? "Author, title, description" : fields.map(function (f) { return f[0]; }).join(", "));
+    var key = s.ekey || s.kind;
+    if ($("texter").hidden || texterFor === key) return;      // same words being edited: leave the fields (and the caret) alone
+    texterFor = key;
+    $("texterTitle").textContent = "Text \u00B7 slide " + (at + 1);
+    var body = $("texterBody"); body.innerHTML = "";
+    fields.forEach(function (f) {
+      var lab = document.createElement("label"); lab.className = "tx-field";
+      var t = document.createElement("span"); t.textContent = f[0]; lab.appendChild(t);
+      var inp = document.createElement(f[3] ? "textarea" : "input"); inp.value = f[1] || ""; inp.spellcheck = true;
+      if (f[3]) inp.rows = s.kind === "text" ? 12 : 4;
+      inp.addEventListener("input", function () {
+        f[2](inp.value);
+        clearTimeout(texterDeb);
+        texterDeb = setTimeout(function () { applyText(s); }, 280);
+      });
+      lab.appendChild(inp); body.appendChild(lab);
+    });
+    var note = document.createElement("p"); note.className = "tx-note";
+    note.textContent = s.kind === "text" ? "Blank line = new paragraph. Long text flows onto more slides by itself. Only this export changes, not the topic."
+      : "Only this export changes, not the topic.";
+    body.appendChild(note);
+  }
+  function applyText(s) {
+    if (s.kind === "text" || s.kind === "chapter") { render(); return; }
+    if (s.kind === "video") { var e = edits[s.ekey] || {}; s.etitle = e.title; s.eby = e.by; }
+    if (s.kind === "quote") { var q = edits[s.ekey] || {}; if (q.text != null) s.text = q.text; if (q.cite != null) s.cite = q.cite; }
+    if (s.kind === "hand" || s.kind === "sign") s.text = edits[s.ekey];
+    paint(s, slides.indexOf(s));
+  }
+  function openTexter() { closePicker(); $("texter").hidden = false; $("textBtn").setAttribute("aria-expanded", "true"); texterFor = null; texter(); placePicker($("texter")); var f = $("texterBody").querySelector("textarea, input"); if (f) f.focus({ preventScroll: true }); }
+  function closeTexter() { if ($("texter").hidden) return; $("texter").hidden = true; $("textBtn").setAttribute("aria-expanded", "false"); texterFor = null; }
+  function placePicker(el) {
+    var pk = el && el.nodeType ? el : $("picker"); if (pk.hidden) return;
     var ph = document.querySelector(".phone").getBoundingClientRect(), w = 344, gap = 24;
     var left = ph.right + gap <= innerWidth - w - 16 ? ph.right + gap : Math.max(16, ph.left - gap - w);
     pk.style.left = left + "px"; pk.style.top = Math.max(16, ph.top) + "px";
     pk.style.maxHeight = Math.min(ph.height, innerHeight - 32) + "px";
     pk.style.transformOrigin = left > ph.right ? "left center" : "right center";
   }
-  function openPicker() { $("picker").hidden = false; $("pickBtn").setAttribute("aria-expanded", "true"); placePicker(); var on = $("pickerBody").querySelector('[aria-pressed="true"]'); (on || $("pickerDone")).focus({ preventScroll: true }); }
+  function openPicker() { closeTexter(); $("picker").hidden = false; $("pickBtn").setAttribute("aria-expanded", "true"); placePicker(); var on = $("pickerBody").querySelector('[aria-pressed="true"]'); (on || $("pickerDone")).focus({ preventScroll: true }); }
   function closePicker() { if ($("picker").hidden) return; $("picker").hidden = true; $("pickBtn").setAttribute("aria-expanded", "false"); }
 
 
@@ -1202,6 +1281,22 @@
       });
     });
     $("pickBtn").addEventListener("click", function () { $("picker").hidden ? openPicker() : closePicker(); });
+    $("textBtn").addEventListener("click", function () { $("texter").hidden ? openTexter() : closeTexter(); });
+    $("texterDone").addEventListener("click", function () { closeTexter(); $("textBtn").focus(); });
+    $("texterReset").addEventListener("click", function () {
+      var s = slides[at], blk = s.bi != null ? (topic.blocks || [])[s.bi] : null;
+      resetText(s);
+      if (s.kind === "video") s.etitle = s.eby = undefined;
+      if (s.kind === "quote" && blk) { s.text = blk.text; s.cite = blk.cite; }
+      if ((s.kind === "hand" || s.kind === "sign") && blk) s.text = blk.text;
+      if (s.kind === "text" || s.kind === "chapter") render(); else paint(s, at);
+      texterFor = null; texter();
+    });
+    document.addEventListener("pointerdown", function (e) {
+      if (!$("texter").hidden && !$("texter").contains(e.target) && !$("textBtn").contains(e.target) && !document.querySelector(".post").contains(e.target)) closeTexter();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("texter").hidden) { closeTexter(); $("textBtn").focus(); } });
+    addEventListener("resize", function () { placePicker($("texter")); });
     $("pickerDone").addEventListener("click", function () { closePicker(); $("pickBtn").focus(); });
     document.addEventListener("pointerdown", function (e) {
       if (!$("picker").hidden && !$("picker").contains(e.target) && !$("pickBtn").contains(e.target) && !document.querySelector(".post").contains(e.target)) closePicker();

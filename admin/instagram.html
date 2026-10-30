@@ -126,6 +126,14 @@
     .picker-head { display: flex; align-items: center; padding: 14px 16px 10px; font-size: 15px; font-weight: 600; }
     .picker-head button { margin-left: auto; }
     .picker-body { overflow-y: auto; padding: 0 16px 16px; }
+    #textRow { margin-bottom: 8px; }
+    .aa { width: 40px; height: 40px; border-radius: 6px; flex: none; display: grid; place-items: center; background: #fff; font: 600 15px/1 Charter, Georgia, serif; font-style: normal; color: var(--ink); box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); }
+    .tx-field { display: block; margin-bottom: 12px; }
+    .tx-field span { display: block; font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+    .tx-field input, .tx-field textarea { width: 100%; box-sizing: border-box; border: 0; border-radius: 10px; background: rgba(0,0,0,0.05); padding: 9px 11px; font: 14px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); outline: none; resize: vertical; }
+    .tx-field textarea { font-family: Charter, Georgia, serif; font-size: 15px; }
+    .tx-field input:focus, .tx-field textarea:focus { background: #fff; box-shadow: 0 0 0 3px rgba(0,113,227,0.3); }
+    .tx-note { font-size: 11px; color: var(--ink3); margin: 2px 0 0; }
     .slotseg { display: flex; margin: 2px 0 6px; align-self: stretch; }
     .slotseg button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px; font-size: 12px; }
     .slotseg img { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; border-radius: 4px; display: block; opacity: 0.7; }
@@ -255,6 +263,7 @@
       <section>
         <h3>This slide <span class="val" id="slideName"></span><button class="link" id="dlOne" type="button">Download</button></h3>
         <div class="row"><span>In the post</span><input class="switch" type="checkbox" role="switch" id="include" /></div>
+        <div id="textRow" hidden><button class="pickbtn" id="textBtn" type="button" aria-haspopup="dialog" aria-expanded="false"><i class="aa">Aa</i><span><b>Text</b><small id="textNote"></small></span></button></div>
         <div id="photoRow"><button class="pickbtn" id="pickBtn" type="button" aria-haspopup="dialog" aria-expanded="false"><img id="pickThumb" alt="" /><span><b id="photoHead">Photo</b><small id="photoNote"></small></span></button></div>
       </section>
       <div class="rule"></div>
@@ -269,11 +278,16 @@
     </aside>
   </main>
 
+  <div class="picker" id="texter" role="dialog" aria-label="Edit the slide's text" hidden>
+    <div class="picker-head"><span id="texterTitle">Text</span><button class="link" id="texterReset" type="button" style="margin-left:auto;margin-right:14px;color:var(--ink2)">Reset</button><button class="link" id="texterDone" type="button" style="margin-left:0">Done</button></div>
+    <div class="picker-body" id="texterBody"></div>
+  </div>
+
   <div class="picker" id="picker" role="dialog" aria-label="Choose a picture" hidden>
     <div class="picker-head"><span id="pickerTitle">Picture</span><button class="link" id="pickerDone" type="button">Done</button></div>
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/instagram.js?v=36"></script>
+  <script src="/admin/instagram.js?v=40"></script>
 </body>
 </html>
