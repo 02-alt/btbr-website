@@ -1,5 +1,20 @@
 [
   {
+    "slug": "phones-personal-journey",
+    "no": 5,
+    "title": "Phones personal Journey",
+    "author": "Isaaaaaaaac",
+    "date": "2026-10-29",
+    "cover": "/curation/media/phones-personal-journey/board-2-2.png",
+    "desc": "Beyond the Touchscreens",
+    "langs": [
+      "en",
+      "fr"
+    ],
+    "feed": "/curation/media/phones-personal-journey/board-2-2.png",
+    "fr": {}
+  },
+  {
     "slug": "marathon",
     "no": 4,
     "title": "Marathon",
