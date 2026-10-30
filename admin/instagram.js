@@ -932,7 +932,12 @@
   function paint(s, i) {
     var ctx = s.canvas.getContext("2d");
     ctx.clearRect(0, 0, W, H);
-    return (draw[s.kind] || function () { return Promise.resolve(); })(ctx, s).then(function () { folio(ctx, i, slides.length, s.light); })
+    return (draw[s.kind] || function () { return Promise.resolve(); })(ctx, s).then(function () {
+      // the page count counts only the slides in the post: 1/14, 2/14… with no holes
+      if (skip[i]) return;
+      var k = 0; for (var j = 0; j < i; j++) if (!skip[j]) k++;
+      folio(ctx, k, kept(), s.light);
+    })
       .catch(function (e) { console.error(e); });
   }
 
@@ -1272,6 +1277,7 @@
       skip[at] = !this.checked; if (!skip[at]) delete skip[at];
       slides[at].fig.classList.toggle("is-off", !!skip[at]);
       dots(); sync();
+      if (opts.folio) slides.reduce(function (p, s, i) { return p.then(function () { return paint(s, i); }); }, Promise.resolve());   // renumber
     });
     [].forEach.call(document.querySelectorAll("[data-look]"), function (b) {
       b.addEventListener("click", function () { showLook(b.dataset.look); });
