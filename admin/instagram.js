@@ -1097,7 +1097,7 @@
       var lab = document.createElement("label"); lab.className = "tx-field";
       var t = document.createElement("span"); t.textContent = f[0]; lab.appendChild(t);
       var inp = document.createElement(f[3] ? "textarea" : "input"); inp.value = f[1] || ""; inp.spellcheck = true;
-      if (f[3]) inp.rows = s.kind === "text" ? 12 : 4;
+      if (f[3]) { inp.rows = s.kind === "text" ? 14 : 4; if (s.kind === "text") inp.className = "is-long"; }
       inp.addEventListener("input", function () {
         f[2](inp.value);
         clearTimeout(texterDeb);

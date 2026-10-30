@@ -131,7 +131,8 @@
     .tx-field { display: block; margin-bottom: 12px; }
     .tx-field span { display: block; font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
     .tx-field input, .tx-field textarea { width: 100%; box-sizing: border-box; border: 0; border-radius: 10px; background: rgba(0,0,0,0.05); padding: 9px 11px; font: 14px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); outline: none; resize: vertical; }
-    .tx-field textarea { font-family: Charter, Georgia, serif; font-size: 15px; }
+    .tx-field textarea { font-family: Charter, Georgia, serif; font-size: 15px; min-height: 110px; }
+    .tx-field textarea.is-long { min-height: 340px; }
     .tx-field input:focus, .tx-field textarea:focus { background: #fff; box-shadow: 0 0 0 3px rgba(0,113,227,0.3); }
     .tx-note { font-size: 11px; color: var(--ink3); margin: 2px 0 0; }
     .slotseg { display: flex; margin: 2px 0 6px; align-self: stretch; }
@@ -288,6 +289,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/instagram.js?v=40"></script>
+  <script src="/admin/instagram.js?v=41"></script>
 </body>
 </html>
