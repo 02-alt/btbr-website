@@ -1,5 +1,20 @@
 [
   {
+    "slug": "are-na",
+    "no": 6,
+    "title": "Are.na",
+    "author": "Isaaaaaaaac",
+    "date": "2026-10-30",
+    "cover": "/curation/media/are-na/board-1-1.png",
+    "desc": "The Art of the Hunt",
+    "langs": [
+      "en",
+      "fr"
+    ],
+    "feed": "/curation/media/are-na/board-1-1.png",
+    "fr": {}
+  },
+  {
     "slug": "phones-personal-journey",
     "no": 5,
     "title": "Phones personal Journey",
