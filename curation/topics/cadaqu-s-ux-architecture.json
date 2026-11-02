@@ -1,0 +1,166 @@
+{
+  "slug": "cadaqu-s-ux-architecture",
+  "title": "Cadaqués UX Architecture",
+  "author": "Isaaaaaaaac",
+  "date": "2026-11-02",
+  "cover": "/curation/media/cadaqu-s-ux-architecture/board-1-1.png",
+  "desc": "Why Cadaqués makes sense.",
+  "inspiration": "https://hicarquitectura.com/2025/02/harnden-bombelli-casa-fasquelle/\n\nApartamento Cadaques book : https://www.delpireandco.com/produit/the-modern-architecture-of-cadaques-1955-71/\n\nVinceeh last YouTube video : https://www.youtube.com/watch?v=bqe9zrqqnwI",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>I’ve always been fascinated by the architecture of Cadaqués. It’s the kind of place that makes the most sense to me—the place I actually want to live. I often compare it to early Apple. They didn’t give you options to customize the experience because they were obsessed with the best UX. They studied the user, understood how they would interact with the product, and delivered the “best” version of it. That is exactly what Cadaqués architecture feels like.</p>\n<p><br></p>\n<p>Specifically, I’m drawn to the work of Bombelli and Harnden. Most architects think about how furniture will look inside a house, but these guys incorporate the furniture, benches, cabinets, and shelves; directly into the structure. It’s incredibly smart. When I eventually buy a house, I don’t want a salesperson to sell me a floor plan; I want them to sell me a vision and a lifestyle. I want an architect who analyzes how I live and creates a world that reflects my needs.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/cadaqu-s-ux-architecture/board-1.png",
+      "alt": "Cadaqués UX Architecture",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-1-1.png",
+            "x": 51.324,
+            "y": 45.809,
+            "w": 42,
+            "h": 45.796,
+            "name": "Bombelli_House_Interior_4.png",
+            "note": "Bombelli House in Cadaques."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-1-2.png",
+            "x": 51.324,
+            "y": 2.794,
+            "w": 42,
+            "h": 45.796,
+            "name": "Bombelli_House_Interior_5.png",
+            "note": "Bombelli House in Cadaques."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-1-3.png",
+            "x": 6.324,
+            "y": 2.721,
+            "w": 42,
+            "h": 44.926,
+            "name": "Bombelli_House_Interior_1.png",
+            "note": "Bombelli House in Cadaques."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-1-4.png",
+            "x": 6.324,
+            "y": 46.103,
+            "w": 42,
+            "h": 45.341,
+            "name": "Bombelli_House_Interior_3.png",
+            "note": "Bombelli House in Cadaques."
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>In their work, you can’t break the architect’s intention. Every bench is placed perfectly because of the alleyway or the kitchen’s orientation. It’s mesmerizing. This intentionality is reflected in the town as a whole, where the palette is dominated by white houses and pops of Majorelle blue. It creates a “conversation pit” vibe, a sense of social intimacy that we’ve missed for a long time.<br></p>\n<p><br></p>\n<p>What makes this even more important for a community is how the architecture respects its surroundings. After watching Vinceeh talk about <i>lotissement</i>, I realized how much the architecture of Cadaqués hits me because of its honesty. They only use materials available nearby: rocks, sand, and trees. They use local furniture and local materials. Instead of destroying the big rock that the town sits on, they incorporate it into the structures, letting it hold the weight or become part of the walls. They don’t hide the terrain; they make it the hero. It makes the house feel like it belongs to Cadaqués, rather than just being something random dropped onto the land.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/cadaqu-s-ux-architecture/board-2.png",
+      "alt": "Cadaqués UX Architecture",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-2-1.png",
+            "x": 53.309,
+            "y": 2.353,
+            "w": 42,
+            "h": 44.303,
+            "name": "Casa Bordeaux-Groult_Bombelli&Harnden.png",
+            "note": "Casa Fasquelle by Bombelli & Harnden."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-2-2.png",
+            "x": 56.029,
+            "y": 47.059,
+            "w": 36.691,
+            "h": 39,
+            "name": "Casa Fasquelle_Bombelli&Harnden_2.png",
+            "note": "Casa Fasquelle by Bombelli & Harnden."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-2-3.png",
+            "x": 3.75,
+            "y": 2.279,
+            "w": 42,
+            "h": 55.513,
+            "name": "Bombelli_House_Interior_6.png",
+            "note": "Bombelli House in Cadaques."
+          }
+        ]
+      }
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/cadaqu-s-ux-architecture/board-3.png",
+      "alt": "Cadaqués UX Architecture",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-3-1.png",
+            "x": 50,
+            "y": 5.662,
+            "w": 42,
+            "h": 30.112,
+            "name": "Casa Fasquelle_Bombelli&Harnden_3.png",
+            "note": "Casa Fasquelle by Bombelli & Harnden."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-3-2.png",
+            "x": 4.485,
+            "y": 8.75,
+            "w": 42,
+            "h": 31.095,
+            "name": "Casa Fasquelle_Bombelli&Harnden.png",
+            "note": "Casa Fasquelle by Bombelli & Harnden."
+          },
+          {
+            "src": "/curation/media/cadaqu-s-ux-architecture/board-3-3.png",
+            "x": 25.515,
+            "y": 50,
+            "w": 48.984,
+            "h": 35.996,
+            "name": "Casa Bordeaux-Groult_Bombelli&Harnden_2.png",
+            "note": "Casa Fasquelle by Bombelli & Harnden."
+          }
+        ]
+      }
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3",
+      "fr": {
+        "text": "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+      }
+    }
+  ],
+  "feed": "/curation/media/cadaqu-s-ux-architecture/board-1-1.png",
+  "song": {
+    "src": "https://www.youtube.com/watch?v=Kkrb4h4weW4",
+    "title": "Louis Prima Just A Gigolo I Ain't Got Nobody",
+    "artist": "Temo Jincharadze"
+  },
+  "fr": {},
+  "langs": [
+    "en",
+    "fr"
+  ],
+  "no": 7
+}
