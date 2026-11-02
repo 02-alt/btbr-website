@@ -1,5 +1,20 @@
 [
   {
+    "slug": "cadaqu-s-ux-architecture",
+    "no": 7,
+    "title": "Cadaqués UX Architecture",
+    "author": "Isaaaaaaaac",
+    "date": "2026-11-02",
+    "cover": "/curation/media/cadaqu-s-ux-architecture/board-1-1.png",
+    "desc": "Why Cadaqués makes sense.",
+    "langs": [
+      "en",
+      "fr"
+    ],
+    "feed": "/curation/media/cadaqu-s-ux-architecture/board-1-1.png",
+    "fr": {}
+  },
+  {
     "slug": "are-na",
     "no": 6,
     "title": "Are.na",
