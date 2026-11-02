@@ -147,9 +147,38 @@
     return w.parts.reduce(function (s, p) { mctx.font = font(size, family, p.i); return s + mctx.measureText(p.t).width; }, 0);
   }
   // greedy wrap; a lone last word pulls its neighbour down with it (no widows)
+  // a source line for a picture, where links can't be clicked: "What it is — site.com", never a raw address
+  function sourceLine(l) {
+    var m = l.match(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)+\/\S*/i);
+    if (!m) return l;
+    var url = m[0].replace(/[).,;]+$/, ""), label = (l.slice(0, m.index) + l.slice(m.index + m[0].length)).replace(/\s+/g, " ").replace(/[\s:—–\-|·]+$/, "").replace(/^[\s:—–\-|·]+/, "").trim();
+    var bits = url.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split(/[?#]/)[0].split("/"), host = bits[0];
+    if (!label) {
+      if (/youtu\.?be/i.test(host)) label = "YouTube video";
+      else {
+        var seg = bits.slice(1).filter(function (x) { return /[a-z]{3,}/i.test(x) && !/^(index|produit|product|p|post|posts|article|articles)$/i.test(x); }).pop() || "";
+        seg = decodeURIComponent(seg).replace(/\.[a-z]{2,5}$/i, "").replace(/[-_+]+/g, " ").trim();
+        if (seg) label = seg.charAt(0).toUpperCase() + seg.slice(1);
+      }
+    }
+    return label ? label + " \u2014 " + host : host;
+  }
   function wrap(words, size, family, maxW) {
     mctx.font = font(size, family); var sp = mctx.measureText(" ").width;
     var lines = [], cur = [], cw = 0;
+    // a word wider than the line (a long address…) is cut into pieces that fit
+    words = words.reduce(function (out, w) {
+      if (w.br || wordW(w, size, family) <= maxW || w.parts.length !== 1) { out.push(w); return out; }
+      var t = w.parts[0].t, it = w.parts[0].i, piece = "";
+      mctx.font = font(size, family, it);
+      for (var c = 0; c < t.length; c++) {
+        if (piece && mctx.measureText(piece + t[c]).width > maxW) { out.push({ parts: [{ t: piece, i: it }] }); piece = ""; }
+        piece += t[c];
+      }
+      if (piece) out.push({ parts: [{ t: piece, i: it }] });
+      mctx.font = font(size, family);
+      return out;
+    }, []);
     words.forEach(function (w) {
       if (w.br) { lines.push(cur); cur = []; cur.gap = !!w.para; cw = 0; return; }
       var ww = wordW(w, size, family);
@@ -463,7 +492,7 @@
       wall(ctx);
       var items = String(topic.inspiration || "").split(/\n+/).map(function (l) { return l.trim(); })
         .filter(function (l) { return l && !/^(inspirations?|sources?)\s*:?$/i.test(l); })
-        .map(function (l) { return /^https?:\/\//.test(l) ? l.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : l; });
+        .map(sourceLine);
       var cw = W - 2 * M, size = 30, lh = size * 1.4, innerW = cw - 2 * 56 - 70;
       var rows = items.map(function (t) { return wrap(plainRuns(t), size, SANS, innerW); });
       var ch = 52 + 60 + rows.reduce(function (s, r) { return s + r.length * lh + 34; }, 0) + 36, cy = Math.max(60, (H - FOOT - ch) / 2);
