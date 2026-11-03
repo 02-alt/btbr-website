@@ -1,0 +1,131 @@
+{
+  "slug": "the-frankenstein-era",
+  "title": "The Frankenstein Era",
+  "author": "Isaaaaaaaac",
+  "date": "2026-11-03",
+  "cover": "/curation/media/the-frankenstein-era/board-1-1.png",
+  "desc": "The Death of a Vision.",
+  "inspiration": "Mods merging : https://www.indiekings.com/2026/10/modders-are-now-merging-whole-games.html\n\nDevelopment games decompilation : https://gambiconf.substack.com/p/development-journey-on-game-decompilation\n\nDecompile games : https://armada.risk3sixty.com/blog/reverse-engineering-commercial-video-game-ai-cheat-part-1/",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>We are entering the “Frankenstein Era” of gaming. For decades, games were walled gardens, finished products we were invited to inhabit. But AI-assisted decompilation is dismantling those walls. By cannibalizing the DNA of old titles, the community is moving from being consumers to being architects.</p>\n<p><br></p>\n<p>Take the Skate 3 rebellion. While the corporate version is a microtransaction-heavy “service,” the community is decompressing the original game to build a permanent, offline home. They are importing maps, garments, and mechanics from across the digital landscape. This isn’t just modding; it’s a shift in labor. When AI allows a community to rebuild a game’s “UX of Living” more effectively than the company can sell it, the monopoly on fun begins to crack.</p>\n<p><br></p>\n<p>But there is a danger in this democratization.</p>\n<p><br></p>\n<p>I don’t want a game made by a committee. I don’t want a “shared vision” where every user puts a piece of their own ego into the machine until the original intent is lost. A game that doesn’t make sense is usually a game that changed its vision too many times during production. It’s a Frankenstein of ideas that lost its soul in the middle.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/the-frankenstein-era/board-1.png",
+      "alt": "The Frankenstein Era",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/the-frankenstein-era/board-1-1.png",
+            "x": 6.544,
+            "y": 4.485,
+            "w": 56.25,
+            "h": 38.115,
+            "name": "Screenshot 2026-11-03 at 14.26.58.png",
+            "note": "Elden Ring in Minecraft"
+          },
+          {
+            "src": "/curation/media/the-frankenstein-era/board-1-2.png",
+            "x": 44.118,
+            "y": 43.309,
+            "w": 50.294,
+            "h": 40.422,
+            "name": "Screenshot 2026-11-03 at 14.28.44.png",
+            "note": "Minecraft in Skate"
+          }
+        ]
+      }
+    },
+    {
+      "type": "video",
+      "src": "https://www.youtube.com/watch?v=TmgAK5JjcDM",
+      "caption": "",
+      "frame": false
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>Modding, for me, is a distraction. It’s a few hours of fun, but it’s hollow. Seeing a SpongeBob costume on a realistic New York map isn’t an experience; it’s a mess. I don’t want to be sold a “sandbox” where I have to do the work of imagining the world. I want to be sold a vision.</p>\n<p><br></p>\n<p>I want to see the people behind the curtain, the creators like Kojima, Naughty Dog, or Remedy, who have the guts to stick to a singular, uncompromising idea. I want to see a game that says something. Even if that vision doesn’t touch me, I want it to be true to someone. I want to understand why it was made and what it’s trying to say.</p>\n<p><br></p>\n<p>We are moving toward a world where games are designed for “player counts” and “monetization” rather than “meaning.” In that world, the community-built Frankenstein is a survival tactic. But I’m still waiting for the masterpiece: a finished thought, a singular vision, a world that was built by someone who actually had something to say.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/the-frankenstein-era/board-2.png",
+      "alt": "The Frankenstein Era",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/the-frankenstein-era/board-2-1.png",
+            "x": 3.015,
+            "y": 2.794,
+            "w": 42,
+            "h": 30.083,
+            "name": "Remedy Games.jpg",
+            "note": "Remedy Games"
+          },
+          {
+            "src": "/curation/media/the-frankenstein-era/board-2-2.png",
+            "x": 54.485,
+            "y": 4.853,
+            "w": 42,
+            "h": 25.744,
+            "name": "Kojima Prod.jpg",
+            "note": "Kojima Productions"
+          },
+          {
+            "src": "/curation/media/the-frankenstein-era/board-2-3.png",
+            "x": 54.559,
+            "y": 60.735,
+            "w": 42,
+            "h": 25.744,
+            "name": "Bungie.jpg",
+            "note": "Bungie"
+          },
+          {
+            "src": "/curation/media/the-frankenstein-era/board-2-4.png",
+            "x": 6.25,
+            "y": 59.559,
+            "w": 42,
+            "h": 23.14,
+            "name": "naughty-dog-1862897833.jpg",
+            "note": "Naughty Dog"
+          },
+          {
+            "src": "/curation/media/the-frankenstein-era/board-2-5.png",
+            "x": 30.662,
+            "y": 27.5,
+            "w": 38.676,
+            "h": 40.488,
+            "name": "Screenshot 2026-11-03 at 14.30.28.png",
+            "note": "Camino TV - French Creators"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>To get there, we need a shift in our own culture. We are constantly asking for “more,” moving to the next title two weeks after the last one drops. We’ve become needy. I want us to have a global understanding of the culture, to be less harsh and more patient. We need to understand how the market works, how the companies function, and what it actually takes to build these worlds.</p>\n<p><br></p>\n<p>I want us to find a way to pause. To stop demanding the “new” and start understanding the “now.” I want to help people see the machinery behind the screen, so we can appreciate the craft instead of just consuming the content. For this, I want people to look at what a group like Camino TV is doing. They explain the “how” and the “why” of the industry, and that is the kind of cultural literacy we need to move from being demanding consumers to being informed observers.</p>"
+    }
+  ],
+  "feed": "/curation/media/the-frankenstein-era/board-1-1.png",
+  "song": {
+    "src": "https://www.youtube.com/watch?v=iI13QgB-lHs",
+    "title": "Litanic Cloth Wrung",
+    "artist": "Kali Malone",
+    "album": "The Sacrificial Code",
+    "art": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/fb/be/0f/fbbe0fc3-82c3-6ff1-d25b-e74e35db4bc0/45064.jpg/600x600bb.jpg"
+  },
+  "langs": [
+    "en"
+  ],
+  "no": 8
+}
