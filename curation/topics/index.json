@@ -1,5 +1,20 @@
 [
   {
+    "slug": "the-frankenstein-era",
+    "no": 8,
+    "title": "The Frankenstein Era",
+    "author": "Isaaaaaaaac",
+    "date": "2026-11-03",
+    "cover": "/curation/media/the-frankenstein-era/board-1-2.png",
+    "desc": "The Death of a Vision.",
+    "langs": [
+      "en",
+      "fr"
+    ],
+    "feed": "/curation/media/the-frankenstein-era/board-1-2.png",
+    "fr": {}
+  },
+  {
     "slug": "cadaqu-s-ux-architecture",
     "no": 7,
     "title": "Cadaqués UX Architecture",
