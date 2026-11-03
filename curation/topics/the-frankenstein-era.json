@@ -114,6 +114,13 @@
       "type": "text",
       "head": false,
       "html": "<p>To get there, we need a shift in our own culture. We are constantly asking for “more,” moving to the next title two weeks after the last one drops. We’ve become needy. I want us to have a global understanding of the culture, to be less harsh and more patient. We need to understand how the market works, how the companies function, and what it actually takes to build these worlds.</p>\n<p><br></p>\n<p>I want us to find a way to pause. To stop demanding the “new” and start understanding the “now.” I want to help people see the machinery behind the screen, so we can appreciate the craft instead of just consuming the content. For this, I want people to look at what a group like Camino TV is doing. They explain the “how” and the “why” of the industry, and that is the kind of cultural literacy we need to move from being demanding consumers to being informed observers.</p>"
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3",
+      "fr": {
+        "text": "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+      }
     }
   ],
   "feed": "/curation/media/the-frankenstein-era/board-1-2.png",
@@ -124,8 +131,10 @@
     "album": "The Sacrificial Code",
     "art": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/fb/be/0f/fbbe0fc3-82c3-6ff1-d25b-e74e35db4bc0/45064.jpg/600x600bb.jpg"
   },
+  "fr": {},
   "langs": [
-    "en"
+    "en",
+    "fr"
   ],
   "no": 8
 }

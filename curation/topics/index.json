@@ -8,9 +8,11 @@
     "cover": "/curation/media/the-frankenstein-era/board-1-2.png",
     "desc": "The Death of a Vision.",
     "langs": [
-      "en"
+      "en",
+      "fr"
     ],
-    "feed": "/curation/media/the-frankenstein-era/board-1-2.png"
+    "feed": "/curation/media/the-frankenstein-era/board-1-2.png",
+    "fr": {}
   },
   {
     "slug": "cadaqu-s-ux-architecture",
