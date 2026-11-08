@@ -910,9 +910,12 @@
     var desc = String(loc(t, "desc") || "").trim().replace(/[.,;:]+$/, ""), date = curDate(t.date);
     var tail = [desc, date].filter(Boolean), title = esc(loc(t, "title"));
     return '<span class="cur-author">' + esc(t.author || "") + ",</span> "
-      + (asButton ? '<h2 class="cur-title"><button class="cur-open" type="button">' + title + "</button>"
-                  : '<h2 class="cur-title" id="curRoomTitle">' + title)
-      + (tail.length ? "," : "") + "</h2> "
+      // a <button> is always an atomic inline-block (even with all: unset), so a comma
+      // after it can't share the title's last line — it goes inside instead
+      + (asButton ? '<h2 class="cur-title"><button class="cur-open" type="button">' + title
+                    + (tail.length ? '<span aria-hidden="true">,</span>' : "") + "</button>"
+                  : '<h2 class="cur-title" id="curRoomTitle">' + title + (tail.length ? "," : ""))
+      + "</h2> "
       + (desc ? '<span class="cur-desc">' + esc(desc) + (date ? "," : "") + "</span> " : "")
       + (date ? '<time datetime="' + esc(t.date) + '">' + date + "</time>" : "");
   }

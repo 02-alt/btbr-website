@@ -1263,6 +1263,7 @@ body:has(.curation-frame) { background: #e6e4e6; }
 .cur-author { display: block; }
 .cur-title { display: inline; font: inherit; letter-spacing: inherit; }
 .cur-desc { color: inherit; }
+.cur-text time, .cur-label time { white-space: nowrap; } /* "8 November 2026" never splits */
 /* the title is the card's button; its ::after covers both objects */
 .cur-open { all: unset; cursor: pointer; }
 .cur-open::after {
