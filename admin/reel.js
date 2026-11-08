@@ -423,14 +423,26 @@
     var startAt = now, begin = performance.now(), my = ++run;
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     if (ac.state === "suspended") ac.resume();
-    if (!(o && o.silent)) soundtrack().then(function (buf) {
-      if (!playing || my !== run) return;
-      node = ac.createBufferSource(); node.buffer = buf; node.connect(ac.destination);
-      t0 = ac.currentTime - now; node.start(0, now);
-    });
+    var silent = o && o.silent, withYt = !silent && ytOn(), waiting = withYt, frames = 0;
+    function sound() {
+      if (silent) return;
+      soundtrack().then(function (buf) {
+        if (!playing || my !== run) return;
+        node = ac.createBufferSource(); node.buffer = buf; node.connect(ac.destination);
+        t0 = ac.currentTime - now; node.start(0, now);
+      });
+    }
+    if (withYt) ytPlay(now); else sound();
     (function loop() {
+      // with a YouTube song, the walk waits for it to start, then sets off with it
+      if (waiting) {
+        if (my !== run) return;
+        if (ytPlaying() || performance.now() - begin > 4000) { waiting = false; begin = performance.now(); sound(); }
+        else { raf = requestAnimationFrame(loop); return; }
+      }
       // the picture follows the sound once it's playing, the wall clock until then
       now = node && ac ? ac.currentTime - t0 : startAt + (performance.now() - begin) / 1000;
+      if (withYt && ++frames % 30 === 0) ytSync(now);
       if (now >= scene.dur) { now = scene.dur; paint(); stop(); if (rec) rec.stop(); return; }
       paint(); raf = requestAnimationFrame(loop);
     })();
@@ -438,6 +450,7 @@
   function stop() {
     playing = false; cancelAnimationFrame(raf); $("phone").classList.remove("is-playing"); $("play").setAttribute("aria-label", "Play");
     if (node) { try { node.stop(); } catch (e) {} node.disconnect(); node = null; }
+    ytPause();
   }
   function wireTransport() {
     $("play").addEventListener("click", function () { if (rec) { rec.stop(); return; } playing ? stop() : play(); });
@@ -618,7 +631,7 @@
     $("audioNote").textContent = "Reading the audio…";
     return decode(blob).then(function (buf) {
       user = { id: user.id + 1, buf: buf };
-      reel.audio = Object.assign({ vol: 0.8, start: 0 }, meta);
+      reel.audio = Object.assign({ vol: 0.8, start: 0 }, meta); reel.yt = null; ytPause(); ytUI();
       return idbDo("readwrite", function (st) { return st.put(blob, topic.slug); }).catch(function () {});
     }).then(function () { audioUI(); changed(true); })
       .catch(function () { $("audioNote").textContent = "Couldn’t read that file. Try an MP3, M4A or WAV."; });
@@ -626,7 +639,7 @@
   function audioUI() {
     var a = reel.audio, has = !!(a && user.buf);
     $("audioBox").hidden = !has;
-    if (!rec) $("audioNote").textContent = has ? (a.voice ? "Your voice plays from the start of the walk." : "The music fades out at the end of the walk.")
+    if (!rec && !reel.yt) $("audioNote").textContent = has ? (a.voice ? "Your voice plays from the start of the walk." : "The music fades out at the end of the walk.")
       : "Add your song here to have it in the file, or add it later in Instagram.";
     if (!has) return;
     $("audioName").textContent = a.name;
@@ -669,6 +682,76 @@
     $("audioStart").addEventListener("input", function () { reel.audio.start = +$("audioStart").value; $("audioStartOut").textContent = fmt(reel.audio.start); });
     $("audioStart").addEventListener("change", function () { changed(true); });
   }
+  /* ---------- a YouTube song: heard in the preview, in time with the walk — never in the file
+     (the browser can't read YouTube's audio, and the song belongs to its owner: in Instagram,
+     add it from the music library, from the same second) ---------- */
+  var yt = { player: null, ready: false, id: "", title: "", dur: 0, api: null };
+  function ytId(u) { var m = String(u || "").match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/); return m ? m[1] : ""; }
+  function ytT(u) { var m = String(u || "").match(/[?&#]t=(?:(\d+)h)?(?:(\d+)m)?(\d+)s?/); return m ? (+(m[1] || 0)) * 3600 + (+(m[2] || 0)) * 60 + (+m[3]) : 0; }
+  function parseTime(v) { var p = String(v).trim().split(":").map(Number); if (p.some(isNaN)) return null; return p.reduce(function (a, b) { return a * 60 + b; }, 0); }
+  function ytOn() { return !!(reel.yt && yt.ready && yt.id && yt.id === ytId(reel.yt.url)); }
+  function ytPlaying() { try { return yt.player.getPlayerState() === 1; } catch (e) { return false; } }
+  function ytPlay(t) { if (!ytOn()) return; yt.player.setVolume(reel.yt.vol); yt.player.seekTo(reel.yt.start + t, true); yt.player.playVideo(); }
+  function ytPause() { if (yt.player && yt.ready) try { yt.player.pauseVideo(); } catch (e) {} }
+  function ytSync(t) {                                                      // keep it with the picture
+    if (!ytPlaying()) return; var want = reel.yt.start + t;
+    if (Math.abs(yt.player.getCurrentTime() - want) > 0.3) yt.player.seekTo(want, true);
+  }
+  function ytApi() {
+    if (!yt.api) yt.api = new Promise(function (res) {
+      if (window.YT && YT.Player) return res();
+      var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function () { if (prev) prev(); res(); };
+      var sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc);
+    });
+    return yt.api;
+  }
+  function ytLoad() {
+    var id = reel.yt && ytId(reel.yt.url);
+    if (!id || id === yt.id) return;
+    yt.id = id; yt.title = ""; yt.dur = 0; ytUI();
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
+      .then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { if (yt.id === id) { yt.title = j.title || ""; ytUI(); } }).catch(function () {});
+    ytApi().then(function () {
+      function dur() { var d = yt.player.getDuration(); if (d) { yt.dur = d; ytUI(); } }
+      if (yt.player) { yt.player.cueVideoById({ videoId: id, startSeconds: reel.yt.start }); setTimeout(dur, 1500); return; }
+      yt.player = new YT.Player("ytPlayer", { width: 240, height: 135, videoId: id,
+        playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0 },
+        events: { onReady: function () { yt.ready = true; dur(); ytUI(); }, onStateChange: dur } });
+    });
+  }
+  function ytName() { var song = topic.song || {}; return yt.title || (ytId(song.src) === yt.id && song.title) || "YouTube"; }
+  function ytUI() {
+    var y = reel.yt; $("ytBox").hidden = !y;
+    if (!y) { if (!reel.audio && !rec) audioUI(); return; }
+    if (document.activeElement !== $("ytUrl")) $("ytUrl").value = y.url;
+    $("ytName").textContent = ytName();
+    $("ytStart").max = Math.max(60, Math.floor(yt.dur || 600)); $("ytStart").value = y.start;
+    if (document.activeElement !== $("ytStartTxt")) $("ytStartTxt").value = fmt(y.start);
+    $("ytVol").value = y.vol; $("ytVolOut").textContent = y.vol + "%";
+    $("audioNote").textContent = !ytId(y.url) ? "Paste a YouTube link." : "Plays in the preview only. In Instagram, add “" + ytName() + "” from " + fmt(y.start) + ".";
+  }
+  function wireYt() {
+    $("addYt").addEventListener("click", function () {
+      if (reel.yt) { $("ytUrl").focus(); return; }
+      var song = topic.song && topic.song.src || "";
+      if (reel.audio) { reel.audio = null; user = { id: user.id + 1, buf: null }; idbDo("readwrite", function (st) { return st.delete(topic.slug); }).catch(function () {}); audioUI(); }
+      reel.yt = { url: song, start: ytT(song), vol: 80 }; ytUI(); ytLoad(); changed(true);
+      if (!song) $("ytUrl").focus();
+    });
+    $("rmYt").addEventListener("click", function () { ytPause(); reel.yt = null; ytUI(); audioUI(); changed(true); });
+    $("ytUrl").addEventListener("change", function () {
+      var u = $("ytUrl").value.trim(); reel.yt.url = u; reel.yt.start = ytT(u); ytLoad(); ytUI(); changed(true);
+    });
+    $("ytStart").addEventListener("input", function () { reel.yt.start = +$("ytStart").value; ytUI(); });
+    $("ytStart").addEventListener("change", function () { persist(); if (playing) { stop(); play(); } });
+    $("ytStartTxt").addEventListener("change", function () {
+      var v = parseTime($("ytStartTxt").value); if (v != null) reel.yt.start = Math.max(0, v); $("ytStartTxt").value = fmt(reel.yt.start); ytUI(); persist();
+      if (playing) { stop(); play(); }
+    });
+    $("ytVol").addEventListener("input", function () { reel.yt.vol = +$("ytVol").value; ytUI(); if (yt.player && yt.ready) yt.player.setVolume(reel.yt.vol); });
+    $("ytVol").addEventListener("change", persist);
+  }
+
   function restoreAudio() {
     if (!reel.audio) return Promise.resolve();
     return idbDo("readonly", function (st) { return st.get(topic.slug); }).then(function (blob) {
@@ -720,7 +803,8 @@
             note.textContent = "Done."; return navigator.share({ files: [file] }).catch(function () { save(file, file.name); });
           }
           save(file, file.name);
-          note.textContent = "Saved " + file.name + " (" + (file.size / 1048576).toFixed(1) + " MB)" + (ok[1] ? "" : " — without sound, this browser can’t encode AAC") + ".";
+          note.textContent = "Saved " + file.name + " (" + (file.size / 1048576).toFixed(1) + " MB)" + (ok[1] ? "" : " — without sound, this browser can’t encode AAC") + "."
+            + (reel.yt && ytId(reel.yt.url) ? " The YouTube song isn’t in the file: in Instagram, add “" + ytName() + "” from " + fmt(reel.yt.start) + "." : "");
         });
       });
     }).catch(function (e) { note.textContent = "Couldn’t export: " + (e && e.message || e); })
@@ -747,7 +831,7 @@
         return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); })); });
       });
     }).then(function () {
-      sizeView(); settings(); wireTransport(); wireEditor(); wireAudio();
+      sizeView(); settings(); wireTransport(); wireEditor(); wireAudio(); wireYt(); ytUI(); ytLoad();
       build(); ticks(); list(); inspector(); now = 0; paint();
       $("count").textContent = fmt(scene.dur) + " · " + reel.stops.length + " stops";
       $("export").addEventListener("click", exportVideo);
