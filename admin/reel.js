@@ -14,13 +14,28 @@
   var YAW = 5;                             // while walking, eyes run this many degrees ahead
   var RAMP = 0.85;                         // seconds to get up to pace, and to come to a halt
   var PACE = { slow: 600, normal: 750, brisk: 900 };
-  var STRIDE = 440;                        // wall travelled per footstep at normal pace
+  var STRIDE = 440;                        // ground covered per footstep at normal pace
+  var LEAN = 700;                          // how much closer the visitor steps to a photo they lean in to
+  // the light in the room: wall, floor and skirting colours; light pools; the window's daylight; how dark it is
+  var MOODS = {
+    day: { wall: ["#e4e2e4", "#e1dfe1", "#d9d7d9"], floor: ["#c9c5c3", "#d1cdcb", "#d7d4d2"], base: "#d2cfd0", pool: 0.4,
+      sun: ["rgba(255,249,238,0.62)", "rgba(255,249,238,0.42)"], sunSkew: -24, sunTop: -760,
+      ink: "#151315", small: "#8f8c90", pillar: ["#b9b6b8", "#cbc8ca", "#d3d0d2", "#c4c1c3"] },
+    evening: { wall: ["#ded7d1", "#d9d1cb", "#cec5bf"], floor: ["#b9aea6", "#c3b8b0", "#cbc1b9"], base: "#c8beb7", pool: 0.25,
+      sun: ["rgba(255,216,176,0.5)", "rgba(255,208,166,0.34)"], sunSkew: -42, sunTop: -470, grade: "rgba(255,150,70,0.2)",
+      ink: "#1d1715", small: "#8c8079", pillar: ["#a89c95", "#bcb0a8", "#c6bab2", "#b3a79f"] },
+    night: { wall: ["#5b585a", "#545153", "#49464a"], floor: ["#363334", "#3e3a3b", "#454142"], base: "#3d3a3b", pool: 0, dark: 0.62,
+      ink: "#f1eff1", small: "#b4b1b5", pillar: ["#252324", "#2f2c2e", "#353233", "#2a2829"] },
+    white: { wall: ["#f7f6f7", "#f4f3f4", "#ecebec"], floor: ["#e2e0df", "#e8e6e5", "#edecea"], base: "#e7e5e6", pool: 0.2,
+      ink: "#151315", small: "#8f8c90", pillar: ["#dcdadb", "#e8e6e7", "#efedee", "#e2e0e1"] }
+  };
   var SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   var SITE = "builtoberemembered.com";
 
   var q = new URLSearchParams(location.search);
   var slug = q.get("t") || "";
   var topic = null, reel = null, scene = null, sel = 0;
+  var user = { id: 0, buf: null };          // your file or voice, decoded
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- loading ---------- */
@@ -90,7 +105,7 @@
       stops.splice(Math.min(stops.length, 3), 0, { kind: "text", size: "M", hold: 2.6, text: "“" + b.text.trim() + "”", small: b.cite || "" });
     });
     stops.push({ kind: "text", size: "L", hold: 1.6, text: "Read it on\n" + SITE, small: noLine() + " — " + topic.title });
-    return { v: 1, stops: stops, pace: "normal", steps: true, sun: true, pillars: true };
+    return { v: 1, stops: stops, pace: "normal", mood: "day", steps: true, sun: true, pillars: true, audio: null };
   }
   var KEY = function () { return "btbr-reel:" + topic.slug; };
   function persist() { try { localStorage.setItem(KEY(), JSON.stringify(reel)); } catch (e) {} }
@@ -136,9 +151,17 @@
       items.push(it);
     });
     // the walk: hold, ease up to pace, walk, ease to a halt, hold …
-    var V = PACE[reel.pace] || PACE.normal, X = [], R = 240, holds = [];
-    function hold(xx, secs) { holds.push(X.length / R); for (var k = 0; k < secs * R; k++) X.push(xx); }
-    hold(items[0].x, reel.stops[0].hold);
+    var V = PACE[reel.pace] || PACE.normal, X = [], Z = [], R = 240, holds = [];
+    // standing in front of a stop; leaning in steps toward the photo itself (not the label) and back
+    function hold(it, secs) {
+      holds.push(X.length / R);
+      var lean = it.stop.kind === "photo" && it.stop.lean, shift = lean ? (it.fw - it.total) / 2 : 0, rr = Math.min(1.1, secs * 0.38);
+      for (var k = 0; k < secs * R; k++) {
+        var tt = k / R, p = lean ? Math.max(0, Math.min(1, tt / rr, (secs - tt) / rr)) : 0, e = (1 - Math.cos(Math.PI * p)) / 2;
+        X.push(it.x + shift * e); Z.push(LEAN * e);
+      }
+    }
+    hold(items[0], reel.stops[0].hold);
     for (var i = 0; i + 1 < items.length; i++) {
       var D0 = items[i + 1].x - items[i].x, tc = Math.max(0, (D0 - V * RAMP) / V), T2 = 2 * RAMP + tc;
       for (var k = 1; k <= T2 * R; k++) {
@@ -146,15 +169,15 @@
         if (t < RAMP) d = V * (t / 2 - RAMP / (2 * Math.PI) * Math.sin(Math.PI * t / RAMP));
         else if (t < RAMP + tc) d = V * RAMP / 2 + V * (t - RAMP);
         else { var u = T2 - t; d = D0 - V * (u / 2 - RAMP / (2 * Math.PI) * Math.sin(Math.PI * u / RAMP)); }
-        X.push(items[i].x + Math.min(D0, d));
+        X.push(items[i].x + Math.min(D0, d)); Z.push(0);
       }
-      hold(items[i + 1].x, reel.stops[i + 1].hold);
+      hold(items[i + 1], reel.stops[i + 1].hold);
     }
     // pillars stand in the gap after every third stop; daylight falls every few stops
     var pillars = [], suns = [];
     if (reel.pillars) for (var p = 2; p + 1 < items.length; p += 3) pillars.push((items[p].x + items[p + 1].x) / 2);
-    if (reel.sun) for (var sx = 750; sx < x + 800; sx += 4100) suns.push(sx);
-    scene = { items: items, X: X, R: R, V: V, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
+    if (reel.sun && (MOODS[reel.mood] || MOODS.day).sun) for (var sx = 750; sx < x + 800; sx += 4100) suns.push(sx);
+    scene = { items: items, X: X, Z: Z, R: R, V: V, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
   }
   function layoutPhoto(it) {
     var im = it.im, b = im ? bare(im) : { w: 3, h: 2 }, portrait = b.h > b.w;
@@ -166,9 +189,9 @@
   }
   function camAt(t) {
     var X = scene.X, f = Math.max(0, Math.min(X.length - 1, t * scene.R)), i = Math.min(X.length - 2, Math.floor(f));
-    if (i < 0) return { x: X[0] || 0, yaw: 0 };
-    var x = X[i] + (X[i + 1] - X[i]) * (f - i), v = (X[i + 1] - X[i]) * scene.R;
-    return { x: x, yaw: YAW * Math.min(1, v / scene.V) };
+    if (i < 0) return { x: X[0] || 0, yaw: 0, d: D };
+    var x = X[i] + (X[i + 1] - X[i]) * (f - i), v = (X[i + 1] - X[i]) * scene.R, Z = scene.Z;
+    return { x: x, yaw: YAW * Math.max(-1, Math.min(1, v / scene.V)), d: D - (Z[i] + (Z[i + 1] - Z[i]) * (f - i)) };
   }
 
   /* ---------- drawing ----------
@@ -183,9 +206,9 @@
     var g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); return g;
   }
   function render(ctx, t, s) {
-    var c = camAt(t), a = c.yaw * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cx = c.x - D * Math.tan(a);
+    var c = camAt(t), a = c.yaw * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cd = c.d, cx = c.x - cd * Math.tan(a), m = MOODS[reel.mood] || MOODS.day;
     function P(x, y, z) {
-      var dx = x - cx, dz = z - D, dep = dx * sa - dz * ca, xs = dx * ca + dz * sa;
+      var dx = x - cx, dz = z - cd, dep = dx * sa - dz * ca, xs = dx * ca + dz * sa;
       return { x: W / 2 + F * xs / dep, y: H / 2 + F * y / dep, k: F / dep };
     }
     function plane(x, y, z, w, h, fn) {
@@ -199,17 +222,17 @@
     // the wall, then the floor running toward the visitor
     ctx.setTransform(s, 0, 0, s, 0, 0);
     var base = P(c.x, 714, 0).y, gw = ctx.createLinearGradient(0, base - 2420, 0, base);
-    gw.addColorStop(0, "#e4e2e4"); gw.addColorStop(0.6, "#e1dfe1"); gw.addColorStop(1, "#d9d7d9");
+    gw.addColorStop(0, m.wall[0]); gw.addColorStop(0.6, m.wall[1]); gw.addColorStop(1, m.wall[2]);
     ctx.fillStyle = gw; ctx.fillRect(0, 0, W, H);
-    var gf = ctx.createLinearGradient(0, base, 0, H); gf.addColorStop(0, "#c9c5c3"); gf.addColorStop(0.3, "#d1cdcb"); gf.addColorStop(1, "#d7d4d2");
-    ctx.fillStyle = gf; poly(ctx, [P(cx - 3000, 714, 0), P(cx + 3000, 714, 0), P(cx + 400, 714, D - 300), P(cx - 400, 714, D - 300)], 1);
-    plane(cx - 3000, 700, 1, 6000, 14, function () { ctx.fillStyle = "#d2cfd0"; ctx.fillRect(0, 0, 6000, 14); });
+    var gf = ctx.createLinearGradient(0, base, 0, H); gf.addColorStop(0, m.floor[0]); gf.addColorStop(0.3, m.floor[1]); gf.addColorStop(1, m.floor[2]);
+    ctx.fillStyle = gf; poly(ctx, [P(cx - 3000, 714, 0), P(cx + 3000, 714, 0), P(cx + 300, 714, cd - 220), P(cx - 300, 714, cd - 220)], 1);
+    plane(cx - 3000, 700, 1, 6000, 14, function () { ctx.fillStyle = m.base; ctx.fillRect(0, 0, 6000, 14); });
 
     // a soft pool of light behind each piece
-    scene.items.forEach(function (it) {
+    if (m.pool) scene.items.forEach(function (it) {
       plane(it.x - 650, Y - 850, 0.4, 1300, 1700, function () {
         ctx.translate(650, 0.42 * 1700); ctx.scale(1, 1.18);
-        var r = ctx.createRadialGradient(0, 0, 0, 0, 0, 650); r.addColorStop(0, "rgba(255,255,255,0.4)"); r.addColorStop(1, "rgba(255,255,255,0)");
+        var r = ctx.createRadialGradient(0, 0, 0, 0, 0, 650); r.addColorStop(0, "rgba(255,255,255," + m.pool + ")"); r.addColorStop(1, "rgba(255,255,255,0)");
         ctx.fillStyle = r; ctx.fillRect(-650, -650, 1300, 1300);
       });
     });
@@ -218,16 +241,16 @@
     // drawn small and scaled up, which is what softens it
     if (scene.suns.length) {
       var L = 8, lw = Math.ceil(W * s / L), lh = Math.ceil(H * s / L), g = layer("sun", lw, lh), k = s / L, any = false;
-      g.fillStyle = "rgba(255,249,238,0.62)";
-      var t1 = Math.tan(-24 * Math.PI / 180), t2 = Math.tan(6 * Math.PI / 180);
+      g.fillStyle = m.sun[0];
+      var t1 = Math.tan(m.sunSkew * Math.PI / 180), t2 = Math.tan(6 * Math.PI / 180);
       scene.suns.forEach(function (sx) {
         if (Math.abs(sx + 400 - c.x) > 2600) return; any = true;
-        function wp(u, v) { var y1 = v + u * t2; return P(sx + u + y1 * t1, -760 + y1, 0.6); }
+        function wp(u, v) { var y1 = v + u * t2; return P(sx + u + y1 * t1, m.sunTop + y1, 0.6); }
         for (var r = 0; r < 2; r++) for (var q2 = 0; q2 < 3; q2++) {
           var u0 = q2 * 278, v0 = r * 358;
           poly(g, [wp(u0, v0), wp(u0 + 250, v0), wp(u0 + 250, v0 + 330), wp(u0, v0 + 330)], k);
         }
-        g.save(); g.fillStyle = "rgba(255,249,238,0.42)";
+        g.save(); g.fillStyle = m.sun[1];
         for (var f = 0; f < 3; f++) {
           var fx = sx - 520 + f * 278 * 1.1, sk = Math.tan(32 * Math.PI / 180) * 450;
           poly(g, [P(fx - sk, 714, 420), P(fx + 275 - sk, 714, 420), P(fx + 275 + sk, 714, 1320), P(fx + sk, 714, 1320)], k);
@@ -243,9 +266,9 @@
       if (st.kind === "text") {
         var T = it.T, left = it.x - T.w / 2, top = Y - it.h / 2;
         plane(left, top, 1, T.w, it.h, function () {
-          setFont(ctx, T.size, T.track); ctx.fillStyle = "#151315"; ctx.textBaseline = "alphabetic";
+          setFont(ctx, T.size, T.track); ctx.fillStyle = m.ink; ctx.textBaseline = "alphabetic";
           it.lines.forEach(function (ln, i) { ctx.fillText(ln, i === 0 ? -it.hangW : 0, T.size * 0.9 + i * T.size * T.lh); });
-          if (st.small) { setFont(ctx, 26, 0.01); ctx.fillStyle = "#8f8c90"; ctx.fillText(st.small, 0, it.lines.length * T.size * T.lh + 40 + 22); }
+          if (st.small) { setFont(ctx, 26, 0.01); ctx.fillStyle = m.small; ctx.fillText(st.small, 0, it.lines.length * T.size * T.lh + 40 + 22); }
         });
         return;
       }
@@ -269,15 +292,33 @@
       });
     });
 
+    // at night only the pieces are lit: a pool of light from above on each, the rest of the room in shade
+    if (m.dark) {
+      var SL = 8, sw = Math.ceil(W * s / SL), sh = Math.ceil(H * s / SL), sg = layer("shade", sw, sh), kk = s / SL;
+      sg.fillStyle = "rgba(8,6,10," + m.dark + ")"; sg.fillRect(0, 0, sw, sh);
+      sg.globalCompositeOperation = "destination-out";
+      scene.items.forEach(function (it) {
+        var p = P(it.x, Y - 70, 0); if (p.x < -W || p.x > 2 * W) return;
+        var rx = 660 * p.k * kk;
+        sg.save(); sg.translate(p.x * kk, p.y * kk); sg.scale(1, 1.3);
+        var r = sg.createRadialGradient(0, -rx * 0.15, 0, 0, 0, rx);
+        r.addColorStop(0, "rgba(0,0,0,0.97)"); r.addColorStop(0.6, "rgba(0,0,0,0.8)"); r.addColorStop(1, "rgba(0,0,0,0)");
+        sg.fillStyle = r; sg.fillRect(-rx, -rx, 2 * rx, 2 * rx); sg.restore();
+      });
+      sg.globalCompositeOperation = "source-over";
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(sg.canvas, 0, 0, sw * SL, sh * SL); ctx.restore();
+    }
+    if (m.grade) { ctx.save(); ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = m.grade; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+
     // pillars between the visitor and the wall, out of focus (drawn small and scaled up)
     if (scene.pillars.length) {
       var PL = 14, pw2 = Math.ceil(W * s / PL), ph2 = Math.ceil(H * s / PL), pg = null;
       scene.pillars.forEach(function (px) {
         var a0 = P(px, -1986, 1020), a1 = P(px + 210, 714, 1020);
-        if (a1.x < -60 || a0.x > W + 60) return;
+        if (a0.k <= 0 || a0.k > 12 || a1.x < -60 || a0.x > W + 60) return;          // not behind the visitor, nor in their face
         pg = pg || layer("pillar", pw2, ph2);
         var gr = pg.createLinearGradient(a0.x * s / PL, 0, a1.x * s / PL, 0);
-        gr.addColorStop(0, "#b9b6b8"); gr.addColorStop(0.18, "#cbc8ca"); gr.addColorStop(0.6, "#d3d0d2"); gr.addColorStop(1, "#c4c1c3");
+        gr.addColorStop(0, m.pillar[0]); gr.addColorStop(0.18, m.pillar[1]); gr.addColorStop(0.6, m.pillar[2]); gr.addColorStop(1, m.pillar[3]);
         pg.fillStyle = gr; pg.fillRect(a0.x * s / PL, a0.y * s / PL, (a1.x - a0.x) * s / PL, (a1.y - a0.y) * s / PL);
       });
       if (pg) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(pg.canvas, 0, 0, pw2 * PL, ph2 * PL); ctx.restore(); }
@@ -291,8 +332,29 @@
     for (var i = 0; i < d.length; i++) { x = (x * 16807) % 2147483647; d[i] = x / 1073741823.5 - 1; }
     return b;
   }
+  // the walk's sound, then your file or voice laid over it
+  var mixCache = { key: "", buf: null };
   function soundtrack() {
-    var key = JSON.stringify([reel.stops.map(function (s) { return s.hold; }), scene.end, reel.pace, reel.steps]);
+    var a = reel.audio, key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps, a, user.id]);
+    if (mixCache.key === key) return Promise.resolve(mixCache.buf);
+    return walkSound().then(function (base) {
+      if (!a || !user.buf) { mixCache = { key: key, buf: base }; return base; }
+      var SR = base.sampleRate, out = new AudioBuffer({ numberOfChannels: 2, length: base.length, sampleRate: SR });
+      var u = user.buf, off = Math.round((a.start || 0) * SR), fadeIn = Math.round(0.05 * SR), fadeOut = Math.round(1.5 * SR), peak = 0;
+      var steps = reel.steps ? 0.6 : 0;                                      // the footsteps sit under the music
+      for (var ch = 0; ch < 2; ch++) {
+        var o = out.getChannelData(ch), b = base.getChannelData(ch), uc = u.getChannelData(Math.min(ch, u.numberOfChannels - 1));
+        for (var i = 0; i < o.length; i++) {
+          var j = i + off, v = j < uc.length ? uc[j] * a.vol * Math.min(1, i / fadeIn, (o.length - 1 - i) / fadeOut) : 0;
+          o[i] = b[i] * (steps || 1) + v; if (Math.abs(o[i]) > peak) peak = Math.abs(o[i]);
+        }
+      }
+      if (peak > 0.98) for (var c3 = 0; c3 < 2; c3++) { var oc = out.getChannelData(c3); for (var k = 0; k < oc.length; k++) oc[k] *= 0.98 / peak; }
+      mixCache = { key: key, buf: out }; return out;
+    });
+  }
+  function walkSound() {
+    var key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps]);
     if (soundCache.key === key) return Promise.resolve(soundCache.buf);
     var SR = 48000, len = Math.ceil((scene.dur + 0.3) * SR), ac = new OfflineAudioContext(2, len, SR);
     var dry = ac.createGain(), wet = ac.createGain(), verb = ac.createConvolver();
@@ -307,9 +369,10 @@
     air.buffer = noise(ac, scene.dur + 0.3, 3); airF.type = "lowpass"; airF.frequency.value = 180; airG.gain.value = 0.05;
     air.connect(airF); airF.connect(airG); airG.connect(ac.destination); air.start(0);
     if (reel.steps) {
-      var nb = noise(ac, 0.2, 11), stride = STRIDE * scene.V / PACE.normal, next = stride / 2, X = scene.X, n = 0, rnd = 5;
+      var nb = noise(ac, 0.2, 11), stride = STRIDE * scene.V / PACE.normal, next = stride / 2, X = scene.X, Z = scene.Z, n = 0, rnd = 5, walked = 0;
       for (var j = 1; j < X.length; j++) {
-        if (X[j] - X[0] < next) continue;
+        walked += Math.hypot(X[j] - X[j - 1], Z[j] - Z[j - 1]);              // stepping in to a photo and back counts too
+        if (walked < next) continue;
         next += stride; n++;
         var t = j / scene.R; rnd = (rnd * 16807) % 2147483647; var amp = 0.5 * (0.85 + 0.3 * rnd / 2147483647);
         var pan = ac.createStereoPanner(); pan.pan.value = n % 2 ? 0.12 : -0.12; pan.connect(dry);
@@ -354,13 +417,13 @@
     scene.holds.forEach(function (h) { var i = document.createElement("span"); i.className = "tick"; i.style.left = (h / scene.dur * 100) + "%"; sc.appendChild(i); });
   }
   function seek(t) { now = Math.max(0, Math.min(scene.dur, t)); if (playing) { stop(); play(); } else paint(); }
-  function play() {
+  function play(o) {
     if (now >= scene.dur - 0.05) now = 0;
     playing = true; $("phone").classList.add("is-playing"); $("play").setAttribute("aria-label", "Pause");
     var startAt = now, begin = performance.now(), my = ++run;
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     if (ac.state === "suspended") ac.resume();
-    soundtrack().then(function (buf) {
+    if (!(o && o.silent)) soundtrack().then(function (buf) {
       if (!playing || my !== run) return;
       node = ac.createBufferSource(); node.buffer = buf; node.connect(ac.destination);
       t0 = ac.currentTime - now; node.start(0, now);
@@ -368,7 +431,7 @@
     (function loop() {
       // the picture follows the sound once it's playing, the wall clock until then
       now = node && ac ? ac.currentTime - t0 : startAt + (performance.now() - begin) / 1000;
-      if (now >= scene.dur) { now = scene.dur; paint(); stop(); return; }
+      if (now >= scene.dur) { now = scene.dur; paint(); stop(); if (rec) rec.stop(); return; }
       paint(); raf = requestAnimationFrame(loop);
     })();
   }
@@ -377,7 +440,7 @@
     if (node) { try { node.stop(); } catch (e) {} node.disconnect(); node = null; }
   }
   function wireTransport() {
-    $("play").addEventListener("click", function () { playing ? stop() : play(); });
+    $("play").addEventListener("click", function () { if (rec) { rec.stop(); return; } playing ? stop() : play(); });
     var sc = $("scrub");
     function at(e) { var r = sc.getBoundingClientRect(); return (e.clientX - r.left) / r.width * scene.dur; }
     sc.addEventListener("pointerdown", function (e) {
@@ -467,6 +530,10 @@
       box.appendChild(pb);
       field("Label", s.label, true, function (v) { s.label = v; });
       segRow("Size", [["S", "Small"], ["M", "Medium"], ["L", "Large"]], s.size, function (v) { s.size = v; });
+      var lr = document.createElement("div"); lr.className = "row"; lr.innerHTML = '<span>Step closer</span><input class="switch" type="checkbox" role="switch" aria-label="Step closer to this photo" />';
+      var ls = lr.querySelector("input"); ls.checked = !!s.lean;
+      ls.addEventListener("change", function () { s.lean = ls.checked; if (s.lean && s.hold < 2.8) s.hold = 2.8; inspector(); changed(); });
+      box.appendChild(lr);
     } else {
       field("Text", s.text, true, function (v) { s.text = v; });
       field("Small line", s.small || "", false, function (v) { s.small = v; });
@@ -522,7 +589,92 @@
   }
   function settings() {
     seg($("pace"), reel.pace, function (v) { reel.pace = v; changed(true); });
+    function sunRow() { $("sunRow").hidden = !(MOODS[reel.mood] || MOODS.day).sun; }
+    seg($("mood"), reel.mood || "day", function (v) { reel.mood = v; sunRow(); changed(true); }); sunRow();
+    audioUI();
     ["steps", "sun", "pillars"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; changed(true); }; });
+  }
+
+  /* ---------- your audio: a file, or your voice recorded over the walk; kept in this browser ---------- */
+  function idb() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open("btbr-reel", 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore("audio"); };
+      r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); };
+    });
+  }
+  function idbDo(mode, fn) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction("audio", mode), req = fn(tx.objectStore("audio"));
+        tx.oncomplete = function () { res(req && req.result); }; tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function decode(blob) {
+    return blob.arrayBuffer().then(function (ab) { return new OfflineAudioContext(2, 1, 48000).decodeAudioData(ab); });
+  }
+  function useAudio(blob, meta) {
+    $("audioNote").textContent = "Reading the audio…";
+    return decode(blob).then(function (buf) {
+      user = { id: user.id + 1, buf: buf };
+      reel.audio = Object.assign({ vol: 0.8, start: 0 }, meta);
+      return idbDo("readwrite", function (st) { return st.put(blob, topic.slug); }).catch(function () {});
+    }).then(function () { audioUI(); changed(true); })
+      .catch(function () { $("audioNote").textContent = "Couldn’t read that file. Try an MP3, M4A or WAV."; });
+  }
+  function audioUI() {
+    var a = reel.audio, has = !!(a && user.buf);
+    $("audioBox").hidden = !has;
+    if (!rec) $("audioNote").textContent = has ? (a.voice ? "Your voice plays from the start of the walk." : "The music fades out at the end of the walk.")
+      : "Add your song here to have it in the file, or add it later in Instagram.";
+    if (!has) return;
+    $("audioName").textContent = a.name;
+    $("audioVol").value = a.vol; $("audioVolOut").textContent = Math.round(a.vol * 100) + "%";
+    $("audioStartRow").hidden = !!a.voice;
+    $("audioStart").max = Math.max(0, Math.floor(user.buf.duration - 5)); $("audioStart").value = a.start || 0; $("audioStartOut").textContent = fmt(a.start || 0);
+  }
+  var rec = null;
+  function record() {
+    if (rec) { rec.stop(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) { $("audioNote").textContent = "This browser can’t record."; return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (stream) {
+      var chunks = [], mr = new MediaRecorder(stream);
+      rec = mr; $("recAudio").textContent = "Stop"; $("recAudio").classList.add("is-on");
+      $("audioNote").textContent = "Recording — talk over the walk. It stops at the end, or press Stop.";
+      mr.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+      mr.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); }); rec = null; stop();
+        $("recAudio").textContent = "Record"; $("recAudio").classList.remove("is-on");
+        var blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
+        if (blob.size) useAudio(blob, { name: "Your voice", voice: true, vol: 1, start: 0 }); else audioUI();
+      };
+      mr.start(); seek(0); play({ silent: true });                  // the walk plays silently, so the mic hears only you
+    }).catch(function () { $("audioNote").textContent = "Microphone not allowed."; });
+  }
+  function wireAudio() {
+    $("addAudio").addEventListener("click", function () { $("audioFile").click(); });
+    $("audioFile").addEventListener("change", function () {
+      var f = $("audioFile").files[0]; $("audioFile").value = "";
+      if (f) useAudio(f, { name: f.name.replace(/\.[^.]+$/, ""), voice: false });
+    });
+    $("recAudio").addEventListener("click", record);
+    $("rmAudio").addEventListener("click", function () {
+      reel.audio = null; user = { id: user.id + 1, buf: null };
+      idbDo("readwrite", function (st) { return st.delete(topic.slug); }).catch(function () {});
+      audioUI(); changed(true);
+    });
+    $("audioVol").addEventListener("input", function () { reel.audio.vol = +$("audioVol").value; $("audioVolOut").textContent = Math.round(reel.audio.vol * 100) + "%"; });
+    $("audioVol").addEventListener("change", function () { changed(true); });
+    $("audioStart").addEventListener("input", function () { reel.audio.start = +$("audioStart").value; $("audioStartOut").textContent = fmt(reel.audio.start); });
+    $("audioStart").addEventListener("change", function () { changed(true); });
+  }
+  function restoreAudio() {
+    if (!reel.audio) return Promise.resolve();
+    return idbDo("readonly", function (st) { return st.get(topic.slug); }).then(function (blob) {
+      if (!blob) { reel.audio = null; return; }
+      return decode(blob).then(function (buf) { user = { id: user.id + 1, buf: buf }; });
+    }).catch(function () { reel.audio = null; });
   }
 
   /* ---------- export: every frame drawn at full size, encoded with the sound into an MP4 ---------- */
@@ -591,14 +743,16 @@
         });
         $("topicName").textContent = t.title; document.title = "Reel — " + t.title;
         reel = restore() || defaults();
-        return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); }));
+        if (!reel.mood) reel.mood = "day";
+        return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); })); });
       });
     }).then(function () {
-      sizeView(); settings(); wireTransport(); wireEditor();
+      sizeView(); settings(); wireTransport(); wireEditor(); wireAudio();
       build(); ticks(); list(); inspector(); now = 0; paint();
       $("count").textContent = fmt(scene.dur) + " · " + reel.stops.length + " stops";
       $("export").addEventListener("click", exportVideo);
-      window.__reel = { render: render, scene: function () { return scene; }, exportVideo: exportVideo, seek: seek };
+      window.__reel = { render: render, scene: function () { return scene; }, reel: function () { return reel; }, exportVideo: exportVideo, seek: seek,   // dev hooks
+        select: select, changed: changed, useAudio: useAudio, soundtrack: soundtrack };
     }).catch(function (e) { $("count").textContent = "Couldn’t load “" + slug + "”: " + e.message; });
   }
   start();
