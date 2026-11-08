@@ -1,0 +1,200 @@
+{
+  "slug": "the-people-holding-the-city-together",
+  "title": "The People Holding the City Together",
+  "author": "Isaaaaaaaac",
+  "date": "2026-11-08",
+  "cover": "/curation/media/the-people-holding-the-city-together/board-1-1.png",
+  "desc": "People who made the 90s and 2000s move",
+  "inspiration": "Trevor Hughes The Bike Messengers (1992-1998) : https://www.flickr.com/photos/trevorhughes/albums/72157624999460264/\n\nRiding With New York City Bike Messengers In the 1990s ? John Harris : https://flashbak.com/new-york-bik-messengers-1990s-480310/\n\nThe need for speed : https://www.imdb.com/title/tt2651624\n\nPedal (2001) by \nPeter Sutherland",
+  "blocks": [
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>It’s been a couple of months now, a bit more actually, that I’ve been really interested in messengers. At the beginning I only saw them in movies, people riding a bike and just going through the city. Especially New York, when I was a kid. I was watching videos of people cutting through traffic, knowing the city by heart, knowing every little shortcut to deliver something. The movie I had in mind was&nbsp;<em>An Interview with God</em>. There were a lot of moments where the protagonist rides through New York, and it was really mesmerizing.</p><p><br></p><p>Recently I’ve been coming back to it, because I always felt like bike messengers, especially in the 90s and 2000s, were so interesting. First, by the way they dressed. I always felt like the best inspiration you can get comes from people who aren’t interested in fashion at all. People doing a really specific job, and through that job they figure out how to dress to be more useful and more comfortable. Then they end up creating a whole movement and a whole style around what they wear. It was the same with workers wearing Lee, Carhartt or Levi’s back in the day. And I feel like we still have a lot to learn from messengers of the 90s and 2000s. The really baggy fits, the messenger bags, all the accessories clipped on to hold beepers, phones, walkie-talkies. Sometimes it was baggy, sometimes more street, sometimes more formal, because they were going to places in town with a dress code, and sometimes the doorman wouldn’t let them in, so they tried different things.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/the-people-holding-the-city-together/board-1.png",
+      "alt": "The People Holding the City Together",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-1-1.png",
+            "x": 11.029,
+            "y": 10.368,
+            "w": 42,
+            "h": 29.649,
+            "name": "Trevor Hughes 1992-98.webp",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-1-2.png",
+            "x": 50,
+            "y": 4.118,
+            "w": 42,
+            "h": 66.224,
+            "name": "Trevor Hughes 1992-98_3.webp",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-1-3.png",
+            "x": 11.029,
+            "y": 55.882,
+            "w": 42,
+            "h": 30.054,
+            "name": "Trevor Hughes 1992-98 - 2.webp",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-1-4.png",
+            "x": 53.088,
+            "y": 59.338,
+            "w": 42,
+            "h": 29.62,
+            "name": "Trevor Hughes 1992-98_4.png",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>Something really interesting is that every big city that had messengers, New York, San Francisco, Munich, Paris, each had its own really specific style. Specific accessories, a specific way of doing things, specific bikes. It’s something that’s really worth checking out.</p><p><br></p><p>And I think, most importantly, these were the people holding society together. They were outside, riding really fast through the city. It was physically painful, there was the danger of traffic, wrong addresses, constant stress, doormen who wouldn’t let them in, entrances that were hard to find. They had to know the city by heart, because they were carrying signatures that would help someone with a lawyer, help someone build a building, get the papers for their house. They were making sure everyone stayed connected.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/the-people-holding-the-city-together/board-2.png",
+      "alt": "The People Holding the City Together",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-2-1.png",
+            "x": 15.441,
+            "y": 9.044,
+            "w": 42,
+            "h": 29.88,
+            "name": "Trevor Hughes 1992-98_7.png",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-2-2.png",
+            "x": 53.382,
+            "y": 22.426,
+            "w": 42,
+            "h": 29.88,
+            "name": "Trevor Hughes 1992-98_8.png",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-2-3.png",
+            "x": 53.382,
+            "y": 53.676,
+            "w": 42,
+            "h": 29.62,
+            "name": "Trevor Hughes 1992-98_6.png",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-2-4.png",
+            "x": 13.088,
+            "y": 42.426,
+            "w": 42,
+            "h": 29.62,
+            "name": "Trevor Hughes 1992-98_5.png",
+            "note": "The Bike Messengers (1992-1998) - Trevor Hughes"
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "head": false,
+      "html": "<p>John Harris said it better than I can:</p><p>“Messengers and delivery people are still integral to the fabric of our society. They are the thread that connect people and facilitate commerce, yet they are usually undervalued and definitely underpaid.”</p><p><br></p><p>And that’s really true. They’re the people we need the most. Some people understand that. I feel like Hideo Kojima does with&nbsp;<em>Death Stranding</em>, which is about exactly that: when there’s a problem, when we need help, they’re the ones who connect us.</p><p><br></p><p>Today it’s harder to see, because we have DocuSign, we have Gmail, all of that. But those people are still here and still helping. We just see them less and we don’t put enough light on them. I think that’s something we really need to acknowledge.</p><p><br></p><p>They’re also at the beginning of a subculture I’m a big fan of: fixed gear. People sometimes think it mimics skate culture, but it’s really its own culture, and a lot of it comes from the messenger scene of the 90s and 2000s. That idea of riding through the city, dodging traffic. Some of the videos give me this huge feeling of freedom and of facing danger. It’s like an extreme sport, but inside the city, inside the traffic. And it’s really beautiful. I’m definitely going to talk more about it in other posts.</p><p><br></p><p>For now, I invite you to look online. There are documentaries about it.&nbsp;<em>Get the Message</em>&nbsp;is a good one, there’s&nbsp;<em>Pedal</em>&nbsp;from 2001, and there’s&nbsp;<em>The Need for Speed</em>, a 1993 documentary on bicycle messengers in New York, which is a really important one. Go check them out. There’s a lot of inspiration to take from them, and from this messenger community, a lot of whom were really close to each other. It’s really inspiring.</p>"
+    },
+    {
+      "type": "image",
+      "src": "/curation/media/the-people-holding-the-city-together/board-3.png",
+      "alt": "The People Holding the City Together",
+      "caption": "",
+      "inset": false,
+      "board": {
+        "bg": "none",
+        "items": [
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-3-1.png",
+            "x": 50,
+            "y": 10.588,
+            "w": 42,
+            "h": 25.744,
+            "name": "Death Stranding_Messengers.jpg",
+            "note": "Death Stranding_Porters"
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-3-2.png",
+            "x": 4.559,
+            "y": 6.618,
+            "w": 42,
+            "h": 29.996,
+            "name": "Bike_Messenger_NYC_ John Harris_4.png",
+            "note": "Bike Messenger in NYC by John Harris."
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-3-3.png",
+            "x": 6.471,
+            "y": 41.029,
+            "w": 47.206,
+            "h": 34.104,
+            "name": "Bike_Messenger_NYC_ John Harris_2.png",
+            "note": "Bike Messenger in NYC by John Harris."
+          },
+          {
+            "src": "/curation/media/the-people-holding-the-city-together/board-3-4.png",
+            "x": 47.941,
+            "y": 47.5,
+            "w": 47.721,
+            "h": 33.128,
+            "name": "Bike_Messenger_NYC_ John Harris.png",
+            "note": "Bike Messenger in NYC by John Harris."
+          }
+        ]
+      }
+    },
+    {
+      "type": "quote",
+      "text": "Messengers and delivery people are still integral to the fabric of our society. They are the thread that connect people and facilitate commerce, yet they are usually undervalued and definitely underpaid.",
+      "cite": "John Harris"
+    },
+    {
+      "type": "video",
+      "src": "https://www.youtube.com/watch?v=EyitrLKUUJI&list=LL&index=25&t=131s",
+      "caption": "",
+      "wtitle": "Pedal (2001) by  Peter Sutherland"
+    },
+    {
+      "type": "hand",
+      "text": "Thanks for reading,\nSee you on the next one,\n+3",
+      "fr": {
+        "text": "Merci de m'avoir lu,\nOn se retrouve au prochain,\n+3"
+      }
+    }
+  ],
+  "feed": "/curation/media/the-people-holding-the-city-together/board-1-1.png",
+  "song": {
+    "src": "https://www.youtube.com/watch?v=6r91DFjahro",
+    "title": "Doesn’t matter to me demo version - leakyz (SoundCloud)",
+    "artist": "Drake"
+  },
+  "fr": {},
+  "langs": [
+    "en",
+    "fr"
+  ],
+  "no": 9
+}
