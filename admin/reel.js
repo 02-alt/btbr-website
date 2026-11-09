@@ -443,6 +443,33 @@
       });
       if (pg) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(pg.canvas, 0, 0, pw2 * PL, ph2 * PL); ctx.restore(); }
     }
+    if (reel.film) film(ctx, t, s);
+  }
+
+  // film: blacks lifted a touch, a warm cast in the lights and cool in the shade, a soft vignette, and
+  // grain that changes every frame (seeded by the frame, so the preview and the export match)
+  var grainTiles = null;
+  function film(ctx, t, s) {
+    if (!grainTiles) {
+      grainTiles = [];
+      for (var g = 0; g < 8; g++) {
+        var c = document.createElement("canvas"); c.width = c.height = 256;
+        var x = c.getContext("2d"), d = x.createImageData(256, 256), r = 99991 * (g + 1);
+        for (var i = 0; i < d.data.length; i += 4) { r = (r * 16807) % 2147483647; var v = 128 + ((r / 2147483647) - 0.5) * 120; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+        x.putImageData(d, 0, 0); grainTiles.push(c);
+      }
+    }
+    var w = W * s, h = H * s, f = Math.floor(t * 24);                         // grain at film's 24 frames a second
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = "screen"; ctx.fillStyle = "rgb(26,23,22)"; ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = "rgba(255,196,140,0.16)"; ctx.fillRect(0, 0, w, h);
+    var vg = ctx.createRadialGradient(w / 2, h * 0.46, h * 0.28, w / 2, h * 0.46, h * 0.78);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(20,24,34,0.42)");
+    ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+    var tile = grainTiles[f % 8], ox = (f * 97) % 256, oy = (f * 61) % 256, sc = Math.max(1, s * 1.4);
+    ctx.globalCompositeOperation = "overlay"; ctx.globalAlpha = 0.22;
+    ctx.translate(-ox * sc, -oy * sc); ctx.scale(sc, sc); ctx.fillStyle = ctx.createPattern(tile, "repeat"); ctx.fillRect(0, 0, w / sc + 512, h / sc + 512);
+    ctx.restore();
   }
 
   /* ---------- the sound: footsteps every stride while walking, a gallery's echo, low room air ---------- */
@@ -756,7 +783,7 @@
     function sunRow() { $("sunRow").hidden = !(MOODS[reel.mood] || MOODS.day).sun; }
     seg($("mood"), reel.mood || "day", function (v) { reel.mood = v; sunRow(); changed(true); }); sunRow();
     audioUI();
-    ["steps", "sun", "pillars"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; changed(true); }; });
+    ["steps", "sun", "pillars", "film"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; changed(true); }; });
   }
 
   /* ---------- on the beat: tap along, or read the tempo from your file ---------- */
