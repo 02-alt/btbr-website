@@ -767,6 +767,11 @@
       segRow("Size", [["S", "Small"], ["M", "Medium"], ["L", "Large"]], s.size, function (v) { s.size = v; });
     } else {
       field("Text", s.text, true, function (v) { s.text = v; });
+      var ch = document.createElement("button"); ch.type = "button"; ch.className = "link"; ch.style.alignSelf = "flex-start"; ch.textContent = "Choose from the text";
+      ch.addEventListener("click", function () {
+        articlePicker(function (t) { s.text = t; if (t.split(/\s+/).length > 12) s.size = "M"; inspector(); changed(); });
+      });
+      box.appendChild(ch);
       field("Small line", s.small || "", false, function (v) { s.small = v; });
       segRow("Size", [["L", "Large"], ["M", "Medium"]], s.size, function (v) { s.size = v; });
     }
@@ -810,6 +815,36 @@
     var note = document.createElement("p"); note.className = "note"; note.textContent = "Drag the frame to choose what fills the screen; drag its corner to zoom closer (as close as the photo stays sharp).";
     var out = document.createElement("div"); out.appendChild(wrap); out.appendChild(note); return out;
   }
+  // the article, to take words from: click a sentence, or select any passage and use it
+  function articlePicker(onPick) {
+    openPicker("Choose from the text", function (body) {
+      var bar = document.createElement("div"); bar.className = "usebar";
+      bar.innerHTML = '<span>Click a sentence, or select any passage.</span><button class="btn-use" type="button" disabled>Use selection</button>';
+      var use = bar.querySelector("button"), art = document.createElement("div"); art.className = "article";
+      function pick(t) { t = t.replace(/\s+/g, " ").trim(); if (t) { closePicker(); onPick(t); } }
+      function para(text, cls) {
+        var p = document.createElement("p"); if (cls) p.className = cls;
+        (text.match(/[^.!?…]+[.!?…]+["”’)]*\s*|[^.!?…]+$/g) || [text]).forEach(function (sn) {
+          var sp = document.createElement("span"); sp.className = "sent"; sp.textContent = sn;
+          sp.addEventListener("click", function () { var sel = getSelection(); if (sel && String(sel).trim()) return; pick(sn); });
+          p.appendChild(sp);
+        });
+        art.appendChild(p);
+      }
+      (topic.blocks || []).forEach(function (b) {
+        if (b.type === "text") String(b.html || "").split(/<\/p>|<br\s*\/?>/i).forEach(function (h) { var t = plain(h); if (t) para(t, b.head ? "head" : ""); });
+        if (b.type === "quote" && b.text) para("“" + plain(b.text) + "”", "quote");
+        if (b.type === "hand" && b.text) para(b.text.replace(/\n/g, " "), "hand");
+      });
+      function selected() { var sel = getSelection(); return sel && art.contains(sel.anchorNode) ? String(sel) : ""; }
+      document.addEventListener("selectionchange", function on() {
+        if ($("picker").hidden) { document.removeEventListener("selectionchange", on); return; }
+        use.disabled = !selected().trim();
+      });
+      use.addEventListener("click", function () { pick(selected()); });
+      body.appendChild(bar); body.appendChild(art);
+    });
+  }
   function openPicker(title, fill) {
     $("pickerTitle").textContent = title; var body = $("pickerBody"); body.innerHTML = ""; fill(body);
     $("picker").hidden = false; $("scrim").hidden = false;
@@ -844,15 +879,7 @@
     $("videoFile").addEventListener("change", function () { var f = $("videoFile").files[0]; $("videoFile").value = ""; if (f) gotVideo(f); });
     $("addText").addEventListener("click", function () { insert({ kind: "text", size: "L", hold: 1.6, text: "Your words here.", small: "" }); });
     $("addLine").addEventListener("click", function () {
-      openPicker("A line from the text", function (body) {
-        var box = document.createElement("div"); box.className = "lines";
-        sentences().forEach(function (s) {
-          var b = document.createElement("button"); b.type = "button"; b.className = "line"; b.textContent = s;
-          b.addEventListener("click", function () { closePicker(); var long = s.split(/\s+/).length > 12; insert({ kind: "text", size: long ? "M" : "L", hold: long ? 2.4 : 1.6, text: s, small: "" }); });
-          box.appendChild(b);
-        });
-        body.appendChild(box);
-      });
+      articlePicker(function (t) { var long = t.split(/\s+/).length > 12; insert({ kind: "text", size: long ? "M" : "L", hold: long ? 2.4 : 1.6, text: t, small: "" }); });
     });
     $("pickerDone").addEventListener("click", closePicker); $("scrim").addEventListener("click", closePicker);
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("picker").hidden) closePicker(); });
