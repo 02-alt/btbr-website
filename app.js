@@ -938,10 +938,13 @@
     + '"/></svg>';
   function curFoot(t) { var no = curNo(t); return '<div class="cur-foot">' + CUR_MARK_SVG + (no ? '<span class="cur-no">' + no + "</span>" : "") + "</div>"; }
   function curCard(t) {
-    var cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
+    // with a tray, its frame is laid out at once and the photo fades into it once it's cut out of
+    // its window — never the raw window first
+    var tray = t.cover && TRAYS[TRAY], cover = t.cover ? '<img src="' + esc(t.cover) + '" alt="" loading="lazy">' : "<span>no image</span>";
     return '<article class="cur-card" data-slug="' + esc(t.slug) + '">'
       + '<div class="cur-sheet"><div class="cur-text">' + curCardText(t) + "</div>" + curFoot(t) + "</div>"
-      + '<div class="cur-tray"><div class="cur-well"><div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div></div></div>"
+      + '<div class="cur-tray"><div class="cur-well">' + (tray ? '<div class="cur-media tray-art">' + tray(t, TRAY_WAIT) + "</div>"
+        : '<div class="cur-media' + (t.cover ? " has-cover" : " cur-ph") + '">' + cover + "</div>") + "</div></div>"
       + "</article>";
   }
   function curEmptyHTML() {
@@ -966,8 +969,11 @@
       im.onerror = function () { res(src); }; im.src = src;
     }));
   }
-  // the topic's photographs: the cover when it is one, then every picture on its boards
-  function topicPhotos(t) {
+  // the topic's photographs: the cover when it is one, then every picture on its boards — only as
+  // many as the tray shows (one for most; when that one is known from the index, no topic fetch)
+  function topicPhotos(t, need) {
+    var first = t.feed || (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "") ? t.cover : "");
+    if (need === 1 && first) return Promise.all([bareURL(first)]);
     return topicData(t.slug).then(function (d) {
       var list = [];
       if (t.feed || d.feed) list.push(t.feed || d.feed);              // chosen in Studio
@@ -977,10 +983,11 @@
         (b.board && b.board.items && b.board.items.length ? b.board.items.map(function (it) { return it.src; }) : [b.src]).forEach(function (u) { if (u && list.indexOf(u) < 0) list.push(u); });
       });
       if (!list.length && t.cover) list.push(t.cover);
-      return Promise.all(list.slice(0, 6).map(bareURL));
+      return Promise.all(list.slice(0, need || 6).map(bareURL));
     });
   }
-  function trayImg(u) { return '<img src="' + esc(u) + '" alt="">'; }
+  var TRAY_WAIT = [""];                            // a tray drawn before its photos are ready: empty <img>s, filled in order
+  function trayImg(u) { return u ? '<img src="' + esc(u) + '" alt="">' : '<img alt="">'; }
   function trayPrint(u, cls, tilt, tape, note) {
     return '<span class="tp ' + (cls || "") + ' tape-' + (tape || "top") + '" style="--tilt:' + (tilt || 0) + 'deg"><span class="tp-in"><span class="tp-ph">' + trayImg(u) + "</span>"
       + '<span class="tp-note">' + htmlEsc(note || "") + "</span></span></span>";
@@ -1012,17 +1019,28 @@
       return '<span class="tx-box">' + [0, 1, 2].map(function (k) { return '<span class="tx-slide tx-s' + (k + 1) + '"><span class="ts-win">' + trayImg(p[k % p.length]) + "</span></span>"; }).join("") + "</span>";
     }
   };
+  var TRAY_NEED = { line: 3, lightbox: 3 };       // photos each tray shows; the rest show one
   function dressTrays(root) {
     if (!TRAYS[TRAY]) return;
     document.body.classList.add("tray-" + TRAY);
-    [].forEach.call(root.querySelectorAll(".cur-card"), function (card) {
-      var t = (curList || []).filter(function (x) { return x.slug === card.dataset.slug; })[0], well = card.querySelector(".cur-well");
-      if (!t || !well) return;
-      topicPhotos(t).then(function (p) {
-        if (!p.length) return;
-        well.innerHTML = '<div class="cur-media tray-art">' + TRAYS[TRAY](t, p) + "</div>";
+    function dress(card) {
+      var t = (curList || []).filter(function (x) { return x.slug === card.dataset.slug; })[0], art = card.querySelector(".tray-art");
+      if (!t || !art) return;
+      topicPhotos(t, TRAY_NEED[TRAY] || 1).then(function (p) {
+        if (!p.length) p = [t.cover];
+        [].forEach.call(art.querySelectorAll("img"), function (im, k) {
+          im.onload = function () { im.classList.add("is-in"); };
+          im.src = p[k % p.length];
+        });
       });
-    });
+    }
+    // the cards on screen first: their photos aren't held up by the ones further down
+    var cards = root.querySelectorAll(".cur-card");
+    if (!("IntersectionObserver" in window)) { [].forEach.call(cards, dress); return; }
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { io.unobserve(e.target); dress(e.target); } });
+    }, { rootMargin: "200px 0px" });
+    [].forEach.call(cards, function (card) { io.observe(card); });
   }
   function initCuration() {
     var feed = document.querySelector("[data-curation]");
