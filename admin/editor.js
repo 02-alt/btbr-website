@@ -908,6 +908,17 @@
       im.onerror = function () { res(src); }; im.src = src;
     });
   }
+  function feedThumb(src) {                 // at most 900 px wide, JPEG
+    return new Promise(function (res) {
+      var im = new Image(); im.crossOrigin = "anonymous";
+      im.onload = function () {
+        var w = Math.min(900, im.naturalWidth), c = document.createElement("canvas"); c.width = w; c.height = Math.round(w * im.naturalHeight / im.naturalWidth);
+        var g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(im, 0, 0, c.width, c.height);
+        c.toBlob(res, "image/jpeg", 0.82);
+      };
+      im.onerror = function () { res(null); }; im.src = src;
+    });
+  }
   function feedField() {
     var wrap = document.createElement("div"), pics = topicPictures();
     if (!pics.length) { var e = document.createElement("div"); e.className = "insp-empty"; e.textContent = "Add a picture or a board to the topic first."; wrap.appendChild(e); return wrap; }
@@ -1690,6 +1701,16 @@
       cover = placed[coverPick] || coverPick;
       coverLocal = await barePhotoURL(coverPick);
     }
+    // the feed's frame shows the cover photo small: publish it as a light JPEG of its own, so the
+    // feed doesn't download the whole window PNG for it
+    var thumb = null;
+    if (coverLocal) {
+      log("Making the feed picture…");
+      try {
+        var tb = await feedThumb(coverLocal);
+        if (tb) { files.push({ path: "curation/media/" + slug + "/feed.jpg", base64: await blobToBase64(tb) }); thumb = "/curation/media/" + slug + "/feed.jpg?v=" + Date.now().toString(36); }
+      } catch (e) { log("(feed picture skipped: " + (e && e.message || e) + ")"); }
+    }
     var firstText = outBlocks.filter(function (b) { return b.type === "text" && b.html; })[0];
     var desc = (state.desc || "").trim() || (firstText ? plain(firstText.html).slice(0, 160) : "");
     // belt and braces: no inline styles in published text, whatever got in
@@ -1701,6 +1722,7 @@
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
     if (state.tone) topic.tone = state.tone;
     if (cover) topic.feed = cover;
+    if (thumb) topic.thumb = thumb;
     if (state.song && youtubeId(state.song.src)) {
       var sg = state.song; topic.song = { src: sg.src, title: (sg.title || "").trim(), artist: (sg.artist || "").trim() };
       if ((sg.album || "").trim()) topic.song.album = sg.album.trim(); if (sg.art) topic.song.art = sg.art; if (+sg.start) topic.song.start = +sg.start;
@@ -1731,6 +1753,7 @@
     var entry = { slug: slug, no: no, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
     if (topic.tone) entry.tone = topic.tone;
     if (topic.feed) entry.feed = topic.feed;
+    if (topic.thumb) entry.thumb = topic.thumb;
     if (topic.fr) {
       var firstFr = outBlocks.filter(function (b) { return b.type === "text" && b.fr && b.fr.html; })[0];
       entry.fr = {};

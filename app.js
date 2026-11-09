@@ -972,11 +972,11 @@
   // the topic's photographs: the cover when it is one, then every picture on its boards — only as
   // many as the tray shows (one for most; when that one is known from the index, no topic fetch)
   function topicPhotos(t, need) {
-    var first = t.feed || (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "") ? t.cover : "");
+    var first = t.thumb || t.feed || (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "") ? t.cover : "");   // thumb: the small JPEG Studio makes
     if (need === 1 && first) return Promise.all([bareURL(first)]);
     return topicData(t.slug).then(function (d) {
       var list = [];
-      if (t.feed || d.feed) list.push(t.feed || d.feed);              // chosen in Studio
+      if (t.thumb || t.feed || d.feed) list.push(t.thumb || t.feed || d.feed);   // chosen in Studio
       if (/\.(jpe?g|webp)($|\?)/i.test(t.cover || "") && list.indexOf(t.cover) < 0) list.push(t.cover);
       (d.blocks || []).forEach(function (b) {
         if (b.type !== "image") return;
