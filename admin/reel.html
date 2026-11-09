@@ -175,6 +175,8 @@
           <button class="add" id="addPhoto" type="button">+ Photo</button>
           <button class="add" id="addLine" type="button">+ Line from the text</button>
           <button class="add" id="addText" type="button">+ Wall text</button>
+          <button class="add" id="addVideo" type="button">+ Projected video</button>
+          <input type="file" id="videoFile" accept="video/*" hidden />
         </div>
       </section>
     </aside>
@@ -194,6 +196,13 @@
       <section>
         <h3>Walk</h3>
         <div class="row"><span>Pace</span><div class="seg" id="pace"><button type="button" data-v="slow">Slow</button><button type="button" data-v="normal">Normal</button><button type="button" data-v="brisk">Brisk</button></div></div>
+        <div class="row"><span>Length</span><div class="seg" id="fit"><button type="button" data-v="0">Free</button><button type="button" data-v="15">15 s</button><button type="button" data-v="30">30 s</button><button type="button" data-v="60">60 s</button></div></div>
+        <p class="note" id="fitNote" hidden></p>
+        <div class="row"><span>On the beat</span><input class="switch" type="checkbox" role="switch" id="beatOn" /></div>
+        <div id="beatBox" class="audio" hidden>
+          <div class="row"><span>Tempo</span><span class="acts"><span><input class="time-in" type="text" inputmode="decimal" id="bpm" aria-label="Beats per minute" /> BPM</span><button class="link" id="tap" type="button">Tap</button></span></div>
+          <p class="note" id="beatNote"></p>
+        </div>
         <div class="row"><span>Light</span><div class="seg" id="mood"><button type="button" data-v="day">Daylight</button><button type="button" data-v="evening">Evening</button><button type="button" data-v="night">Night</button><button type="button" data-v="white">White</button></div></div>
         <div class="row" id="sunRow"><span>Window light</span><input class="switch" type="checkbox" role="switch" id="sun" /></div>
         <div class="row"><span>Pillars in front</span><input class="switch" type="checkbox" role="switch" id="pillars" /></div>
@@ -233,6 +242,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/reel.js?v=3"></script>
+  <script src="/admin/reel.js?v=4"></script>
 </body>
 </html>

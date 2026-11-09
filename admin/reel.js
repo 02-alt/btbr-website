@@ -131,17 +131,44 @@
   var LABEL = { w: 300, pad: 27, size: 33, lh: 1.13, track: -0.022 };
 
   /* ---------- the scene: where everything hangs, and when the visitor is where ---------- */
+  function segTime(d, V) { return 2 * RAMP + Math.max(0, (d - V * RAMP) / V); }
+  // fit to a length: share the time left after walking among the stops (in proportion to what you set,
+  // never under MIN); walk faster when there isn't enough of it, slower when there's far too much
+  function fitTo(gaps, holds, V, T) {
+    var MIN = 0.6, n = holds.length, sumH = holds.reduce(function (a, b) { return a + b; }, 0);
+    function walk(v) { return gaps.reduce(function (a, d) { return a + segTime(d, v); }, 0); }
+    function solve(target, lo, hi) { for (var k = 0; k < 40; k++) { var mid = (lo + hi) / 2; if (walk(mid) > target) lo = mid; else hi = mid; } return (lo + hi) / 2; }
+    var VMAX = Math.max(V, 1100);                                          // a brisk walk, never a run
+    if (T - walk(V) < MIN * n) V = walk(VMAX) > T - MIN * n ? VMAX : solve(T - MIN * n, V, VMAX);
+    else if (T - walk(V) > sumH * 2.5) V = walk(420) < T - sumH * 2.5 ? 420 : solve(T - sumH * 2.5, 420, V);
+    var avail = Math.max(MIN * n, T - walk(V)), out = holds.slice(), fixed = {};
+    for (var it = 0; it < 6; it++) {
+      var free = 0, rest = avail;
+      out.forEach(function (h, i) { if (fixed[i]) rest -= MIN; else free += holds[i]; });
+      out = out.map(function (h, i) { return fixed[i] ? MIN : holds[i] * rest / (free || 1); });
+      var more = false; out.forEach(function (h, i) { if (!fixed[i] && h < MIN) { fixed[i] = more = true; } });
+      if (!more) break;
+    }
+    return { V: V, holds: out };
+  }
+  function beatGrid() {                     // [seconds per beat, the reel time of a beat], or null
+    var bt = reel.beat; if (!bt || !bt.on || !(bt.bpm > 30)) return null;
+    var per = 60 / bt.bpm, ph = bt.src === "file" ? bt.phase - (reel.audio && reel.audio.start || 0) : bt.phase;
+    return [per, ((ph % per) + per) % per];
+  }
   function build() {
     var x = 0, n = 0, items = [];
+    function wide(st) { return st && ((st.kind === "text" && st.size === "M") || st.kind === "video"); }
     reel.stops.forEach(function (s, i) {
-      var prev = reel.stops[i - 1];
-      if (i) x += 1500 + ((s.kind === "text" && s.size === "M") || (prev.kind === "text" && prev.size === "M") ? 250 : 0);
-      var it = { stop: s, x: x };
+      if (i) x += 1500 + (wide(s) || wide(reel.stops[i - 1]) ? 250 : 0);
+      var it = { stop: s, x: x, index: i };
       if (s.kind === "photo") {
         it.no = noLine() + " — " + (++n);
         it.im = loaded[s.src] || null;
         if (!it.im) loadImg(s.src).then(function (im) { it.im = im; layoutPhoto(it); paint(); });
         layoutPhoto(it);
+      } else if (s.kind === "video") {
+        layoutVideo(it); loadVideo(s);
       } else {
         var T = TEXT[s.size] || TEXT.L, hang = /^[“"‘']/.test(s.text);
         it.lines = wrap(s.text, T.size, T.track, T.w); it.T = T; it.hang = hang;
@@ -150,8 +177,11 @@
       }
       items.push(it);
     });
+    var V = PACE[reel.pace] || PACE.normal, eff = reel.stops.map(function (s) { return s.hold; });
+    if (+reel.fit) { var f = fitTo(items.slice(1).map(function (it, i) { return it.x - items[i].x; }), eff, V, +reel.fit); V = f.V; eff = f.holds; }
+    var grid = beatGrid();
     // the walk: hold, ease up to pace, walk, ease to a halt, hold …
-    var V = PACE[reel.pace] || PACE.normal, X = [], Z = [], R = 240, holds = [];
+    var X = [], Z = [], R = 240, holds = [];
     // standing in front of a stop; leaning in steps toward the photo itself (not the label) and back
     function hold(it, secs) {
       holds.push(X.length / R);
@@ -161,9 +191,13 @@
         X.push(it.x + shift * e); Z.push(LEAN * e);
       }
     }
-    hold(items[0], reel.stops[0].hold);
+    hold(items[0], eff[0]);
     for (var i = 0; i + 1 < items.length; i++) {
       var D0 = items[i + 1].x - items[i].x, tc = Math.max(0, (D0 - V * RAMP) / V), T2 = 2 * RAMP + tc;
+      if (grid) {                         // on the beat: linger a moment longer so the next arrival lands on one
+        var arrive = X.length / R + T2, on = grid[1] + Math.ceil((arrive - grid[1] - 0.02) / grid[0]) * grid[0];
+        for (var w = 0; w < (on - arrive) * R; w++) { X.push(X[X.length - 1]); Z.push(Z[Z.length - 1]); }
+      }
       for (var k = 1; k <= T2 * R; k++) {
         var t = k / R, d;
         if (t < RAMP) d = V * (t / 2 - RAMP / (2 * Math.PI) * Math.sin(Math.PI * t / RAMP));
@@ -171,14 +205,68 @@
         else { var u = T2 - t; d = D0 - V * (u / 2 - RAMP / (2 * Math.PI) * Math.sin(Math.PI * u / RAMP)); }
         X.push(items[i].x + Math.min(D0, d)); Z.push(0);
       }
-      hold(items[i + 1], reel.stops[i + 1].hold);
+      hold(items[i + 1], eff[i + 1]);
     }
     // pillars stand in the gap after every third stop; daylight falls every few stops
     var pillars = [], suns = [];
     if (reel.pillars) for (var p = 2; p + 1 < items.length; p += 3) pillars.push((items[p].x + items[p + 1].x) / 2);
     if (reel.sun && (MOODS[reel.mood] || MOODS.day).sun) for (var sx = 750; sx < x + 800; sx += 4100) suns.push(sx);
-    scene = { items: items, X: X, Z: Z, R: R, V: V, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
+    scene = { fit: +reel.fit || 0, items: items, X: X, Z: Z, R: R, V: V, eff: eff, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
   }
+  /* ---------- a video stop: projected onto the wall ---------- */
+  var VIDEO = { S: 640, M: 820, L: 980 };
+  var vids = {};                            // stop.vid → { el, url, missing }
+  function layoutVideo(it) {
+    var v = vids[it.stop.vid], el = v && v.el, ar = el && el.videoWidth ? el.videoHeight / el.videoWidth : 9 / 16;
+    it.vw = VIDEO[it.stop.size] || VIDEO.M; it.vh = Math.round(it.vw * ar);
+  }
+  function loadVideo(st) {
+    if (vids[st.vid]) return;
+    var v = vids[st.vid] = { el: null, url: "", missing: false };
+    idbDo("readonly", function (os) { return os.get(topic.slug + ":video:" + st.vid); }).then(function (blob) {
+      if (!blob) { v.missing = true; list(); return; }
+      setVideo(st, blob);
+    }).catch(function () { v.missing = true; });
+  }
+  function setVideo(st, blob) {
+    var v = vids[st.vid] || (vids[st.vid] = {});
+    if (v.url) URL.revokeObjectURL(v.url);
+    var el = document.createElement("video"); el.muted = true; el.playsInline = true; el.preload = "auto"; el.loop = false;
+    v.el = el; v.blob = blob; v.sink = null; v.url = URL.createObjectURL(blob); v.missing = false; el.src = v.url;
+    el.addEventListener("loadeddata", function () { if (scene) { build(); paint(); list(); } });
+    el.addEventListener("seeked", function () { if (!playing) paint(); });
+  }
+  // the clip starts as the visitor sets off toward it, and loops while it's in view
+  function vidTime(it, t, dur) { var t0 = scene.holds[it.index] - 2.2; return Math.max(0, t - t0) % Math.max(0.1, dur - 0.05); }
+  function vidNear(it, t) { return Math.abs(camAt(t).x - it.x) < 1900; }
+  function syncVideos(t) {
+    scene.items.forEach(function (it) {
+      var v = it.stop.kind === "video" && vids[it.stop.vid], el = v && v.el; if (!el || !el.duration) return;
+      var tv = vidTime(it, t, el.duration);
+      if (playing && vidNear(it, t)) { if (el.paused) el.play().catch(function () {}); if (Math.abs(el.currentTime - tv) > 0.3) el.currentTime = tv; }
+      else { if (!el.paused) el.pause(); if (Math.abs(el.currentTime - tv) > 0.04) el.currentTime = tv; }
+    });
+  }
+  // for the export: each clip decoded frame by frame (exact, and nothing to wait on from a <video>)
+  var exporting = false;
+  function openSinks(mb) {
+    return Promise.all(scene.items.map(function (it) {
+      var v = it.stop.kind === "video" && vids[it.stop.vid]; if (!v || !v.blob || v.sink) return null;
+      var input = new mb.Input({ source: new mb.BlobSource(v.blob), formats: mb.ALL_FORMATS });
+      return input.getPrimaryVideoTrack().then(function (track) {
+        if (!track) return;
+        return track.computeDuration().then(function (d) { v.sink = new mb.CanvasSink(track, { width: 1280 }); v.sinkDur = d; });
+      }).catch(function () {});
+    }));
+  }
+  function frameVideos(t) {
+    return Promise.all(scene.items.map(function (it) {
+      var v = it.stop.kind === "video" && vids[it.stop.vid];
+      if (!v || !v.sink || !vidNear(it, t)) return null;
+      return v.sink.getCanvas(vidTime(it, t, v.sinkDur)).then(function (w) { v.frame = w ? w.canvas : v.frame; }).catch(function () {});
+    }));
+  }
+
   function layoutPhoto(it) {
     var im = it.im, b = im ? bare(im) : { w: 3, h: 2 }, portrait = b.h > b.w;
     var pw = PHOTO[it.stop.size] || PHOTO.M; if (portrait) pw = Math.round(pw * 0.88);
@@ -263,6 +351,7 @@
     // the pieces
     scene.items.forEach(function (it) {
       var st = it.stop;
+      if (st.kind === "video") return;                                       // projected later, over the shade
       if (st.kind === "text") {
         var T = it.T, left = it.x - T.w / 2, top = Y - it.h / 2;
         plane(left, top, 1, T.w, it.h, function () {
@@ -298,6 +387,7 @@
       sg.fillStyle = "rgba(8,6,10," + m.dark + ")"; sg.fillRect(0, 0, sw, sh);
       sg.globalCompositeOperation = "destination-out";
       scene.items.forEach(function (it) {
+        if (it.stop.kind === "video") return;                                // the projection is its own light
         var p = P(it.x, Y - 70, 0); if (p.x < -W || p.x > 2 * W) return;
         var rx = 660 * p.k * kk;
         sg.save(); sg.translate(p.x * kk, p.y * kk); sg.scale(1, 1.3);
@@ -308,6 +398,36 @@
       sg.globalCompositeOperation = "source-over";
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(sg.canvas, 0, 0, sw * SL, sh * SL); ctx.restore();
     }
+    // projections: light thrown on the wall — the wall shows through the darks, a hotspot in the middle,
+    // a little spill around the edges, and in a dim room the beam itself
+    scene.items.forEach(function (it) {
+      if (it.stop.kind !== "video") return;
+      var v = vids[it.stop.vid], el = v && v.el, vw = it.vw, vh = it.vh, l = it.x - vw / 2, tp = Y - vh / 2, dim = m.dark ? 1 : m.grade ? 0.5 : 0.2;
+      var c0 = P(l, tp, 0.8), c1 = P(l + vw, tp, 0.8), c2 = P(l + vw, tp + vh, 0.8), c3 = P(l, tp + vh, 0.8);
+      if (c1.x < -200 || c0.x > W + 200) return;
+      ctx.save(); ctx.setTransform(s, 0, 0, s, 0, 0); ctx.globalCompositeOperation = "screen";
+      var src = { x: W / 2, y: -520 }, gb = ctx.createLinearGradient(src.x, src.y, (c0.x + c2.x) / 2, (c0.y + c2.y) / 2);
+      gb.addColorStop(0, "rgba(255,250,240,0)"); gb.addColorStop(1, "rgba(255,250,240," + (0.07 * dim) + ")");
+      ctx.fillStyle = gb; ctx.beginPath(); ctx.moveTo(src.x - 30, src.y); ctx.lineTo(c0.x, c0.y); ctx.lineTo(c3.x, c3.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(src.x + 30, src.y); ctx.closePath(); ctx.fill();
+      ctx.restore();
+      plane(l - 220, tp - 220, 0.7, vw + 440, vh + 440, function () {         // spill
+        var rx = (vw + 440) / 2; ctx.translate(rx, (vh + 440) / 2); ctx.scale(1, (vh + 440) / (vw + 440));
+        var g = ctx.createRadialGradient(0, 0, rx * 0.35, 0, 0, rx);
+        g.addColorStop(0, "rgba(255,252,246," + (0.16 + 0.12 * dim) + ")"); g.addColorStop(1, "rgba(255,252,246,0)");
+        ctx.fillStyle = g; ctx.fillRect(-rx, -rx, 2 * rx, 2 * rx);
+      });
+      plane(l, tp, 0.8, vw, vh, function () {
+        ctx.fillStyle = "rgba(255,253,248,0.22)"; ctx.fillRect(0, 0, vw, vh);
+        var img = exporting ? v && v.frame : el && el.readyState >= 2 && el;
+        if (img) { ctx.globalAlpha = 0.74 + 0.24 * dim; ctx.drawImage(img, 0, 0, vw, vh); ctx.globalAlpha = 1; }
+        else { setFont(ctx, 28, 0); ctx.fillStyle = m.small; ctx.textAlign = "center"; ctx.fillText(v && v.missing ? "Video missing — choose it again" : "Loading the video…", vw / 2, vh / 2); ctx.textAlign = "left"; }
+        var hs = ctx.createRadialGradient(vw / 2, vh / 2, 0, vw / 2, vh / 2, vw * 0.62);
+        hs.addColorStop(0, "rgba(255,255,255,0.1)"); hs.addColorStop(1, "rgba(0,0,0,0.22)");
+        ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = hs; ctx.fillRect(0, 0, vw, vh); ctx.globalCompositeOperation = "source-over";
+        if (it.stop.label) { setFont(ctx, 26, 0.01); ctx.fillStyle = m.small; ctx.fillText(it.stop.label, 0, vh + 52); }
+      });
+    });
+
     if (m.grade) { ctx.save(); ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = m.grade; ctx.fillRect(0, 0, W, H); ctx.restore(); }
 
     // pillars between the visitor and the wall, out of focus (drawn small and scaled up)
@@ -405,7 +525,7 @@
     var r = view.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
     view.width = Math.round(r.width * dpr); view.height = Math.round(r.width * dpr * H / W);
   }
-  function paint() { if (scene) { render(vctx, now, view.width / W); transport(); } }
+  function paint() { if (scene) { syncVideos(now); render(vctx, now, view.width / W); transport(); } }
   function fmt(t) { t = Math.max(0, t); return Math.floor(t / 60) + ":" + ("0" + Math.floor(t % 60)).slice(-2); }
   function transport() {
     var p = scene.dur ? now / scene.dur : 0;
@@ -478,18 +598,22 @@
     if (!keepTime) now = scene.holds[sel] + Math.min(0.5, reel.stops[sel].hold / 2);
     if (playing) { stop(); play(); } else paint();
     list(); $("count").textContent = fmt(scene.dur) + " · " + reel.stops.length + " stops";
+    $("fitNote").hidden = !(scene.fit && scene.dur > scene.fit + 0.5);
+    $("fitNote").textContent = "Too many stops for " + scene.fit + " s at a walk — it comes to " + Math.round(scene.dur) + " s. Remove a stop or two.";
   }
-  function firstLine(s) { return s.kind === "photo" ? s.label.split("\n").join(" ") : s.text.split("\n").join(" "); }
+  function firstLine(s) { return s.kind === "photo" ? s.label.split("\n").join(" ") : s.kind === "video" ? (s.label || s.name || "Video") : s.text.split("\n").join(" "); }
+  var KIND = { photo: "Photo", text: "Wall text", video: "Projection" };
   function list() {
     var ol = $("stops"); ol.innerHTML = "";
     $("stopCount").textContent = reel.stops.length;
     reel.stops.forEach(function (s, i) {
       var li = document.createElement("li"); li.className = "stop"; li.draggable = true; li.setAttribute("aria-selected", i === sel);
       var th = s.kind === "photo" ? document.createElement("img") : document.createElement("span");
-      th.className = "th"; if (s.kind === "photo") { th.src = s.src; th.alt = ""; } else th.textContent = "Aa";
+      th.className = "th"; if (s.kind === "photo") { th.src = s.src; th.alt = ""; } else th.textContent = s.kind === "video" ? "▶" : "Aa";
       var tx = document.createElement("span"); tx.className = "tx";
       var b = document.createElement("b"); b.textContent = firstLine(s);
-      var sm = document.createElement("small"); sm.textContent = (s.kind === "photo" ? "Photo" : "Wall text") + " · " + s.hold.toFixed(1) + " s";
+      var e = scene && scene.eff ? scene.eff[i] : s.hold, miss = s.kind === "video" && vids[s.vid] && vids[s.vid].missing;
+      var sm = document.createElement("small"); sm.textContent = miss ? "Video missing" : KIND[s.kind] + " · " + e.toFixed(1) + " s";
       tx.appendChild(b); tx.appendChild(sm);
       var grip = document.createElement("span"); grip.className = "grip"; grip.setAttribute("aria-hidden", "true");
       li.appendChild(th); li.appendChild(tx); li.appendChild(grip);
@@ -522,7 +646,7 @@
   }
   function inspector() {
     var s = reel.stops[sel], box = $("inspector"); box.innerHTML = "";
-    var h = document.createElement("h3"); h.innerHTML = "Stop " + (sel + 1) + ' <span class="val"></span>'; h.querySelector(".val").textContent = s.kind === "photo" ? "Photo" : "Wall text";
+    var h = document.createElement("h3"); h.innerHTML = "Stop " + (sel + 1) + ' <span class="val"></span>'; h.querySelector(".val").textContent = KIND[s.kind];
     box.appendChild(h);
     function field(label, value, multi, onInput) {
       var l = document.createElement("label"); l.className = "field"; var sp = document.createElement("span"); sp.textContent = label;
@@ -547,19 +671,29 @@
       var ls = lr.querySelector("input"); ls.checked = !!s.lean;
       ls.addEventListener("change", function () { s.lean = ls.checked; if (s.lean && s.hold < 2.8) s.hold = 2.8; inspector(); changed(); });
       box.appendChild(lr);
+    } else if (s.kind === "video") {
+      var vb = document.createElement("button"); vb.type = "button"; vb.className = "pickbtn";
+      vb.innerHTML = '<span class="th" style="width:48px;height:48px">▶</span><span><b></b><small>Choose another video</small></span>';
+      vb.querySelector("b").textContent = s.name || "Video"; vb.addEventListener("click", function () { pickVideo(s); });
+      box.appendChild(vb);
+      field("Caption", s.label || "", false, function (v) { s.label = v; });
+      segRow("Size", [["S", "Small"], ["M", "Medium"], ["L", "Large"]], s.size, function (v) { s.size = v; });
     } else {
       field("Text", s.text, true, function (v) { s.text = v; });
       field("Small line", s.small || "", false, function (v) { s.small = v; });
       segRow("Size", [["L", "Large"], ["M", "Medium"]], s.size, function (v) { s.size = v; });
     }
-    var hr = document.createElement("div"); hr.className = "row"; hr.innerHTML = '<span>Stop for</span><div class="hold"><input type="range" min="0.4" max="4" step="0.1" aria-label="Seconds stopped here" /><output></output></div>';
+    var hr = document.createElement("div"); hr.className = "row"; hr.innerHTML = '<span>Stop for</span><div class="hold"><input type="range" min="0.4" max="' + (s.kind === "video" ? 10 : 4) + '" step="0.1" aria-label="Seconds stopped here" /><output></output></div>';
     var rg = hr.querySelector("input"), out = hr.querySelector("output"); rg.value = s.hold; out.textContent = s.hold.toFixed(1) + " s";
     rg.addEventListener("input", function () { s.hold = +rg.value; out.textContent = s.hold.toFixed(1) + " s"; });
     rg.addEventListener("change", function () { changed(); });
     box.appendChild(hr);
+    if (+reel.fit && scene.eff) { var fn = document.createElement("p"); fn.className = "note"; fn.textContent = "Fitted to " + reel.fit + " s: stops here " + scene.eff[sel].toFixed(1) + " s."; box.appendChild(fn); }
     var mv = document.createElement("div"); mv.className = "moves";
     [["Earlier", function () { move(sel, sel - 1); }], ["Later", function () { move(sel, sel + 1); }], ["Remove", function () {
-      if (reel.stops.length < 2) return; reel.stops.splice(sel, 1); sel = Math.min(sel, reel.stops.length - 1); inspector(); changed();
+      if (reel.stops.length < 2) return;
+      var gone = reel.stops[sel]; if (gone.vid) idbDo("readwrite", function (os) { return os.delete(topic.slug + ":video:" + gone.vid); }).catch(function () {});
+      reel.stops.splice(sel, 1); sel = Math.min(sel, reel.stops.length - 1); inspector(); changed();
     }]].forEach(function (m, i) { var b = document.createElement("button"); b.type = "button"; b.className = "link" + (i === 2 ? " danger" : ""); b.textContent = m[0]; b.addEventListener("click", m[1]); mv.appendChild(b); });
     box.appendChild(mv);
   }
@@ -580,9 +714,21 @@
       body.appendChild(grid);
     });
   }
+  var videoFor = null;
+  function pickVideo(st) { videoFor = st || null; $("videoFile").click(); }
+  function gotVideo(f) {
+    var st = videoFor, isNew = !st;
+    if (isNew) st = { kind: "video", vid: "v" + Date.now().toString(36), size: "M", hold: 4, label: "" };
+    st.name = f.name.replace(/\.[^.]+$/, "");
+    idbDo("readwrite", function (os) { return os.put(f, topic.slug + ":video:" + st.vid); }).catch(function () {});
+    setVideo(st, f);
+    if (isNew) insert(st); else { inspector(); changed(true); }
+  }
   function insert(stop) { sel = sel + 1; reel.stops.splice(sel, 0, stop); inspector(); changed(); }   // right after the stop you're on
   function wireEditor() {
     $("addPhoto").addEventListener("click", function () { photoPicker(function (p) { insert({ kind: "photo", src: p.src, label: labelOf(p.note), size: "M", hold: 1.3 }); }); });
+    $("addVideo").addEventListener("click", function () { pickVideo(null); });
+    $("videoFile").addEventListener("change", function () { var f = $("videoFile").files[0]; $("videoFile").value = ""; if (f) gotVideo(f); });
     $("addText").addEventListener("click", function () { insert({ kind: "text", size: "L", hold: 1.6, text: "Your words here.", small: "" }); });
     $("addLine").addEventListener("click", function () {
       openPicker("A line from the text", function (body) {
@@ -602,10 +748,61 @@
   }
   function settings() {
     seg($("pace"), reel.pace, function (v) { reel.pace = v; changed(true); });
+    seg($("fit"), String(reel.fit || 0), function (v) { reel.fit = +v; inspector(); changed(true); });
+    reel.beat = reel.beat || { on: false, bpm: 0, phase: 0, src: "" };
+    $("beatOn").checked = !!reel.beat.on;
+    $("beatOn").onchange = function () { reel.beat.on = $("beatOn").checked; beatUI(); changed(true); };
+    beatUI();
     function sunRow() { $("sunRow").hidden = !(MOODS[reel.mood] || MOODS.day).sun; }
     seg($("mood"), reel.mood || "day", function (v) { reel.mood = v; sunRow(); changed(true); }); sunRow();
     audioUI();
     ["steps", "sun", "pillars"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; changed(true); }; });
+  }
+
+  /* ---------- on the beat: tap along, or read the tempo from your file ---------- */
+  function beatUI() {
+    var bt = reel.beat; $("beatBox").hidden = !bt.on;
+    if (document.activeElement !== $("bpm")) $("bpm").value = bt.bpm ? Math.round(bt.bpm * 10) / 10 : "";
+    $("beatNote").textContent = !bt.bpm ? "Play the reel and tap along a few times, or add a music file."
+      : bt.src === "file" ? "Read from your file. Each stop now arrives on a beat." : bt.src === "tap" ? "From your taps. Each stop now arrives on a beat." : "Each stop now arrives on a beat.";
+  }
+  var taps = [], tapTimer = 0;
+  function tap() {
+    if (!playing) { taps = []; play(); return; }                        // the first tap starts the music
+    if (taps.length && now - taps[taps.length - 1] > 2) taps = [];
+    taps.push(now); $("tap").textContent = "Tap (" + taps.length + ")";
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(function () {                                // a pause in the tapping applies it
+      $("tap").textContent = "Tap";
+      if (taps.length < 4) { $("beatNote").textContent = "Tap at least 4 times."; return; }
+      var iv = taps.slice(1).map(function (t, i) { return t - taps[i]; }).sort(function (a, b) { return a - b; }), per = iv[iv.length >> 1];
+      var sx = 0, sy = 0; taps.forEach(function (t) { var a = 2 * Math.PI * t / per; sx += Math.cos(a); sy += Math.sin(a); });
+      var ph = (Math.atan2(sy, sx) / (2 * Math.PI) * per + per) % per;
+      reel.beat.bpm = 60 / per; reel.beat.phase = ph; reel.beat.src = "tap"; beatUI(); changed(true);
+    }, 1800);
+  }
+  // tempo from a file: onsets (rises in loudness), the lag they repeat at best, then where the beats fall
+  function detectBeat(buf) {
+    var sr = buf.sampleRate, hop = 512, a = buf.getChannelData(0), b = buf.getChannelData(Math.min(1, buf.numberOfChannels - 1));
+    var n = Math.min(Math.floor(a.length / hop), Math.floor(90 * sr / hop)), env = new Float32Array(n), prev = 0;
+    for (var i = 0; i < n; i++) {
+      var e = 0; for (var j = i * hop; j < (i + 1) * hop; j++) { var x = (a[j] + b[j]) / 2; e += x * x; }
+      e = Math.log(1e-6 + e); env[i] = Math.max(0, e - prev); prev = e;
+    }
+    var fps = sr / hop, best = -1, bestBpm = 0;
+    function at(f) { var k = Math.floor(f), r = f - k; return k + 1 < n ? env[k] * (1 - r) + env[k + 1] * r : 0; }
+    for (var bpm = 70; bpm <= 180; bpm += 0.25) {
+      var lag = fps * 60 / bpm, sc = 0;
+      for (var q = 0; q + 2 * lag < n; q++) sc += env[q] * (at(q + lag) + 0.5 * at(q + 2 * lag));
+      sc /= (n - 2 * lag); if (bpm >= 85 && bpm <= 160) sc *= 1.08;    // prefer a walkable tempo
+      if (sc > best) { best = sc; bestBpm = bpm; }
+    }
+    var bo = -1, bestOff = 0, fine = bestBpm;                              // then the exact tempo and where its beats fall
+    for (var b2 = bestBpm - 0.4; b2 <= bestBpm + 0.4; b2 += 0.02) {
+      var L = fps * 60 / b2;
+      for (var off = 0; off < L; off += 0.25) { var t2 = 0; for (var f = off; f < n; f += L) t2 += at(f); if (t2 > bo) { bo = t2; bestOff = off; fine = b2; } }
+    }
+    return { bpm: fine, phase: bestOff / fps };
   }
 
   /* ---------- your audio: a file, or your voice recorded over the walk; kept in this browser ---------- */
@@ -632,6 +829,7 @@
     return decode(blob).then(function (buf) {
       user = { id: user.id + 1, buf: buf };
       reel.audio = Object.assign({ vol: 0.8, start: 0 }, meta); reel.yt = null; ytPause(); ytUI();
+      if (!meta.voice) { var bt = detectBeat(buf); reel.beat = Object.assign(reel.beat || {}, { bpm: bt.bpm, phase: bt.phase, src: "file" }); beatUI(); }
       return idbDo("readwrite", function (st) { return st.put(blob, topic.slug); }).catch(function () {});
     }).then(function () { audioUI(); changed(true); })
       .catch(function () { $("audioNote").textContent = "Couldn’t read that file. Try an MP3, M4A or WAV."; });
@@ -681,6 +879,10 @@
     $("audioVol").addEventListener("change", function () { changed(true); });
     $("audioStart").addEventListener("input", function () { reel.audio.start = +$("audioStart").value; $("audioStartOut").textContent = fmt(reel.audio.start); });
     $("audioStart").addEventListener("change", function () { changed(true); });
+    $("tap").addEventListener("click", tap);
+    $("bpm").addEventListener("change", function () {
+      var v = parseFloat($("bpm").value); if (v >= 40 && v <= 240) { reel.beat.bpm = v; if (!reel.beat.src) reel.beat.src = "typed"; } beatUI(); changed(true);
+    });
   }
   /* ---------- a YouTube song: heard in the preview, in time with the walk — never in the file
      (the browser can't read YouTube's audio, and the song belongs to its owner: in Instagram,
@@ -769,7 +971,8 @@
   function exportVideo() {
     var btn = $("export"), note = $("exportNote"), bar = $("bar");
     if (!window.VideoEncoder) { note.textContent = "This browser can’t make video files. Try Chrome or Safari on a Mac."; return; }
-    stop(); btn.disabled = true; $("progress").hidden = false; bar.style.width = "0"; note.textContent = "Getting ready…";
+    stop(); scene.items.forEach(function (it) { var v = vids[it.stop.vid]; if (v && v.el) v.el.pause(); });
+    btn.disabled = true; $("progress").hidden = false; bar.style.width = "0"; note.textContent = "Getting ready…";
     var canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext("2d"), N = Math.floor(scene.dur * FPS) + 1;
     Promise.all([import(MB), soundtrack(), Promise.all(scene.items.map(function (it) { return it.stop.src ? loadImg(it.stop.src) : null; }))]).then(function (r) {
@@ -781,12 +984,12 @@
         output.addVideoTrack(video, { frameRate: FPS });
         var audio = ok[1] ? new mb.AudioBufferSource({ codec: "aac", bitrate: 192e3 }) : null;
         if (audio) output.addAudioTrack(audio);
-        return output.start().then(function () {
+        exporting = true;
+        return openSinks(mb).then(function () { return output.start(); }).then(function () {
           var k = 0;
           function next() {
             if (k >= N) return Promise.resolve();
-            render(ctx, k / FPS, 1);
-            return video.add(k / FPS, 1 / FPS).then(function () {
+            return frameVideos(k / FPS).then(function () { render(ctx, k / FPS, 1); return video.add(k / FPS, 1 / FPS); }).then(function () {
               k++; if (k % 10 === 0) { bar.style.width = (k / N * 92) + "%"; note.textContent = "Drawing frame " + k + " of " + N + "…"; }
               return next();
             });
@@ -808,7 +1011,7 @@
         });
       });
     }).catch(function (e) { note.textContent = "Couldn’t export: " + (e && e.message || e); })
-      .then(function () { btn.disabled = false; setTimeout(function () { $("progress").hidden = true; }, 1200); });
+      .then(function () { exporting = false; btn.disabled = false; setTimeout(function () { $("progress").hidden = true; }, 1200); });
   }
 
   /* ---------- start ---------- */
@@ -828,6 +1031,7 @@
         $("topicName").textContent = t.title; document.title = "Reel — " + t.title;
         reel = restore() || defaults();
         if (!reel.mood) reel.mood = "day";
+        reel.stops.forEach(function (st) { if (st.kind === "video") loadVideo(st); });
         return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); })); });
       });
     }).then(function () {
