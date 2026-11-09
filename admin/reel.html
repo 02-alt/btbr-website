@@ -212,6 +212,7 @@
       <section>
         <h3>Sound</h3>
         <div class="row"><span>Footsteps</span><input class="switch" type="checkbox" role="switch" id="steps" /></div>
+        <div class="row" id="stepsVolRow"><span>Footsteps volume</span><div class="hold"><input type="range" id="stepsVol" min="0" max="1.5" step="0.05" aria-label="Footsteps volume" /><output id="stepsVolOut"></output></div></div>
         <div class="row"><span>Music or voice</span><span class="acts"><button class="link" id="addAudio" type="button">Add a file</button><button class="link" id="addYt" type="button">YouTube</button><button class="link" id="recAudio" type="button">Record</button></span></div>
         <input type="file" id="audioFile" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden />
         <div id="audioBox" class="audio" hidden>
@@ -243,6 +244,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/reel.js?v=5"></script>
+  <script src="/admin/reel.js?v=6"></script>
 </body>
 </html>

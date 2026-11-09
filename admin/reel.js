@@ -482,24 +482,26 @@
   // the walk's sound, then your file or voice laid over it
   var mixCache = { key: "", buf: null };
   function soundtrack() {
-    var a = reel.audio, key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps, a, user.id]);
+    var a = reel.audio, sv = stepsVol(), key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps, sv, a, user.id]);
     if (mixCache.key === key) return Promise.resolve(mixCache.buf);
     return walkSound().then(function (base) {
-      if (!a || !user.buf) { mixCache = { key: key, buf: base }; return base; }
+      var u = a && user.buf;
+      if (!u && sv === 1) { mixCache = { key: key, buf: base }; return base; }
       var SR = base.sampleRate, out = new AudioBuffer({ numberOfChannels: 2, length: base.length, sampleRate: SR });
-      var u = user.buf, off = Math.round((a.start || 0) * SR), fadeIn = Math.round(0.05 * SR), fadeOut = Math.round(1.5 * SR), peak = 0;
-      var steps = reel.steps ? 0.6 : 0;                                      // the footsteps sit under the music
+      var off = Math.round((u && a.start || 0) * SR), fadeIn = Math.round(0.05 * SR), fadeOut = Math.round(1.5 * SR), peak = 0;
+      var walkGain = (u ? 0.6 : 1) * sv;                                      // under music the footsteps sit a little lower
       for (var ch = 0; ch < 2; ch++) {
-        var o = out.getChannelData(ch), b = base.getChannelData(ch), uc = u.getChannelData(Math.min(ch, u.numberOfChannels - 1));
+        var o = out.getChannelData(ch), b = base.getChannelData(ch), uc = u && u.getChannelData(Math.min(ch, u.numberOfChannels - 1));
         for (var i = 0; i < o.length; i++) {
-          var j = i + off, v = j < uc.length ? uc[j] * a.vol * Math.min(1, i / fadeIn, (o.length - 1 - i) / fadeOut) : 0;
-          o[i] = b[i] * (steps || 1) + v; if (Math.abs(o[i]) > peak) peak = Math.abs(o[i]);
+          var j = i + off, v = uc && j < uc.length ? uc[j] * a.vol * Math.min(1, i / fadeIn, (o.length - 1 - i) / fadeOut) : 0;
+          o[i] = b[i] * walkGain + v; if (Math.abs(o[i]) > peak) peak = Math.abs(o[i]);
         }
       }
       if (peak > 0.98) for (var c3 = 0; c3 < 2; c3++) { var oc = out.getChannelData(c3); for (var k = 0; k < oc.length; k++) oc[k] *= 0.98 / peak; }
       mixCache = { key: key, buf: out }; return out;
     });
   }
+  function stepsVol() { return reel.stepsVol == null ? 1 : +reel.stepsVol; }
   function walkSound() {
     var key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps]);
     if (soundCache.key === key) return Promise.resolve(soundCache.buf);
@@ -783,7 +785,11 @@
     function sunRow() { $("sunRow").hidden = !(MOODS[reel.mood] || MOODS.day).sun; }
     seg($("mood"), reel.mood || "day", function (v) { reel.mood = v; sunRow(); changed(true); }); sunRow();
     audioUI();
-    ["steps", "sun", "pillars", "film"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; changed(true); }; });
+    ["steps", "sun", "pillars", "film"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; stepsUI(); changed(true); }; });
+    function stepsUI() { $("stepsVolRow").hidden = !reel.steps; $("stepsVol").value = stepsVol(); $("stepsVolOut").textContent = Math.round(stepsVol() * 100) + "%"; }
+    $("stepsVol").oninput = function () { reel.stepsVol = +$("stepsVol").value; stepsUI(); };
+    $("stepsVol").onchange = function () { changed(true); };
+    stepsUI();
   }
 
   /* ---------- on the beat: tap along, or read the tempo from your file ---------- */
