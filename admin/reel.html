@@ -109,6 +109,11 @@
     .pickbtn small { display: block; font-size: 11px; color: var(--ink3); }
     .moves { display: flex; gap: 14px; align-items: center; }
     .acts { display: flex; gap: 14px; }
+    .framer { position: relative; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    .framer canvas { display: block; width: 100%; height: auto; filter: brightness(0.62); }
+    .framer-win { position: absolute; box-shadow: 0 0 0 1.5px #fff, 0 0 0 9999px rgba(0,0,0,0.0); cursor: grab; backdrop-filter: brightness(1.6); -webkit-backdrop-filter: brightness(1.6); }
+    .framer-win:active { cursor: grabbing; }
+    .framer-knob { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: nwse-resize; }
     .audio { display: flex; flex-direction: column; gap: 4px; padding: 6px 12px; border-radius: 10px; background: rgba(0,0,0,0.04); }
     .audio-name { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #recAudio.is-on { color: #d70015; }
@@ -205,6 +210,8 @@
         </div>
         <div class="row"><span>Light</span><div class="seg" id="mood"><button type="button" data-v="day">Daylight</button><button type="button" data-v="evening">Evening</button><button type="button" data-v="night">Night</button><button type="button" data-v="white">White</button></div></div>
         <div class="row" id="sunRow"><span>Window light</span><input class="switch" type="checkbox" role="switch" id="sun" /></div>
+        <div class="row"><span>Spotlights</span><input class="switch" type="checkbox" role="switch" id="lit" /></div>
+        <div class="row"><span>Motion blur</span><input class="switch" type="checkbox" role="switch" id="mblur" /></div>
         <div class="row"><span>Pillars in front</span><input class="switch" type="checkbox" role="switch" id="pillars" /></div>
         <div class="row"><span>Film look</span><input class="switch" type="checkbox" role="switch" id="film" /></div>
       </section>
@@ -244,6 +251,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/reel.js?v=7"></script>
+  <script src="/admin/reel.js?v=8"></script>
 </body>
 </html>

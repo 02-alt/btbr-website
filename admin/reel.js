@@ -105,7 +105,7 @@
       stops.splice(Math.min(stops.length, 3), 0, { kind: "text", size: "M", hold: 2.6, text: "“" + b.text.trim() + "”", small: b.cite || "" });
     });
     stops.push({ kind: "text", size: "L", hold: 1.6, text: "Read it on\n" + SITE, small: noLine() + " — " + topic.title });
-    return { v: 1, stops: stops, pace: "normal", mood: "day", steps: true, sun: true, pillars: true, audio: null };
+    return { v: 1, stops: stops, pace: "normal", mood: "day", mblur: true, steps: true, sun: true, pillars: true, audio: null };
   }
   var KEY = function () { return "btbr-reel:" + topic.slug; };
   function persist() { try { localStorage.setItem(KEY(), JSON.stringify(reel)); } catch (e) {} }
@@ -131,6 +131,7 @@
   var LABEL = { w: 300, pad: 27, size: 33, lh: 1.13, track: -0.022 };
 
   /* ---------- the scene: where everything hangs, and when the visitor is where ---------- */
+  var builds = 0;
   function segTime(d, V) { return 2 * RAMP + Math.max(0, (d - V * RAMP) / V); }
   // fit to a length: share the time left after walking among the stops (in proportion to what you set,
   // never under MIN); walk faster when there isn't enough of it, slower when there's far too much
@@ -181,14 +182,25 @@
     if (+reel.fit) { var f = fitTo(items.slice(1).map(function (it, i) { return it.x - items[i].x; }), eff, V, +reel.fit); V = f.V; eff = f.holds; }
     var grid = beatGrid();
     // the walk: hold, ease up to pace, walk, ease to a halt, hold …
-    var X = [], Z = [], R = 240, holds = [];
+    var X = [], Z = [], ZD = [], YC = [], R = 240, holds = [];
     // standing in front of a stop; leaning in steps toward the photo itself (not the label) and back
+    // a zoom: the camera glides in until the area you framed fills the screen, settles there with a
+    // slow push, and glides back out
+    function smoother(p) { p = Math.max(0, Math.min(1, p)); return p * p * p * (p * (p * 6 - 15) + 10); }
     function hold(it, secs) {
       holds.push(X.length / R);
-      var lean = it.stop.kind === "photo" && it.stop.lean, shift = lean ? (it.fw - it.total) / 2 : 0, rr = Math.min(1.1, secs * 0.38);
+      var st = it.stop, lean = st.kind === "photo" && st.lean && !st.zoomOn, det = st.kind === "photo" && st.zoomOn;
+      var shift = lean ? (it.fw - it.total) / 2 : 0, rr = Math.min(1.1, secs * 0.38);
+      var zr = det ? zoomRect(it) : null, tx = it.x, ty = 0, dep = D;
+      if (zr) {
+        var pl = it.x - it.total / 2 + 66, pt = Y - it.fh / 2 + 66;           // the photo's corner on the wall
+        tx = pl + (zr.x + zr.w / 2) * it.pw; ty = pt + (zr.y + zr.h / 2) * it.ph; dep = Math.max(120, F * zr.w * it.pw / W);
+      }
+      var ri = Math.min(1.3, secs * 0.34), ro = Math.min(1.1, secs * 0.3);
       for (var k = 0; k < secs * R; k++) {
         var tt = k / R, p = lean ? Math.max(0, Math.min(1, tt / rr, (secs - tt) / rr)) : 0, e = (1 - Math.cos(Math.PI * p)) / 2;
-        X.push(it.x + shift * e); Z.push(LEAN * e);
+        var ed = det ? smoother(Math.min(tt / ri, (secs - tt) / ro, 1)) : 0, push = 1 - 0.035 * tt / secs;
+        X.push(it.x + shift * e + (tx - it.x) * ed); Z.push(LEAN * e); ZD.push((D - dep * push) * ed); YC.push(ty * ed);
       }
     }
     hold(items[0], eff[0]);
@@ -196,14 +208,14 @@
       var D0 = items[i + 1].x - items[i].x, tc = Math.max(0, (D0 - V * RAMP) / V), T2 = 2 * RAMP + tc;
       if (grid) {                         // on the beat: linger a moment longer so the next arrival lands on one
         var arrive = X.length / R + T2, on = grid[1] + Math.ceil((arrive - grid[1] - 0.02) / grid[0]) * grid[0];
-        for (var w = 0; w < (on - arrive) * R; w++) { X.push(X[X.length - 1]); Z.push(Z[Z.length - 1]); }
+        for (var w = 0; w < (on - arrive) * R; w++) { X.push(X[X.length - 1]); Z.push(Z[Z.length - 1]); ZD.push(0); YC.push(0); }
       }
       for (var k = 1; k <= T2 * R; k++) {
         var t = k / R, d;
         if (t < RAMP) d = V * (t / 2 - RAMP / (2 * Math.PI) * Math.sin(Math.PI * t / RAMP));
         else if (t < RAMP + tc) d = V * RAMP / 2 + V * (t - RAMP);
         else { var u = T2 - t; d = D0 - V * (u / 2 - RAMP / (2 * Math.PI) * Math.sin(Math.PI * u / RAMP)); }
-        X.push(items[i].x + Math.min(D0, d)); Z.push(0);
+        X.push(items[i].x + Math.min(D0, d)); Z.push(0); ZD.push(0); YC.push(0);
       }
       hold(items[i + 1], eff[i + 1]);
     }
@@ -211,7 +223,7 @@
     var pillars = [], suns = [];
     if (reel.pillars) for (var p = 2; p + 1 < items.length; p += 3) pillars.push((items[p].x + items[p + 1].x) / 2);
     if (reel.sun && (MOODS[reel.mood] || MOODS.day).sun) for (var sx = 750; sx < x + 800; sx += 4100) suns.push(sx);
-    scene = { fit: +reel.fit || 0, items: items, X: X, Z: Z, R: R, V: V, eff: eff, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
+    scene = { ver: ++builds, fit: +reel.fit || 0, items: items, X: X, Z: Z, ZD: ZD, YC: YC, R: R, V: V, eff: eff, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
   }
   /* ---------- a video stop: projected onto the wall ---------- */
   var VIDEO = { S: 640, M: 820, L: 980 };
@@ -267,6 +279,18 @@
     }));
   }
 
+  // the area a photo zooms to: x, y, w, h as fractions of the photo, always the screen's 9:16
+  function photoAspect(it) { var b = it.im ? bare(it.im) : { w: 3, h: 2 }; return b.w / b.h; }
+  function zoomFit(z, ar, minW) {           // ar = photo width / height; minW: no closer than the photo's pixels allow
+    var w = Math.max(minW || 0.1, Math.min(z.w, 1, (9 / 16) / ar)), h = w * ar * 16 / 9;
+    return { x: Math.max(0, Math.min(1 - w, z.x)), y: Math.max(0, Math.min(1 - h, z.y)), w: w, h: h };
+  }
+  function zoomRect(it) {
+    var ar = photoAspect(it), z = it.stop.zoom;
+    if (!z) { var w = Math.min(1, (9 / 16) / ar) * 0.8; z = { x: (1 - w) / 2, y: 0, w: w }; z.y = (1 - w * ar * 16 / 9) / 2; }
+    return zoomFit(z, ar, zoomMin(it));
+  }
+  function zoomMin(it) { return it.im ? Math.min(0.6, Math.max(0.1, 300 / bare(it.im).w)) : 0.1; }   // at least ~300 px of the photo across the screen
   function layoutPhoto(it) {
     var im = it.im, b = im ? bare(im) : { w: 3, h: 2 }, portrait = b.h > b.w;
     var pw = PHOTO[it.stop.size] || PHOTO.M; if (portrait) pw = Math.round(pw * 0.88);
@@ -277,9 +301,10 @@
   }
   function camAt(t) {
     var X = scene.X, f = Math.max(0, Math.min(X.length - 1, t * scene.R)), i = Math.min(X.length - 2, Math.floor(f));
-    if (i < 0) return { x: X[0] || 0, yaw: 0, d: D };
-    var x = X[i] + (X[i + 1] - X[i]) * (f - i), v = (X[i + 1] - X[i]) * scene.R, Z = scene.Z;
-    return { x: x, yaw: YAW * Math.max(-1, Math.min(1, v / scene.V)), d: D - (Z[i] + (Z[i + 1] - Z[i]) * (f - i)) };
+    if (i < 0) return { x: X[0] || 0, yaw: 0, d: D, y: 0 };
+    var fr = f - i, x = X[i] + (X[i + 1] - X[i]) * fr, v = (X[i + 1] - X[i]) * scene.R, Z = scene.Z, ZD = scene.ZD, YC = scene.YC;
+    function at(A) { return A[i] + (A[i + 1] - A[i]) * fr; }
+    return { x: x, yaw: YAW * Math.max(-1, Math.min(1, v / scene.V)), d: D - at(Z) - at(ZD), y: at(YC) };
   }
 
   /* ---------- drawing ----------
@@ -293,11 +318,11 @@
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     var g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); return g;
   }
-  function render(ctx, t, s) {
+  function renderScene(ctx, t, s) {
     var c = camAt(t), a = c.yaw * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cd = c.d, cx = c.x - cd * Math.tan(a), m = MOODS[reel.mood] || MOODS.day;
     function P(x, y, z) {
       var dx = x - cx, dz = z - cd, dep = dx * sa - dz * ca, xs = dx * ca + dz * sa;
-      return { x: W / 2 + F * xs / dep, y: H / 2 + F * y / dep, k: F / dep };
+      return { x: W / 2 + F * xs / dep, y: H / 2 + F * (y - c.y) / dep, k: F / dep };
     }
     function plane(x, y, z, w, h, fn) {
       var p0 = P(x, y, z), p1 = P(x + w, y, z), p2 = P(x, y + h, z);
@@ -368,23 +393,27 @@
         setFont(ctx, LABEL.size, LABEL.track); ctx.fillStyle = "#111";
         it.lab.forEach(function (ln, i) { ctx.fillText(ln, LABEL.pad, 26 + LABEL.size * 0.9 + i * LABEL.size * LABEL.lh); });
         setFont(ctx, 15, 0.02); ctx.fillStyle = "#9a989b"; ctx.textAlign = "right"; ctx.fillText(it.no, LABEL.w - LABEL.pad, lh2 - 26); ctx.textAlign = "left";
+        if (reel.lit) lightFromAbove(ctx, LABEL.w, lh2);
       });
       plane(left2, top2, 8, it.fw, it.fh, function (k2) {                 // the frame, the mat, the photo
         ctx.save();
-        ctx.shadowColor = "rgba(20,15,20,0.3)"; ctx.shadowBlur = 64 * k2; ctx.shadowOffsetY = 30 * k2;
+        if (reel.lit) { ctx.shadowColor = "rgba(20,15,20,0.4)"; ctx.shadowBlur = 80 * k2; ctx.shadowOffsetY = 56 * k2; }   // light from above: the shadow falls lower
+        else { ctx.shadowColor = "rgba(20,15,20,0.3)"; ctx.shadowBlur = 64 * k2; ctx.shadowOffsetY = 30 * k2; }
         ctx.fillStyle = "#141414"; ctx.fillRect(0, 0, it.fw, it.fh);
         ctx.shadowColor = "rgba(20,15,20,0.2)"; ctx.shadowBlur = 3 * k2; ctx.shadowOffsetY = 2 * k2; ctx.fillRect(0, 0, it.fw, it.fh);
         ctx.restore();
         ctx.fillStyle = "#f7f5f0"; ctx.fillRect(16, 16, it.fw - 32, it.fh - 32);
         if (it.im) { var b = bare(it.im); ctx.drawImage(it.im, b.x, b.y, b.w, b.h, 66, 66, it.pw, it.ph); }
         ctx.strokeStyle = "rgba(0,0,0,0.08)"; ctx.lineWidth = 1; ctx.strokeRect(66.5, 66.5, it.pw - 1, it.ph - 1);
+        if (reel.lit) lightFromAbove(ctx, it.fw, it.fh);
       });
     });
 
     // at night only the pieces are lit: a pool of light from above on each, the rest of the room in shade
-    if (m.dark) {
+    var dark = m.dark || (reel.lit ? 0.17 : 0);                           // lit: each piece in its own pool of light
+    if (dark) {
       var SL = 8, sw = Math.ceil(W * s / SL), sh = Math.ceil(H * s / SL), sg = layer("shade", sw, sh), kk = s / SL;
-      sg.fillStyle = "rgba(8,6,10," + m.dark + ")"; sg.fillRect(0, 0, sw, sh);
+      sg.fillStyle = "rgba(8,6,10," + dark + ")"; sg.fillRect(0, 0, sw, sh);
       sg.globalCompositeOperation = "destination-out";
       scene.items.forEach(function (it) {
         if (it.stop.kind === "video") return;                                // the projection is its own light
@@ -443,7 +472,26 @@
       });
       if (pg) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(pg.canvas, 0, 0, pw2 * PL, ph2 * PL); ctx.restore(); }
     }
+  }
+  // the frame as it goes out: the scene, then what the camera does to it, then what goes over it
+  function render(ctx, t, s) {
+    renderScene(ctx, t, s);
+    if (reel.mblur !== false) smear(ctx, t, s);
     if (reel.film) film(ctx, t, s);
+  }
+  function lightFromAbove(ctx, w, h) {                  // brighter at the top, falling off below
+    var g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "rgba(255,248,236,0.16)"); g.addColorStop(0.45, "rgba(255,248,236,0)"); g.addColorStop(1, "rgba(10,8,12,0.14)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  }
+  // motion blur: the picture smeared along the way the camera moves, over a 1/60 s shutter
+  function smear(ctx, t, s) {
+    var c1 = camAt(t), c0 = camAt(t - 1 / 60), L = (c1.x - c0.x) * F / c1.d * s;
+    if (Math.abs(L) < 1.2 || c1.d < D - 1 || c0.d < D - 1) return;      // only the walk, not stepping closer or zooming
+    var cv = ctx.canvas, g = layer("smear", cv.width, cv.height); g.drawImage(cv, 0, 0);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    [-0.5, 0.5, -0.3, 0.3, -0.1, 0.1].forEach(function (o, i) { ctx.globalAlpha = 1 / (i + 2); ctx.drawImage(g.canvas, o * L, 0); });
+    ctx.restore();
   }
 
   // film: blacks lifted a touch, a warm cast in the lights and cool in the shade, a soft vignette, and
@@ -524,6 +572,7 @@
     if (reel.steps) {
       var nb = noise(ac, 0.2, 11), stride = STRIDE * scene.V / PACE.normal, next = stride / 2, X = scene.X, Z = scene.Z, n = 0, rnd = 5, walked = 0;
       for (var j = 1; j < X.length; j++) {
+        if (scene.ZD[j] > 0.5 || scene.ZD[j - 1] > 0.5) continue;              // a detail is the camera, not the feet
         walked += Math.hypot(X[j] - X[j - 1], Z[j] - Z[j - 1]);              // stepping in to a photo and back counts too
         if (walked < next) continue;
         next += stride; n++;
@@ -702,8 +751,13 @@
       segRow("Size", [["S", "Small"], ["M", "Medium"], ["L", "Large"]], s.size, function (v) { s.size = v; });
       var lr = document.createElement("div"); lr.className = "row"; lr.innerHTML = '<span>Step closer</span><input class="switch" type="checkbox" role="switch" aria-label="Step closer to this photo" />';
       var ls = lr.querySelector("input"); ls.checked = !!s.lean;
-      ls.addEventListener("change", function () { s.lean = ls.checked; if (s.lean && s.hold < 2.8) s.hold = 2.8; inspector(); changed(); });
+      ls.addEventListener("change", function () { s.lean = ls.checked; if (s.lean) s.zoomOn = false; if (s.lean && s.hold < 2.8) s.hold = 2.8; inspector(); changed(); });
       box.appendChild(lr);
+      var zr = document.createElement("div"); zr.className = "row"; zr.innerHTML = '<span>Zoom in</span><input class="switch" type="checkbox" role="switch" aria-label="Zoom in to this photo" />';
+      var zs = zr.querySelector("input"); zs.checked = !!s.zoomOn;
+      zs.addEventListener("change", function () { s.zoomOn = zs.checked; if (s.zoomOn) s.lean = false; if (s.zoomOn && s.hold < 3.6) s.hold = 3.6; inspector(); changed(); });
+      box.appendChild(zr);
+      if (s.zoomOn) box.appendChild(zoomFramer(s));
     } else if (s.kind === "video") {
       var vb = document.createElement("button"); vb.type = "button"; vb.className = "pickbtn";
       vb.innerHTML = '<span class="th" style="width:48px;height:48px">▶</span><span><b></b><small>Choose another video</small></span>';
@@ -729,6 +783,32 @@
       reel.stops.splice(sel, 1); sel = Math.min(sel, reel.stops.length - 1); inspector(); changed();
     }]].forEach(function (m, i) { var b = document.createElement("button"); b.type = "button"; b.className = "link" + (i === 2 ? " danger" : ""); b.textContent = m[0]; b.addEventListener("click", m[1]); mv.appendChild(b); });
     box.appendChild(mv);
+  }
+  // framing the zoom: the photo, and on it the 9:16 window the screen will fill — drag it, or its corner to size it
+  function zoomFramer(st) {
+    var it = scene.items[sel], wrap = document.createElement("div"); wrap.className = "framer";
+    if (!it || !it.im) { wrap.textContent = "Loading the photo…"; return wrap; }
+    var b = bare(it.im), ar = b.w / b.h, cv = document.createElement("canvas"), win = document.createElement("div"), knob = document.createElement("i");
+    cv.width = 600; cv.height = Math.round(600 / ar); cv.getContext("2d").drawImage(it.im, b.x, b.y, b.w, b.h, 0, 0, cv.width, cv.height);
+    win.className = "framer-win"; knob.className = "framer-knob"; win.appendChild(knob); wrap.appendChild(cv); wrap.appendChild(win);
+    var z = zoomRect(it);
+    function show() { win.style.left = z.x * 100 + "%"; win.style.top = z.y * 100 + "%"; win.style.width = z.w * 100 + "%"; win.style.height = z.h * 100 + "%"; }
+    show();
+    win.addEventListener("pointerdown", function (e) {
+      e.preventDefault(); win.setPointerCapture(e.pointerId);
+      var r = wrap.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, z0 = { x: z.x, y: z.y, w: z.w }, resize = e.target === knob;
+      function mv(ev) {
+        var dx = (ev.clientX - sx) / r.width, dy = (ev.clientY - sy) / r.height;
+        z = zoomFit(resize ? { x: z0.x, y: z0.y, w: z0.w + dx } : { x: z0.x + dx, y: z0.y + dy, w: z0.w }, ar, zoomMin(it)); show();
+      }
+      function up() {
+        win.removeEventListener("pointermove", mv); win.removeEventListener("pointerup", up);
+        st.zoom = { x: +z.x.toFixed(4), y: +z.y.toFixed(4), w: +z.w.toFixed(4) }; changed();
+      }
+      win.addEventListener("pointermove", mv); win.addEventListener("pointerup", up);
+    });
+    var note = document.createElement("p"); note.className = "note"; note.textContent = "Drag the frame to choose what fills the screen; drag its corner to zoom closer (as close as the photo stays sharp).";
+    var out = document.createElement("div"); out.appendChild(wrap); out.appendChild(note); return out;
   }
   function openPicker(title, fill) {
     $("pickerTitle").textContent = title; var body = $("pickerBody"); body.innerHTML = ""; fill(body);
@@ -789,7 +869,8 @@
     function sunRow() { $("sunRow").hidden = !(MOODS[reel.mood] || MOODS.day).sun; }
     seg($("mood"), reel.mood || "day", function (v) { reel.mood = v; sunRow(); changed(true); }); sunRow();
     audioUI();
-    ["steps", "sun", "pillars", "film"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; stepsUI(); changed(true); }; });
+    $("mblur").checked = reel.mblur !== false; $("mblur").onchange = function () { reel.mblur = $("mblur").checked; changed(true); };
+    ["steps", "sun", "pillars", "film", "lit"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; stepsUI(); changed(true); }; });
     function stepsUI() { $("stepsVolRow").hidden = !reel.steps; $("stepsVol").value = stepsVol(); $("stepsVolOut").textContent = Math.round(stepsVol() * 100) + "%"; }
     $("stepsVol").oninput = function () { reel.stepsVol = +$("stepsVol").value; stepsUI(); };
     $("stepsVol").onchange = function () { changed(true); };
