@@ -1,5 +1,19 @@
 [
   {
+    "slug": "riots",
+    "no": 1,
+    "title": "RIOTS",
+    "author": "Isaaaaaaaac",
+    "date": "2026-11-09",
+    "cover": "/curation/media/riots/board-1-3.png",
+    "desc": "Riots seen through art",
+    "langs": [
+      "en"
+    ],
+    "tone": "#dfe2e5",
+    "feed": "/curation/media/riots/board-1-3.png"
+  },
+  {
     "slug": "the-people-holding-the-city-together",
     "no": 9,
     "title": "The People Holding the City Together",
@@ -103,19 +117,6 @@
     ],
     "feed": "/curation/media/gnuhr/board-4-3.png",
     "fr": {}
-  },
-  {
-    "slug": "riots",
-    "no": 1,
-    "title": "RIOTS",
-    "author": "Isaaaaaaaac",
-    "date": "2026-10-26",
-    "cover": "/curation/media/riots/cover.png",
-    "desc": "Riots seen through art",
-    "langs": [
-      "en"
-    ],
-    "tone": "#dfe2e5"
   },
   {
     "slug": "djh20",
