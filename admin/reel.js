@@ -497,7 +497,11 @@
           o[i] = b[i] * walkGain + v; if (Math.abs(o[i]) > peak) peak = Math.abs(o[i]);
         }
       }
-      if (peak > 0.98) for (var c3 = 0; c3 < 2; c3++) { var oc = out.getChannelData(c3); for (var k = 0; k < oc.length; k++) oc[k] *= 0.98 / peak; }
+      // a soft ceiling: anything over 0.8 is rounded off toward 1 (turned-up footsteps stay clean)
+      if (peak > 0.8) for (var c3 = 0; c3 < 2; c3++) {
+        var oc = out.getChannelData(c3);
+        for (var k = 0; k < oc.length; k++) { var x = oc[k], ax = Math.abs(x); if (ax > 0.8) oc[k] = (x < 0 ? -1 : 1) * (0.8 + 0.2 * Math.tanh((ax - 0.8) / 0.2)); }
+      }
       mixCache = { key: key, buf: out }; return out;
     });
   }
@@ -539,7 +543,7 @@
     return ac.startRendering().then(function (buf) {
       var peak = 0, fade = Math.floor(0.4 * SR);
       for (var c = 0; c < 2; c++) { var d2 = buf.getChannelData(c); for (var i2 = 0; i2 < d2.length; i2++) peak = Math.max(peak, Math.abs(d2[i2])); }
-      var gain = peak ? 0.5 / peak : 1;
+      var gain = peak ? 0.8 / peak : 1;                                     // loud enough to be heard under a song
       for (var c2 = 0; c2 < 2; c2++) {
         var e = buf.getChannelData(c2);
         for (var i3 = 0; i3 < e.length; i3++) e[i3] *= gain * Math.min(1, i3 / fade, (e.length - 1 - i3) / fade);
@@ -970,7 +974,7 @@
       if (reel.yt) { $("ytUrl").focus(); return; }
       var song = topic.song && topic.song.src || "";
       if (reel.audio) { reel.audio = null; user = { id: user.id + 1, buf: null }; idbDo("readwrite", function (st) { return st.delete(topic.slug); }).catch(function () {}); audioUI(); }
-      reel.yt = { url: song, start: ytT(song), vol: 80 }; ytUI(); ytLoad(); changed(true);
+      reel.yt = { url: song, start: ytT(song), vol: 60 }; ytUI(); ytLoad(); changed(true);
       if (!song) $("ytUrl").focus();
     });
     $("rmYt").addEventListener("click", function () { ytPause(); reel.yt = null; ytUI(); audioUI(); changed(true); });
