@@ -654,3 +654,86 @@ body.view-topics .studio-inspector { display: none; }
 .insp-tabs button { flex: 1; border: 0; background: none; padding: 6px 0; border-radius: 7px; font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
 .insp-tabs button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.06); }
 .insp-crumb { margin-top: 9px; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+
+/* ===== A pass for clarity (Apple's hierarchy, grouping, forgiveness) =====
+   Spacing on a 4-pt scale: 4 · 8 · 12 · 16 · 24 · 32. */
+
+/* the bar: one primary action; the rest are quiet until hovered */
+.studio-actions { align-items: center; gap: 4px; }
+.studio-actions .sbtn.primary { margin-left: 8px; }
+.sbtn.quiet { border-color: transparent; background: none; font-weight: 500; padding: 7px 12px; }
+.sbtn.quiet:hover { background: rgba(0, 0, 0, 0.05); }
+.sbtn:focus-visible, .studio-tab:focus-visible, .lang-seg button:focus-visible, .topic-row:focus-visible, .linkbtn:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+/* where you are: what's open, and whether it has changes */
+.doc-state { font-size: 12px; color: var(--ink-soft); margin-right: 12px; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-state.is-dirty::after { content: " — edited"; color: var(--ink); }
+/* the Topics tab has no document: its actions step aside (kept in layout so the tabs don't move) */
+body.view-topics .studio-actions { visibility: hidden; }
+/* EN / FR: the same segmented control as Write / Topics */
+.lang-seg { border: 0; border-radius: 9px; background: #ececef; margin-right: 8px; }
+.lang-seg button { border-radius: 7px; padding: 5px 10px; }
+.lang-seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+
+/* the inspector: a pop-up menu that looks like the fields around it */
+select.insp-select, select.insp-input {
+  appearance: none; -webkit-appearance: none; padding-right: 32px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 12px;
+}
+.insp-field { margin-bottom: 16px; }
+.insp-label { margin-bottom: 8px; }
+.insp-section + .insp-section { margin-top: 24px; padding-top: 24px; }
+
+/* topics: the row is the way in; exports beside it; deleting is quiet and set apart */
+.topics-head { align-items: center; margin-bottom: 24px; }
+.topics-count { font-size: 15px; font-weight: 500; color: var(--ink-soft); letter-spacing: 0; margin-left: 4px; }
+.topics-list { gap: 8px; }
+.topic-row { gap: 16px; padding: 12px; cursor: pointer; transition: background 140ms ease, box-shadow 140ms ease, transform 90ms ease; }
+.topic-row:hover { background: #fcfcfd; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+.topic-row:active { transform: scale(0.995); }
+.topic-thumb { width: 56px; height: 56px; }
+.topic-sub { margin-top: 4px; }
+.topic-acts { gap: 8px; align-items: center; }
+.topic-acts button, .topic-acts a { transition: background 140ms ease, color 140ms ease; }
+.topic-acts .del { border-color: transparent; background: none; color: var(--ink-soft); margin-left: 4px; }
+.topic-acts .del:hover { color: #ff3b30; background: rgba(255, 59, 48, 0.08); }
+.topic-row::after { content: ""; flex: none; width: 7px; height: 7px; margin: 0 4px; border-right: 1.6px solid #c7c7cc; border-top: 1.6px solid #c7c7cc; transform: rotate(45deg); }
+
+/* publishing: one decision, Cancel beside it (a Mac sheet) */
+.pub-panel { padding: 24px; }
+.pub-title { margin-bottom: 8px; }
+.pub-note { margin-bottom: 16px; }
+.pub-saved { font-size: 13px; color: var(--ink-soft); margin-bottom: 4px; }
+.linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+.pub-remember { margin: 12px 0 0; }
+.pub-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.pub-go { width: auto; padding: 8px 20px; font-size: 13px; }
+.pub-actions .sbtn { padding: 8px 16px; }
+
+/* small screens: the document first; settings come up as a sheet */
+.insp-toggle { display: none; }
+@media (max-width: 900px) {
+  body.studio { overflow: auto; }
+  .studio-bar { height: auto; min-height: 52px; flex-wrap: wrap; row-gap: 8px; padding: 8px 12px; }
+  .studio-brand span, .doc-state, #previewBtn, #exportBtn { display: none; }
+  .studio-actions { margin-left: auto; }
+  .insp-toggle { display: inline-flex; }
+  .studio-canvas { padding: 24px 16px 160px; }
+  .studio-inspector {
+    position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 72vh; z-index: 40;
+    border-left: 0; border-radius: 16px 16px 0 0; background: rgba(250, 250, 252, 0.96);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18); padding-bottom: calc(32px + env(safe-area-inset-bottom));
+    transform: translateY(100%); transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  body.insp-open .studio-inspector { transform: none; }
+  .insp-head { border-radius: 16px 16px 0 0; }
+  .topics-view { padding: 24px 12px 96px; }
+  body.view-topics .studio-actions { display: none; }
+  .topic-row { flex-wrap: wrap; }
+  .topic-row::after { display: none; }
+  .topic-acts { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) { .studio-inspector, .topic-row { transition: none; } }

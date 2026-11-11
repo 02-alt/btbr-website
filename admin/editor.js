@@ -1780,24 +1780,71 @@
   }
 
   var pubModal = document.getElementById("pubModal");
+  var pubBusy = false;
+  function pubLabel() { return editingSlug ? "Update" : "Publish"; }
   function openPub() {
-    document.getElementById("pubToken").value = localStorage.getItem(TOKEN_KEY) || "";
+    var saved = localStorage.getItem(TOKEN_KEY) || "", name = "“" + (state.title || "Untitled") + "”";
+    document.getElementById("pubToken").value = saved;
+    document.getElementById("pubTitle").textContent = (editingSlug ? "Update " : "Publish ") + name + "?";
+    document.getElementById("pubNote").textContent = editingSlug ? "The published topic is replaced with this version. It’s live in a minute or two."
+      : "It’s added to the curation page, and live in a minute or two.";
+    document.getElementById("pubSaved").hidden = !saved; document.getElementById("pubTokenBox").hidden = !!saved;
+    document.getElementById("pubGo").textContent = pubLabel();
     var lg = document.getElementById("pubLog"); lg.hidden = true; lg.textContent = "";
+    document.getElementById("pubClose").textContent = "Cancel";
     pubModal.hidden = false;
+    (saved ? document.getElementById("pubGo") : document.getElementById("pubToken")).focus();
   }
-  function closePub() { pubModal.hidden = true; }
+  function closePub() { if (!pubBusy) pubModal.hidden = true; }
+  document.getElementById("pubChange").addEventListener("click", function () {
+    document.getElementById("pubSaved").hidden = true; document.getElementById("pubTokenBox").hidden = false; document.getElementById("pubToken").focus();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (pubModal.hidden) return;
+    if (e.key === "Escape") closePub();
+    if (e.key === "Enter" && e.target.id === "pubToken") document.getElementById("pubGo").click();
+  });
   document.getElementById("pubClose").addEventListener("click", closePub);
   document.getElementById("pubBackdrop").addEventListener("click", closePub);
   document.getElementById("pubGo").addEventListener("click", function () {
     var token = document.getElementById("pubToken").value.trim();
-    if (!token) { alert("Paste your GitHub token first."); return; }
+    if (!token) { document.getElementById("pubSaved").hidden = true; document.getElementById("pubTokenBox").hidden = false; document.getElementById("pubToken").focus(); return; }
     if (document.getElementById("pubRemember").checked) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY);
     var lg = document.getElementById("pubLog"); lg.hidden = false; lg.textContent = "";
     function log(m) { lg.textContent += m + "\n"; lg.scrollTop = lg.scrollHeight; }
-    var btn = this; btn.disabled = true; btn.textContent = "Publishing…";
-    publish(token, log).then(function () { btn.disabled = false; btn.textContent = "Publish now"; try { localStorage.removeItem("btbr_cur_draft"); } catch (e) {} })
-      .catch(function (e) { log("❌ " + (e && e.message || e)); btn.disabled = false; btn.textContent = "Publish now"; });
+    var btn = this, cancel = document.getElementById("pubClose"); btn.disabled = true; btn.textContent = editingSlug ? "Updating…" : "Publishing…"; pubBusy = true; cancel.disabled = true;
+    function done() { pubBusy = false; btn.disabled = false; cancel.disabled = false; btn.textContent = pubLabel(); }
+    publish(token, log).then(function () { done(); cancel.textContent = "Done"; clean(); try { localStorage.removeItem("btbr_cur_draft"); } catch (e) {} })
+      .catch(function (e) { log("❌ " + (e && e.message || e)); done(); });
   });
+
+  /* ---------- unsaved work ----------
+     Anything typed, added, moved or removed marks the topic as edited; saving a draft, publishing or
+     opening another clears it. While it's edited: the bar says so, opening another topic asks first,
+     and so does closing the tab. */
+  var dirty = false, quiet = 0;
+  function docState() {
+    var el = document.getElementById("docState"); if (!el) return;
+    el.textContent = editingSlug ? "Editing “" + (state.title || "Untitled") + "”" : "New topic";
+    el.classList.toggle("is-dirty", dirty);
+  }
+  function touch() { if (!quiet && !dirty) dirty = true; docState(); }
+  function clean() { dirty = false; quiet++; setTimeout(function () { quiet--; }, 400); docState(); }     // loading a topic re-renders: not an edit
+  function okToLeave() { return !dirty || confirm("Leave “" + (state.title || "this topic") + "”?\n\nIts changes aren’t saved as a draft or published yet, and will be lost."); }
+  (function () {
+    ["input", "change"].forEach(function (ev) {
+      document.addEventListener(ev, function (e) { if (e.target.closest(".studio-canvas, .studio-inspector") && e.target.id !== "pubToken") touch(); }, true);
+    });
+    document.addEventListener("pointerup", function (e) { if (e.target.closest(".block")) setTimeout(touchIfMoved, 0); }, true);
+    var snap = "";
+    function sig() { try { return JSON.stringify(state.blocks, function (k, v) { return k === "html" || k === "text" ? undefined : v; }); } catch (e) { return ""; } }
+    function touchIfMoved() { var n = sig(); if (snap && n !== snap) touch(); snap = n; }
+    new MutationObserver(function () { touchIfMoved(); }).observe(blocksEl, { childList: true });
+    setTimeout(function () { snap = sig(); docState(); }, 0);
+    window.addEventListener("beforeunload", function (e) { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+    var tg = document.getElementById("inspToggle");
+    if (tg) tg.addEventListener("click", function () { var on = document.body.classList.toggle("insp-open"); tg.setAttribute("aria-expanded", on); tg.textContent = on ? "Done" : "Settings"; });
+  })();
 
   /* ---------- Topics tab: list, edit, delete ---------- */
   function switchTab(tab) {
@@ -1806,25 +1853,31 @@
     [].forEach.call(document.querySelectorAll(".studio-tab"), function (b) { b.classList.toggle("is-active", b.dataset.tab === tab); });
     if (tab === "topics") renderTopicsList();
   }
+  function niceDate(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); if (!m) return "";
+    return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
   function renderTopicsList() {
     var listEl = document.getElementById("topicsList"); if (!listEl) return;
     listEl.innerHTML = '<p class="topics-loading">Loading…</p>';
     fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
       if (!list || !list.length) { listEl.innerHTML = '<p class="topics-empty">No topics published yet.</p>'; return; }
       listEl.innerHTML = "";
+      var cnt = document.getElementById("topicsCount"); if (cnt) cnt.textContent = list.length;
       list.forEach(function (t) {
-        var row = document.createElement("div"); row.className = "topic-row";
+        var row = document.createElement("div"); row.className = "topic-row"; row.tabIndex = 0; row.setAttribute("role", "button"); row.setAttribute("aria-label", "Edit " + (t.title || "Untitled"));
+        row.addEventListener("click", function (e) { if (!e.target.closest(".topic-acts")) editTopic(t.slug); });
+        row.addEventListener("keydown", function (e) { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); editTopic(t.slug); } });
         var thumb = document.createElement(t.cover ? "img" : "div"); thumb.className = "topic-thumb"; if (t.cover) thumb.src = t.cover;
         var meta = document.createElement("div"); meta.className = "topic-meta";
         var ti = document.createElement("div"); ti.className = "topic-title"; ti.textContent = t.title || "Untitled";
-        var sub = document.createElement("div"); sub.className = "topic-sub"; sub.textContent = (t.author || "") + (t.date ? " · " + t.date : "") + (t.langs && t.langs.length > 1 ? " · EN/FR" : "");
+        var sub = document.createElement("div"); sub.className = "topic-sub"; sub.textContent = [t.no ? "No. " + ("00" + t.no).slice(-3) : "", niceDate(t.date), t.langs && t.langs.length > 1 ? "EN · FR" : "EN"].filter(Boolean).join("  ·  ");
         meta.appendChild(ti); meta.appendChild(sub);
         var acts = document.createElement("div"); acts.className = "topic-acts";
-        var ed = document.createElement("button"); ed.type = "button"; ed.textContent = "Edit"; ed.addEventListener("click", function () { editTopic(t.slug); });
-        var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl); });
+        var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl, t.title); });
         var ig = document.createElement("a"); ig.href = "/admin/instagram.html?t=" + encodeURIComponent(t.slug); ig.target = "_blank"; ig.rel = "noopener"; ig.textContent = "Instagram";
         var rl = document.createElement("a"); rl.href = "/admin/reel.html?t=" + encodeURIComponent(t.slug); rl.target = "_blank"; rl.rel = "noopener"; rl.textContent = "Reel";
-        acts.appendChild(ed); acts.appendChild(ig); acts.appendChild(rl); acts.appendChild(dl);
+        acts.appendChild(ig); acts.appendChild(rl); acts.appendChild(dl);
         row.appendChild(thumb); row.appendChild(meta); row.appendChild(acts); listEl.appendChild(row);
       });
     }).catch(function () { listEl.innerHTML = '<p class="topics-empty">Couldn’t load topics.</p>'; });
@@ -1844,6 +1897,7 @@
     return nb;
   }
   function editTopic(slug) {
+    if (!okToLeave()) return;
     fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
       state.title = t.title || "";
       state.fr = { title: (t.fr && t.fr.title) || "" };
@@ -1860,20 +1914,21 @@
       editingSlug = slug;
       selectedId = null;
       switchTab("write");
-      render();
+      render(); clean();
     }).catch(function () { alert("Couldn’t load that topic for editing."); });
   }
   function newTopic() {
+    if (!okToLeave()) return;
     editingSlug = null;
     state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = ""; state.feed = ""; state.song = null;
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
-    switchTab("write"); render();
+    switchTab("write"); render(); clean();
   }
-  async function deleteTopic(slug, btn) {
+  async function deleteTopic(slug, btn, title) {
     var token = (localStorage.getItem(TOKEN_KEY) || "").trim();
     if (!token) { alert("Set your GitHub token first — open Publish and paste it."); return; }
-    if (!confirm("Delete “" + slug + "”? This removes the topic and its media. This can’t be undone.")) return;
+    if (!confirm("Delete “" + (title || slug) + "”?\n\nIt comes off the curation page, with its pictures. This can’t be undone.")) return;
     if (btn) { btn.disabled = true; btn.textContent = "Deleting…"; }
     try {
       var t = { blocks: [] };
@@ -1936,6 +1991,7 @@
     try {
       var d = await serializeDraft();
       localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+      clean();
       if (btn) { btn.textContent = "Saved ✓"; setTimeout(function () { btn.textContent = label; btn.disabled = false; }, 1400); }
     } catch (e) {
       if (btn) { btn.textContent = label; btn.disabled = false; }
@@ -1950,7 +2006,7 @@
     (d.blocks || []).forEach(function (b) { if (b.type === "song" && !state.song && b.src) state.song = { src: b.src, title: b.title || "", artist: b.artist || "", album: b.album || "", art: b.art || "", start: +b.start || 0 }; });
     state.blocks = (d.blocks || []).filter(function (b) { return b.type !== "song"; }).map(function (b) { return Object.assign({ id: uid() }, b); });
     if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
-    selectedId = null; render();
+    selectedId = null; render(); clean();
   }
   function showDraftBanner() {
     var raw = null; try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) {}

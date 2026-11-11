@@ -1113,6 +1113,12 @@
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
   }
+  // the export's messages show as a banner while it runs, and for a few seconds after
+  var toastTimer = 0;
+  new MutationObserver(function () {
+    var n = $("exportNote"); n.hidden = !n.textContent; clearTimeout(toastTimer);
+    if (!$("export").disabled) toastTimer = setTimeout(function () { n.hidden = true; }, 9000);
+  }).observe($("exportNote"), { childList: true, characterData: true, subtree: true });
   function exportVideo() {
     var btn = $("export"), note = $("exportNote"), bar = $("bar");
     if (!window.VideoEncoder) { note.textContent = "This browser can’t make video files. Try Chrome or Safari on a Mac."; return; }

@@ -9,23 +9,25 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-dark.png?v=5" media="(prefers-color-scheme: light)" />
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-light.png?v=5" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
-  <link rel="stylesheet" href="/admin/editor.css?v=31" />
+  <link rel="stylesheet" href="/admin/editor.css?v=32" />
 </head>
 <body class="studio">
   <header class="studio-bar">
-    <div class="studio-brand">Curation&nbsp;·&nbsp;<span>Studio</span></div>
+    <div class="studio-brand">Curation<span>&nbsp;·&nbsp;Studio</span></div>
     <div class="studio-tabs" role="tablist">
       <button class="studio-tab is-active" data-tab="write" type="button">Write</button>
       <button class="studio-tab" data-tab="topics" type="button">Topics</button>
     </div>
     <div class="studio-actions">
+      <span class="doc-state" id="docState" aria-live="polite"></span>
       <div class="lang-seg" id="langSeg" role="group" aria-label="Language">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
         <button type="button" data-lang="fr" aria-pressed="false">FR</button>
       </div>
-      <button class="sbtn" id="previewBtn" type="button">Preview</button>
-      <button class="sbtn" id="exportBtn" type="button">Export</button>
-      <button class="sbtn" id="draftBtn" type="button" title="Save a local draft to finish later">Save draft</button>
+      <button class="sbtn quiet insp-toggle" id="inspToggle" type="button" aria-expanded="false" aria-controls="inspector">Settings</button>
+      <button class="sbtn quiet" id="previewBtn" type="button">Preview</button>
+      <button class="sbtn quiet" id="exportBtn" type="button">Export</button>
+      <button class="sbtn quiet" id="draftBtn" type="button" title="Save a local draft to finish later">Save draft</button>
       <button class="sbtn primary" id="publishBtn" type="button">Publish</button>
     </div>
   </header>
@@ -45,8 +47,8 @@
 
     <section class="topics-view" id="topicsView" hidden>
       <div class="topics-head">
-        <h2>Published topics</h2>
-        <button class="sbtn" id="topicsNew" type="button">+ New topic</button>
+        <h2>Topics <span class="topics-count" id="topicsCount"></span></h2>
+        <button class="sbtn primary" id="topicsNew" type="button">New topic</button>
       </div>
       <div class="topics-list" id="topicsList"></div>
     </section>
@@ -70,13 +72,18 @@
   <div class="pub-modal" id="pubModal" hidden>
     <div class="pub-backdrop" id="pubBackdrop"></div>
     <div class="pub-panel" role="dialog" aria-modal="true" aria-label="Publish">
-      <button class="pub-close" id="pubClose" type="button" aria-label="Close">&times;</button>
-      <h2 class="pub-title">Publish topic</h2>
-      <p class="pub-note">Commits this topic (and its media) to the repo. Your token stays in this browser only.</p>
-      <label class="insp-label" for="pubToken">GitHub token</label>
-      <input class="insp-input" id="pubToken" type="password" placeholder="github_pat_…" autocomplete="off" />
-      <label class="pub-remember"><input type="checkbox" id="pubRemember" checked /> Remember on this device</label>
-      <button class="sbtn primary pub-go" id="pubGo" type="button">Publish now</button>
+      <h2 class="pub-title" id="pubTitle">Publish topic</h2>
+      <p class="pub-note" id="pubNote">It goes live on the curation page in a minute or two.</p>
+      <p class="pub-saved" id="pubSaved" hidden>Using the GitHub token saved on this device. <button class="linkbtn" id="pubChange" type="button">Change</button></p>
+      <div id="pubTokenBox">
+        <label class="insp-label" for="pubToken">GitHub token</label>
+        <input class="insp-input" id="pubToken" type="password" placeholder="github_pat_…" autocomplete="off" />
+        <label class="pub-remember"><input type="checkbox" id="pubRemember" checked /> Remember on this device (it never leaves this browser)</label>
+      </div>
+      <div class="pub-actions">
+        <button class="sbtn" id="pubClose" type="button">Cancel</button>
+        <button class="sbtn primary pub-go" id="pubGo" type="button">Publish</button>
+      </div>
       <pre class="pub-log" id="pubLog" hidden></pre>
     </div>
   </div>
@@ -86,6 +93,6 @@
   <script src="/assets/macwin.js?v=4"></script>
   <script src="/assets/sharecard.js?v=2"></script>
   <script src="/assets/prints.js?v=2"></script>
-  <script src="/admin/editor.js?v=44"></script>
+  <script src="/admin/editor.js?v=45"></script>
 </body>
 </html>
