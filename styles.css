@@ -2244,3 +2244,5 @@ body:has(.about-bare) { background: #fff; padding: 0; }
   .cur-radio-prev { display: none !important; }
 }
 .cur-nowrap { white-space: nowrap; }
+.cur-sr-radio .cur-sr-thumb { display: flex; align-items: center; justify-content: center; background: #1d1b1e; color: #fff; }
+.cur-sr-glyph { width: 18px; height: 18px; }

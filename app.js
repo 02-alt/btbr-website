@@ -1272,11 +1272,20 @@
     var fq = fold(q.trim()), fr = siteLang() === "fr";
     searchLoad().then(function (docs) {
       if (!searchEl || fold(searchEl.querySelector("input").value.trim()) !== fq) return; // typed on since
-      var groups = { topic: [], text: [], source: [], pic: [] };
+      var groups = { radio: [], topic: [], text: [], source: [], pic: [] };
+      // the radio lives here: offered first on an empty search or when asked for, and any song plays from it
+      var on = radio && radio.tracks.length, playing = on && radio.playing, cur = on ? radio.tracks[radio.i] : null;
+      if (!fq || /^(r|ra|rad|radi|radio|m|mu|mus|musi|music|musiq|musique|s|so|son|song|songs|ch|cha|chan|chanson|chansons|p|pl|pla|play|ec|eco|ecou|ecout|ecoute|ecouter|l|li|lis|list|liste|listen|playlist|so|sou|soun|sound|soundtrack|soundtracks)$/.test(fq.replace(/\s+/g, "")))
+        groups.radio.push({ kind: "radio", main: fr ? "Radio curation" : "Curation radio",
+          sub: cur ? (playing ? (fr ? "En cours : " : "Playing: ") : (fr ? "En pause : " : "Paused: ")) + cur.title + (cur.artist ? " · " + cur.artist : "") + " — " + (playing ? (fr ? "Entrée pour mettre en pause" : "Return to pause") : (fr ? "Entrée pour reprendre" : "Return to resume"))
+            : (fr ? "La chanson de chaque sujet, l’une après l’autre" : "Every topic’s song, one after another"),
+          art: cur ? cur.art : "" });
       docs.forEach(function (x) {
         var t = x.t, d = x.d, title = loc(t, "title");
         var song = d.song ? [d.song.title, d.song.artist].filter(Boolean).join(" — ") : "";
         if (!fq) { groups.topic.push({ kind: "topic", t: t, sub: [curNo(t), loc(t, "desc")].filter(Boolean).join(" · ") }); return; }
+        if (song && youtubeId(d.song.src) && fold(song).indexOf(fq) >= 0)
+          groups.radio.push({ kind: "radio", slug: t.slug, main: (fr ? "Écouter " : "Play ") + song, sub: (fr ? "Radio curation · dans " : "Curation radio · from ") + title, art: d.song.art || t.thumb || t.feed || "" });
         var meta = [title, loc(t, "desc"), t.author, curThemes(t).join(" "), song].filter(Boolean).join(" · ");
         if (fold(meta).indexOf(fq) >= 0) groups.topic.push({ kind: "topic", t: t, subHTML: snippet(meta, fq) });
         (d.blocks || []).forEach(function (b) {
@@ -1295,18 +1304,19 @@
         String(d.inspiration || "").split(/\n+/).map(function (l) { return l.trim(); }).filter(function (l) { return l && !/^(inspirations?|sources?)\s*:?$/i.test(l); })
           .forEach(function (l) { if (fold(l).indexOf(fq) >= 0) groups.source.push({ kind: "source", t: t, text: l, q: q.trim() }); });
       });
-      var LIM = { topic: 12, text: 6, source: 5, pic: 6 };
-      var NAMES = fr ? { topic: "Sujets", text: "Dans le texte", source: "Sources", pic: "Images" } : { topic: "Topics", text: "In the text", source: "Sources", pic: "Pictures" };
+      var LIM = { radio: 4, topic: 12, text: 6, source: 5, pic: 6 };
+      var NAMES = fr ? { radio: "Radio", topic: "Sujets", text: "Dans le texte", source: "Sources", pic: "Images" } : { radio: "Radio", topic: "Topics", text: "In the text", source: "Sources", pic: "Pictures" };
       searchHits = []; var html = "";
-      ["topic", "text", "source", "pic"].forEach(function (k) {
+      ["radio", "topic", "text", "source", "pic"].forEach(function (k) {
         var g = groups[k].slice(0, LIM[k]); if (!g.length) return;
         html += '<div class="cur-sr-group">' + NAMES[k] + "</div>";
         g.forEach(function (h) {
-          var i = searchHits.push(h) - 1, thumb = h.kind === "pic" ? h.src : (h.t.thumb || h.t.feed || "");
-          var main = h.kind === "topic" ? htmlEsc(loc(h.t, "title")) : snippet(h.text, fq);
-          var sub = h.kind === "topic" ? (h.subHTML || htmlEsc(h.sub || "")) : htmlEsc(loc(h.t, "title"));
+          var i = searchHits.push(h) - 1, radioHit = h.kind === "radio";
+          var thumb = radioHit ? h.art : h.kind === "pic" ? h.src : (h.t.thumb || h.t.feed || "");
+          var main = radioHit ? htmlEsc(h.main) : h.kind === "topic" ? htmlEsc(loc(h.t, "title")) : snippet(h.text, fq);
+          var sub = radioHit ? htmlEsc(h.sub) : h.kind === "topic" ? (h.subHTML || htmlEsc(h.sub || "")) : htmlEsc(loc(h.t, "title"));
           html += '<button class="cur-sr cur-sr-' + h.kind + '" type="button" role="option" data-i="' + i + '">'
-            + '<span class="cur-sr-thumb">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy">' : "") + "</span>"
+            + '<span class="cur-sr-thumb">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy">' : radioHit ? RADIO_GLYPH : "") + "</span>"
             + '<span class="cur-sr-text"><span class="cur-sr-main">' + main + '</span><span class="cur-sr-sub">' + sub + "</span></span></button>";
         });
       });
@@ -1317,6 +1327,7 @@
   }
   function searchGo(hit) {
     if (!hit) return;
+    if (hit.kind === "radio") { closeSearch(); radioStart(hit.slug); return; }
     closeSearch();
     var slug = hit.t.slug, fa = hit.kind === "topic" ? null : { slug: slug, kind: hit.kind, text: hit.text, q: hit.q, src: hit.src };
     var m = document.querySelector(".cur-modal");
@@ -1361,15 +1372,21 @@
       }).filter(Boolean);
     });
   }
-  function radioStart() {
-    if (radio) { radioToggle(); return; }
+  var RADIO_GLYPH = '<svg class="cur-sr-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
+  function radioStart(slug) {
+    if (radio && radio.tracks.length) {
+      var k = slug ? radio.tracks.map(function (x) { return x.slug; }).indexOf(slug) : -1;
+      if (k >= 0 && k !== radio.i) radioLoad(k); else if (k < 0 || !radio.playing) radioToggle();
+      return;
+    }
+    if (radio) return;                             // still gathering the songs
     radio = { tracks: [], i: 0, playing: false, fails: 0 };
     radioTracks().then(function (tracks) {
       if (!radio) return;
       if (!tracks.length) { radio = null; return; }
       radio.tracks = tracks;
       // start with the open room's song, else the newest topic's
-      var m = document.querySelector(".cur-modal"), open = m && !m.hidden ? m.dataset.slug : "";
+      var m = document.querySelector(".cur-modal"), open = slug || (m && !m.hidden ? m.dataset.slug : "");
       var at = Math.max(0, tracks.map(function (x) { return x.slug; }).indexOf(open));
       radioBuild(); radioLoad(at);
       try { if (window.umami && window.umami.track) window.umami.track("radio-play"); } catch (e) {}
@@ -1601,7 +1618,6 @@
     var openBtn = t.closest(".cur-open, .cur-card .cur-tray");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
     if (t.closest(".cur-search-btn")) { openSearch(); return; }
-    if (t.closest(".cur-radio-btn")) { radioStart(); return; }
     var chip = t.closest(".cur-chip");
     if (chip) { setFilter(chip.getAttribute("data-theme") || ""); return; }
     var sp = t.closest(".cur-song-play");
