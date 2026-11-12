@@ -926,11 +926,14 @@
   function caption() {
     var first = (topic.blocks || []).filter(function (b) { return b.type === "text" && !b.head; })[0];
     var lead = first ? plain(String(first.html).replace(/<\/p>|<br\s*\/?>/gi, "\n")).replace(/\n{3,}/g, "\n\n") : "";
-    var head = topic.title + (topic.desc ? " — " + topic.desc : "") + (topic.author ? "\nA curation by " + topic.author + "." : "");
-    var parts = [head, lead];
-    parts.push(whatsOnSite() + " — link in bio → " + SITE + "/curation/" + topic.slug);
-    if (topic.song && topic.song.title) parts.push("♪ " + topic.song.title + (topic.song.artist ? " — " + topic.song.artist : ""));
-    return parts.filter(Boolean).join("\n\n").slice(0, 2200);
+    // on top who curates it, at the end who wrote it
+    var head = "A curation by builtoberemembered\n" + topic.title + (topic.desc ? " — " + topic.desc : "");
+    var tail = [whatsOnSite() + " — link in bio → " + SITE + "/curation/" + topic.slug];
+    if (topic.song && topic.song.title) tail.push("♪ " + topic.song.title + (topic.song.artist ? " — " + topic.song.artist : ""));
+    if (topic.author) tail.push("Written by " + topic.author + ".");
+    var room = 2200 - (head + "\n\n" + tail.join("\n\n")).length - 4;          // a long text gives way, the ending stays
+    if (lead.length > room) lead = room > 40 ? lead.slice(0, room - 1).replace(/\s+\S*$/, "") + "…" : "";
+    return [head, lead].concat(tail).filter(Boolean).join("\n\n");
   }
 
   /* ---------- render: the post, as it will look on a phone ---------- */
@@ -1150,7 +1153,7 @@
       var bs = bw.querySelector("input"); bs.checked = byOnCover;
       bs.addEventListener("change", function () { byOnCover = bs.checked; try { localStorage.setItem("btbr-ig-by", byOnCover ? "1" : "0"); } catch (e) {} chipsFor = ""; render(); });
       body.insertBefore(bw, body.children[1] || null);
-      var bn = document.createElement("p"); bn.className = "tx-note"; bn.style.margin = "-4px 0 14px"; bn.textContent = "Either way, the caption says “A curation by …”.";
+      var bn = document.createElement("p"); bn.className = "tx-note"; bn.style.margin = "-4px 0 14px"; bn.textContent = "Either way, the caption ends with “Written by …”.";
       body.insertBefore(bn, bw.nextSibling);
     }
     var note = document.createElement("p"); note.className = "tx-note";
