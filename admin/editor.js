@@ -15,6 +15,7 @@
     inspiration: "",
     tone: "",
     song: null,
+    themes: [],
     blocks: [
       { id: uid(), type: "text", head: false, html: "Start writing your topic here, then add images and video between the lines." }
     ]
@@ -56,6 +57,7 @@
     paintRoom(state.tone);
     paintTune();
     renderInspector();
+    if (translating) renderTranslate();
   }
 
   function renderBlock(b) {
@@ -1045,6 +1047,7 @@
     descTa.value = state.desc || "";
     descTa.addEventListener("input", function () { state.desc = descTa.value; });
     docSec.appendChild(field("Description", descTa));
+    docSec.appendChild(field("Themes", themesField()));
     var inspTa = document.createElement("textarea"); inspTa.className = "insp-input insp-textarea"; inspTa.rows = 3;
     inspTa.placeholder = "Sources / inspiration — one per line";
     inspTa.value = state.inspiration || "";
@@ -1396,7 +1399,10 @@
   titleEl.addEventListener("input", function () { setTr(state, "title", titleEl.value); });
   var langSeg = document.getElementById("langSeg");
   langSeg.addEventListener("click", function (e) {
-    var btn = e.target.closest("button[data-lang]"); if (!btn || btn.dataset.lang === lang) return;
+    var btn = e.target.closest("button[data-lang]"); if (!btn) return;
+    if (btn.dataset.lang === "both") { if (!translating) setTranslating(true); return; }
+    if (translating) { lang = btn.dataset.lang; document.querySelector(".doc").lang = lang; setTranslating(false); return; }
+    if (btn.dataset.lang === lang) return;
     lang = btn.dataset.lang;
     [].forEach.call(langSeg.children, function (c) { c.setAttribute("aria-pressed", c === btn ? "true" : "false"); });
     document.querySelector(".doc").lang = lang;
@@ -1639,7 +1645,7 @@
       + '  <script>location.replace("/curation/#' + slug + '");</' + 'script>\n'
       + '  <style>html{background:#e6e4e6}</style>\n</head>\n<body></body>\n</html>\n';
   }
-  async function publish(token, log) {
+  async function publish(token, log, when) {
     log("Preparing…");
     var slug = editingSlug || slugify(state.title) || ("topic-" + Date.now());
     var date = new Date().toISOString().slice(0, 10);
@@ -1720,6 +1726,8 @@
       if (ob.fr && ob.fr.html) ob.fr.html = cleanRich(ob.fr.html);
     });
     var topic = { slug: slug, title: state.title || "Untitled", author: state.author || "", date: date, cover: cover, desc: desc, inspiration: (state.inspiration || "").trim(), blocks: outBlocks };
+    var themes = (state.themes || []).map(cleanTheme).filter(Boolean);
+    if (themes.length) topic.themes = themes;
     if (state.tone) topic.tone = state.tone;
     if (cover) topic.feed = cover;
     if (thumb) topic.thumb = thumb;
@@ -1732,12 +1740,19 @@
     if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
     topic.langs = langs;
     log("Updating index…");
-    var index = [];
-    try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
-    // catalogue number: a topic keeps its number; a new one gets the next
+    // never carry on with an empty index on a failed read: it would wipe the curation page
+    var index = await ghJSON("curation/topics/index.json", token, []);
+    var sched = await ghJSON(SCHED_PATH, token, []);
+    // catalogue number: a topic keeps its number; a new one gets the next (scheduled ones hold theirs)
     var prev = index.filter(function (t) { return t.slug === slug; })[0];
-    var no = (prev && +prev.no) || (index.reduce(function (m, t, i) { return Math.max(m, +t.no || (index.length - i)); }, 0) + 1);
+    var prevS = sched.filter(function (x) { return x.slug === slug; })[0];
+    var no = (prev && +prev.no) || (prevS && +prevS.entry.no) || (Math.max(
+      index.reduce(function (m, t, i) { return Math.max(m, +t.no || (index.length - i)); }, 0),
+      sched.reduce(function (m, x) { return Math.max(m, +x.entry.no || 0); }, 0)) + 1);
     topic.no = no;
+    // the date is the day it first went live; updates don't move it
+    if (prev && prev.date) topic.date = date = prev.date;
+    if (when) { topic.publishAt = isoLocal(when); topic.date = date = topic.publishAt.slice(0, 10); }
     files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) });
     // the topic's own address (/curation/<slug>/) with a styled link preview
     if (window.BtbrShareCard && SHARE_RESERVED.indexOf(slug) < 0) {
@@ -1749,8 +1764,8 @@
         files.push({ path: "curation/" + slug + "/index.html", text: sharePage(topic) });
       } catch (e) { log("(share card skipped: " + (e && e.message || e) + ")"); }
     }
-    index = index.filter(function (t) { return t.slug !== slug; });
     var entry = { slug: slug, no: no, title: topic.title, author: topic.author, date: date, cover: cover, desc: desc, langs: langs };
+    if (topic.themes) entry.themes = topic.themes;
     if (topic.tone) entry.tone = topic.tone;
     if (topic.feed) entry.feed = topic.feed;
     if (topic.thumb) entry.thumb = topic.thumb;
@@ -1760,28 +1775,37 @@
       if (topic.fr.title) entry.fr.title = topic.fr.title;
       if (firstFr) entry.fr.desc = plain(firstFr.fr.html).slice(0, 160);
     }
-    index.unshift(entry);
-    files.push({ path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) });
-    log("Committing " + files.length + " files…");
-    var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token);
-    var baseSha = ref.object.sha;
-    var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
-    var treeItems = [];
-    for (var k = 0; k < files.length; k++) {
-      var f = files[k];
-      var body = f.base64 != null ? { content: f.base64, encoding: "base64" } : { content: f.text, encoding: "utf-8" };
-      var blobResp = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify(body) }, token);
-      treeItems.push({ path: f.path, mode: "100644", type: "blob", sha: blobResp.sha });
+    var schedLeft = sched.filter(function (x) { return x.slug !== slug; });
+    if (when) {
+      // waits off the index; the go-live Action puts it there at its time
+      schedLeft.push({ slug: slug, publishAt: topic.publishAt, entry: entry });
+      files.push({ path: SCHED_PATH, text: JSON.stringify(schedLeft, null, 2) });
+    } else {
+      index = [entry].concat(index.filter(function (t) { return t.slug !== slug; }));
+      files.push({ path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) });
+      files.push({ path: "curation/feed.xml", text: feedXML(index) });
+      if (prevS) files.push({ path: SCHED_PATH, text: JSON.stringify(schedLeft, null, 2) });
     }
-    var tree = await gh("/repos/" + REPO + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: treeItems }) }, token);
-    var commit = await gh("/repos/" + REPO + "/git/commits", { method: "POST", body: JSON.stringify({ message: 'Curation: publish "' + topic.title + '"', tree: tree.sha, parents: [baseSha] }) }, token);
-    await gh("/repos/" + REPO + "/git/refs/heads/" + BRANCH, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }, token);
-    log("✅ Published “" + topic.title + "” → /curation/ (live in ~1–2 min once the site is deployed).");
+    log("Committing " + files.length + " files…");
+    await commitFiles(token, files, when ? 'Curation: schedule "' + topic.title + '" for ' + niceWhen(topic.publishAt) : 'Curation: publish "' + topic.title + '"');
+    editingSlug = slug; editingScheduled = when ? topic.publishAt : null; planAt = null;
+    schedCache = null;
+    if (when) log("🗓 Scheduled “" + topic.title + "” for " + niceWhen(topic.publishAt) + ". It goes live on its own (within ~10 min of that time).");
+    else log("✅ Published “" + topic.title + "” → /curation/ (live in ~1–2 min once the site is deployed).");
   }
 
   var pubModal = document.getElementById("pubModal");
   var pubBusy = false;
-  function pubLabel() { return editingSlug ? "Update" : "Publish"; }
+  var pubWhen = "now";
+  function pubLabel() { return pubWhen === "later" ? (editingScheduled ? "Reschedule" : "Schedule") : (editingSlug && !editingScheduled ? "Update" : "Publish"); }
+  function paintWhen() {
+    var seg = document.getElementById("pubWhenSeg"), at = document.getElementById("pubAt"), note = document.getElementById("pubWhenNote");
+    [].forEach.call(seg.children, function (c) { c.setAttribute("aria-pressed", String(c.dataset.when === pubWhen)); });
+    at.hidden = pubWhen !== "later";
+    note.hidden = pubWhen !== "later";
+    note.textContent = "It waits off the curation page and goes live on its own, within about 10 minutes of that time.";
+    document.getElementById("pubGo").textContent = pubLabel();
+  }
   function openPub() {
     var saved = localStorage.getItem(TOKEN_KEY) || "", name = "“" + (state.title || "Untitled") + "”";
     document.getElementById("pubToken").value = saved;
@@ -1789,7 +1813,14 @@
     document.getElementById("pubNote").textContent = editingSlug ? "The published topic is replaced with this version. It’s live in a minute or two."
       : "It’s added to the curation page, and live in a minute or two.";
     document.getElementById("pubSaved").hidden = !saved; document.getElementById("pubTokenBox").hidden = !!saved;
-    document.getElementById("pubGo").textContent = pubLabel();
+    // a live topic is only ever updated in place; a new or scheduled one can go now or later
+    var live = editingSlug && !editingScheduled;
+    document.getElementById("pubWhen").hidden = !!live;
+    pubWhen = !live && (editingScheduled || planAt) ? "later" : "now";
+    var def = editingScheduled ? new Date(editingScheduled) : planAt || (function () { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(18, 0, 0, 0); return d; })();
+    var at = document.getElementById("pubAt"); at.value = inputLocal(def); at.min = inputLocal(new Date());
+    if (editingScheduled) document.getElementById("pubNote").textContent = "Scheduled for " + niceWhen(editingScheduled) + ". Keep a time, or put it live now.";
+    paintWhen();
     var lg = document.getElementById("pubLog"); lg.hidden = true; lg.textContent = "";
     document.getElementById("pubClose").textContent = "Cancel";
     pubModal.hidden = false;
@@ -1805,6 +1836,7 @@
     if (e.key === "Enter" && e.target.id === "pubToken") document.getElementById("pubGo").click();
   });
   document.getElementById("pubClose").addEventListener("click", closePub);
+  document.getElementById("pubWhenSeg").addEventListener("click", function (e) { var b = e.target.closest("button[data-when]"); if (b) { pubWhen = b.dataset.when; paintWhen(); if (pubWhen === "later") document.getElementById("pubAt").focus(); } });
   document.getElementById("pubBackdrop").addEventListener("click", closePub);
   document.getElementById("pubGo").addEventListener("click", function () {
     var token = document.getElementById("pubToken").value.trim();
@@ -1812,9 +1844,14 @@
     if (document.getElementById("pubRemember").checked) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY);
     var lg = document.getElementById("pubLog"); lg.hidden = false; lg.textContent = "";
     function log(m) { lg.textContent += m + "\n"; lg.scrollTop = lg.scrollHeight; }
-    var btn = this, cancel = document.getElementById("pubClose"); btn.disabled = true; btn.textContent = editingSlug ? "Updating…" : "Publishing…"; pubBusy = true; cancel.disabled = true;
+    var when = null;
+    if (pubWhen === "later" && !document.getElementById("pubWhen").hidden) {
+      when = new Date(document.getElementById("pubAt").value);
+      if (isNaN(when) || when < new Date(Date.now() + 60e3)) { lg.hidden = true; alert("Pick a time in the future."); return; }
+    }
+    var btn = this, cancel = document.getElementById("pubClose"); btn.disabled = true; btn.textContent = when ? "Scheduling…" : editingSlug ? "Updating…" : "Publishing…"; pubBusy = true; cancel.disabled = true;
     function done() { pubBusy = false; btn.disabled = false; cancel.disabled = false; btn.textContent = pubLabel(); }
-    publish(token, log).then(function () { done(); cancel.textContent = "Done"; clean(); try { localStorage.removeItem("btbr_cur_draft"); } catch (e) {} })
+    publish(token, log, when).then(function () { done(); cancel.textContent = "Done"; clean(); try { localStorage.removeItem("btbr_cur_draft"); } catch (e) {} })
       .catch(function (e) { log("❌ " + (e && e.message || e)); done(); });
   });
 
@@ -1825,7 +1862,8 @@
   var dirty = false, quiet = 0;
   function docState() {
     var el = document.getElementById("docState"); if (!el) return;
-    el.textContent = editingSlug ? "Editing “" + (state.title || "Untitled") + "”" : "New topic";
+    el.textContent = (editingSlug ? "Editing “" + (state.title || "Untitled") + "”" : "New topic")
+      + (editingScheduled ? " · scheduled " + niceWhen(editingScheduled) : planAt ? " · planned for " + niceWhen(planAt.toISOString()) : "");
     el.classList.toggle("is-dirty", dirty);
   }
   function touch() { if (!quiet && !dirty) dirty = true; docState(); }
@@ -1847,11 +1885,18 @@
   })();
 
   /* ---------- Topics tab: list, edit, delete ---------- */
+  var VIEWS = { topics: "topicsView", calendar: "calView", stats: "statsView" };
   function switchTab(tab) {
-    document.body.classList.toggle("view-topics", tab === "topics");
-    var tv = document.getElementById("topicsView"); if (tv) tv.hidden = tab !== "topics";
+    if (translating && tab !== "write") setTranslating(false);
+    Object.keys(VIEWS).forEach(function (k) {
+      document.body.classList.toggle("view-" + k, tab === k);
+      var v = document.getElementById(VIEWS[k]); if (v) v.hidden = tab !== k;
+    });
+    document.body.classList.toggle("view-other", tab !== "write");
     [].forEach.call(document.querySelectorAll(".studio-tab"), function (b) { b.classList.toggle("is-active", b.dataset.tab === tab); });
     if (tab === "topics") renderTopicsList();
+    if (tab === "calendar") renderCalendar();
+    if (tab === "stats") renderStats();
   }
   function niceDate(d) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); if (!m) return "";
@@ -1860,27 +1905,57 @@
   function renderTopicsList() {
     var listEl = document.getElementById("topicsList"); if (!listEl) return;
     listEl.innerHTML = '<p class="topics-loading">Loading…</p>';
-    fetch("/curation/topics/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
-      if (!list || !list.length) { listEl.innerHTML = '<p class="topics-empty">No topics published yet.</p>'; return; }
+    loadLists().then(function (L) {
+      var list = L.sched.slice().sort(function (a, b) { return Date.parse(a.publishAt) - Date.parse(b.publishAt); })
+        .map(function (s) { return Object.assign({}, s.entry, { slug: s.slug, publishAt: s.publishAt }); }).concat(L.index);
+      if (!list.length) { listEl.innerHTML = '<p class="topics-empty">No topics published yet.</p>'; return; }
       listEl.innerHTML = "";
-      var cnt = document.getElementById("topicsCount"); if (cnt) cnt.textContent = list.length;
+      var cnt = document.getElementById("topicsCount"); if (cnt) cnt.textContent = L.index.length + (L.sched.length ? " · " + L.sched.length + " scheduled" : "");
       list.forEach(function (t) {
-        var row = document.createElement("div"); row.className = "topic-row"; row.tabIndex = 0; row.setAttribute("role", "button"); row.setAttribute("aria-label", "Edit " + (t.title || "Untitled"));
-        row.addEventListener("click", function (e) { if (!e.target.closest(".topic-acts")) editTopic(t.slug); });
+        var row = document.createElement("div"); row.className = "topic-row" + (t.publishAt ? " is-scheduled" : ""); row.tabIndex = 0; row.setAttribute("role", "button"); row.setAttribute("aria-label", "Edit " + (t.title || "Untitled")); row.setAttribute("data-slug", t.slug);
+        row.addEventListener("click", function (e) { if (!e.target.closest(".topic-acts, .topic-themes")) editTopic(t.slug); });
         row.addEventListener("keydown", function (e) { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); editTopic(t.slug); } });
-        var thumb = document.createElement(t.cover ? "img" : "div"); thumb.className = "topic-thumb"; if (t.cover) thumb.src = t.cover;
+        var thumb = document.createElement((t.thumb || t.cover) ? "img" : "div"); thumb.className = "topic-thumb"; if (t.thumb || t.cover) thumb.src = t.thumb || t.cover;
         var meta = document.createElement("div"); meta.className = "topic-meta";
         var ti = document.createElement("div"); ti.className = "topic-title"; ti.textContent = t.title || "Untitled";
-        var sub = document.createElement("div"); sub.className = "topic-sub"; sub.textContent = [t.no ? "No. " + ("00" + t.no).slice(-3) : "", niceDate(t.date), t.langs && t.langs.length > 1 ? "EN · FR" : "EN"].filter(Boolean).join("  ·  ");
+        var sub = document.createElement("div"); sub.className = "topic-sub";
+        sub.textContent = [t.no ? "No. " + ("00" + t.no).slice(-3) : "", t.publishAt ? "" : niceDate(t.date), t.langs && t.langs.length > 1 ? "EN · FR" : "EN"].concat((t.themes || []).join(", ")).filter(Boolean).join("  ·  ");
+        if (t.publishAt) { var badge = document.createElement("span"); badge.className = "topic-badge"; badge.textContent = "Scheduled · " + niceWhen(t.publishAt); sub.prepend(badge); }
+        var stat = document.createElement("div"); stat.className = "topic-stat";
         meta.appendChild(ti); meta.appendChild(sub);
         var acts = document.createElement("div"); acts.className = "topic-acts";
-        var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl, t.title); });
+        if (t.publishAt) {
+          var gl = document.createElement("button"); gl.type = "button"; gl.textContent = "Go live now"; gl.addEventListener("click", function () { goLiveNow(t.slug, gl); }); acts.appendChild(gl);
+        }
+        var th = document.createElement("button"); th.type = "button"; th.textContent = "Themes"; th.addEventListener("click", function () { toggleRowThemes(row, t); });
         var ig = document.createElement("a"); ig.href = "/admin/instagram.html?t=" + encodeURIComponent(t.slug); ig.target = "_blank"; ig.rel = "noopener"; ig.textContent = "Instagram";
         var rl = document.createElement("a"); rl.href = "/admin/reel.html?t=" + encodeURIComponent(t.slug); rl.target = "_blank"; rl.rel = "noopener"; rl.textContent = "Reel";
-        acts.appendChild(ig); acts.appendChild(rl); acts.appendChild(dl);
-        row.appendChild(thumb); row.appendChild(meta); row.appendChild(acts); listEl.appendChild(row);
+        var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl, t.title); });
+        acts.appendChild(th); acts.appendChild(ig); acts.appendChild(rl); acts.appendChild(dl);
+        row.appendChild(thumb); row.appendChild(meta); row.appendChild(stat); row.appendChild(acts); listEl.appendChild(row);
       });
+      topicRowStats(listEl);
     }).catch(function () { listEl.innerHTML = '<p class="topics-empty">Couldn’t load topics.</p>'; });
+  }
+  // tag a published topic in place, from its row
+  function toggleRowThemes(row, t) {
+    var open = row.nextElementSibling && row.nextElementSibling.classList.contains("topic-themes") ? row.nextElementSibling : null;
+    if (open) { open.remove(); return; }
+    var list = (t.themes || []).slice(), box = document.createElement("div"); box.className = "topic-themes";
+    box.appendChild(themeEditor(list, function () {}));
+    var bar = document.createElement("div"); bar.className = "topic-themes-bar";
+    var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "sbtn"; cancel.textContent = "Cancel"; cancel.addEventListener("click", function () { box.remove(); });
+    var save = document.createElement("button"); save.type = "button"; save.className = "sbtn primary"; save.textContent = "Save";
+    save.addEventListener("click", function () { saveThemes(t.slug, list, save).then(function (ok) { if (ok) { t.themes = list.slice(); box.remove(); var sub = row.querySelector(".topic-sub"); if (sub) sub.insertAdjacentHTML("beforeend", '<span class="topic-saved"> · themes saved ✓</span>'); renderTopicsListSoon(); } }); });
+    var hint = document.createElement("span"); hint.className = "insp-empty"; hint.textContent = "Saved straight to the site — no republish, the date stays.";
+    bar.appendChild(hint); bar.appendChild(cancel); bar.appendChild(save); box.appendChild(bar);
+    row.after(box);
+    var inp = box.querySelector(".theme-input"); if (inp) inp.focus();
+  }
+  function renderTopicsListSoon() {
+    // the site serves the new index after its deploy; keep what was just saved meanwhile
+    var listEl = document.getElementById("topicsList"); if (!listEl) return;
+    setTimeout(function () { if (document.body.classList.contains("view-topics")) renderTopicsList(); }, 90e3);
   }
   function blockFromPublished(pb) {
     if (pb.type === "image" && pb.board && pb.board.items && pb.board.items.length) {
@@ -1908,6 +1983,8 @@
       state.tone = t.tone || "";
       state.feed = t.feed || "";
       state.song = t.song || null;
+      state.themes = (t.themes || []).slice();
+      editingScheduled = t.publishAt || null; planAt = null;
       (t.blocks || []).forEach(function (pb) { if (pb.type === "song" && !state.song) state.song = { src: pb.src, title: pb.title, artist: pb.artist, album: pb.album, art: pb.art, start: pb.start }; });
       state.blocks = (t.blocks || []).filter(function (pb) { return pb.type !== "song"; }).map(blockFromPublished);
       if (!state.blocks.length) state.blocks.push({ id: uid(), type: "text", head: false, html: "" });
@@ -1917,10 +1994,10 @@
       render(); clean();
     }).catch(function () { alert("Couldn’t load that topic for editing."); });
   }
-  function newTopic() {
-    if (!okToLeave()) return;
-    editingSlug = null;
-    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = ""; state.feed = ""; state.song = null;
+  function newTopic(asked) {
+    if (asked !== true && !okToLeave()) return;
+    editingSlug = null; editingScheduled = null; planAt = null;
+    state.title = ""; state.fr = { title: "" }; state.author = "Isaac"; state.cover = null; state.desc = ""; state.inspiration = ""; state.tone = ""; state.feed = ""; state.song = null; state.themes = [];
     state.blocks = [{ id: uid(), type: "text", head: false, html: "" }];
     selectedId = null;
     switchTab("write"); render(); clean();
@@ -1938,9 +2015,8 @@
         if (b.src && b.src.indexOf("/curation/media/") === 0) mediaPaths.push(b.src.replace(/^\//, ""));
         ((b.board && b.board.items) || []).forEach(function (it) { if (it.src && it.src.indexOf("/curation/media/") === 0 && mediaPaths.indexOf(it.src.slice(1)) < 0) mediaPaths.push(it.src.slice(1)); });
       });
-      var index = [];
-      try { var idx = await gh("/repos/" + REPO + "/contents/curation/topics/index.json?ref=" + BRANCH, {}, token); index = JSON.parse(decodeURIComponent(escape(atob(idx.content.replace(/\n/g, ""))))); } catch (e) { index = []; }
-      index = index.filter(function (x) { return x.slug !== slug; });
+      var index = (await ghJSON("curation/topics/index.json", token, [])).filter(function (x) { return x.slug !== slug; });
+      var sched = await ghJSON(SCHED_PATH, token, []), schedLeft = sched.filter(function (x) { return x.slug !== slug; });
       var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token);
       var baseSha = ref.object.sha;
       var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
@@ -1952,6 +2028,13 @@
       mediaPaths.forEach(function (p) { treeItems.push({ path: p, mode: "100644", type: "blob", sha: null }); });
       var iblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: JSON.stringify(index, null, 2), encoding: "utf-8" }) }, token);
       treeItems.push({ path: "curation/topics/index.json", mode: "100644", type: "blob", sha: iblob.sha });
+      var fblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: feedXML(index), encoding: "utf-8" }) }, token);
+      treeItems.push({ path: "curation/feed.xml", mode: "100644", type: "blob", sha: fblob.sha });
+      if (schedLeft.length !== sched.length) {
+        var sblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: JSON.stringify(schedLeft, null, 2), encoding: "utf-8" }) }, token);
+        treeItems.push({ path: SCHED_PATH, mode: "100644", type: "blob", sha: sblob.sha });
+        schedCache = schedLeft;
+      }
       var tree = await gh("/repos/" + REPO + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: treeItems }) }, token);
       var commit = await gh("/repos/" + REPO + "/git/commits", { method: "POST", body: JSON.stringify({ message: 'Curation: delete "' + slug + '"', tree: tree.sha, parents: [baseSha] }) }, token);
       await gh("/repos/" + REPO + "/git/refs/heads/" + BRANCH, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }, token);
@@ -1972,7 +2055,7 @@
   var DRAFT_KEY = "btbr_cur_draft";
   function toDataURL(url) { return fetch(url).then(function (r) { return r.blob(); }).then(function (bl) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(bl); }); }); }
   async function serializeDraft() {
-    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", feed: /^\/curation\//.test(state.feed || "") ? state.feed : "", song: state.song, editingSlug: editingSlug, cover: null, blocks: [] };
+    var copy = { v: 1, savedAt: Date.now(), title: state.title, fr: state.fr, author: state.author, desc: state.desc, inspiration: state.inspiration, tone: state.tone || "", feed: /^\/curation\//.test(state.feed || "") ? state.feed : "", song: state.song, themes: state.themes || [], editingSlug: editingSlug, cover: null, blocks: [] };
     if (state.cover) {
       if (typeof state.cover === "string") copy.cover = state.cover.indexOf("blob:") === 0 ? await toDataURL(state.cover) : state.cover;
       else { var cc = { bg: state.cover.bg, zc: state.cover.zc, items: [] }; for (var ci = 0; ci < state.cover.items.length; ci++) { var cit = state.cover.items[ci], cni = Object.assign({}, cit); if (cit.src && cit.src.indexOf("blob:") === 0) cni.src = await toDataURL(cit.src); cc.items.push(cni); } copy.cover = cc; }
@@ -2000,7 +2083,7 @@
     }
   }
   function loadDraftData(d) {
-    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || ""; state.feed = d.feed || ""; state.song = d.song || null;
+    state.title = d.title || ""; state.fr = d.fr || { title: "" }; state.author = d.author || "Isaaaaaaaac"; state.cover = d.cover || null; state.desc = d.desc || ""; state.inspiration = d.inspiration || ""; state.tone = d.tone || ""; state.feed = d.feed || ""; state.song = d.song || null; state.themes = d.themes || [];
     editingSlug = d.editingSlug || null;
     // an older draft's song block becomes the topic's soundtrack
     (d.blocks || []).forEach(function (b) { if (b.type === "song" && !state.song && b.src) state.song = { src: b.src, title: b.title || "", artist: b.artist || "", album: b.album || "", art: b.art || "", start: +b.start || 0 }; });
@@ -2021,6 +2104,520 @@
   var draftBtn = document.getElementById("draftBtn");
   if (draftBtn) draftBtn.addEventListener("click", function () { saveDraft(this); });
 
+  /* ---------- reading + committing on the live branch (shared by publish, delete, schedule, themes) ---------- */
+  function b64utf8(s) { return decodeURIComponent(escape(atob(String(s).replace(/\n/g, "")))); }
+  // a JSON file on the live branch; `fallback` only when it doesn't exist (any other failure stops the caller —
+  // carrying on with an empty index would wipe the curation page)
+  async function ghJSON(path, token, fallback) {
+    try { var r = await gh("/repos/" + REPO + "/contents/" + path + "?ref=" + BRANCH, { cache: "no-store" }, token); return JSON.parse(b64utf8(r.content)); }
+    catch (e) { if (/not found/i.test(String(e && e.message))) return fallback; throw e; }
+  }
+  // files: [{ path, text } | { path, base64 } | { path, remove: true }] — one commit
+  async function commitFiles(token, files, message) {
+    var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token), baseSha = ref.object.sha;
+    var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
+    var items = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (f.remove) { items.push({ path: f.path, mode: "100644", type: "blob", sha: null }); continue; }
+      var body = f.base64 != null ? { content: f.base64, encoding: "base64" } : { content: f.text, encoding: "utf-8" };
+      var bl = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify(body) }, token);
+      items.push({ path: f.path, mode: "100644", type: "blob", sha: bl.sha });
+    }
+    var tree = await gh("/repos/" + REPO + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: items }) }, token);
+    var commit = await gh("/repos/" + REPO + "/git/commits", { method: "POST", body: JSON.stringify({ message: message, tree: tree.sha, parents: [baseSha] }) }, token);
+    await gh("/repos/" + REPO + "/git/refs/heads/" + BRANCH, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }, token);
+  }
+  function needToken() {
+    var token = (localStorage.getItem(TOKEN_KEY) || "").trim();
+    if (!token) alert("Set your GitHub token first — open Publish and paste it.");
+    return token;
+  }
+
+  /* ---------- the RSS feed: /curation/feed.xml, rebuilt with the index (the same file the
+     go-live Action writes, so the two never fight over it) ---------- */
+  var SITE = "https://buildtoberemembered.com";
+  function xmlEsc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;"); }
+  function rfcDate(ymd) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd || ""), d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12)) : new Date();
+    return d.toUTCString();
+  }
+  function feedXML(index) {
+    var items = index.slice().sort(function (a, b) { return (+b.no || 0) - (+a.no || 0); }).map(function (t) {
+      var link = SITE + "/curation/" + t.slug + "/", pic = t.thumb || t.feed || "";
+      if (pic && pic.indexOf("http") !== 0) pic = SITE + pic;
+      var body = (pic ? '<p><img src="' + xmlEsc(pic) + '" alt=""></p>' : "") + "<p>" + xmlEsc(t.desc || "") + "</p>";
+      return "    <item>\n      <title>" + xmlEsc(t.title || "Untitled") + "</title>\n      <link>" + link + "</link>\n"
+        + '      <guid isPermaLink="true">' + link + "</guid>\n      <pubDate>" + rfcDate(t.date) + "</pubDate>\n"
+        + "      <dc:creator>" + xmlEsc(t.author || "") + "</dc:creator>"
+        + (t.themes || []).map(function (x) { return "\n      <category>" + xmlEsc(x) + "</category>"; }).join("")
+        + "\n      <description><![CDATA[" + body + "]]></description>"
+        + (pic ? '\n      <media:content url="' + xmlEsc(pic) + '" medium="image"/>' : "") + "\n    </item>";
+    });
+    return '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">\n'
+      + "  <channel>\n    <title>builtoberemembered — Curation</title>\n    <link>" + SITE + "/curation/</link>\n"
+      + '    <atom:link href="' + SITE + '/curation/feed.xml" rel="self" type="application/rss+xml"/>\n'
+      + "    <description>An ongoing curation — topics worth remembering.</description>\n    <language>en</language>\n"
+      + "    <lastBuildDate>" + new Date().toUTCString() + "</lastBuildDate>\n" + items.join("\n") + "\n  </channel>\n</rss>\n";
+  }
+
+  /* ---------- schedule: a topic can go live later. Its index entry waits in scheduled.json;
+     a GitHub Action (every 10 min) moves it into the index once its time has come ---------- */
+  var SCHED_PATH = "curation/topics/scheduled.json";
+  function isoLocal(d) {
+    var off = -d.getTimezoneOffset(), a = Math.abs(off);
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":00"
+      + (off >= 0 ? "+" : "-") + pad2(Math.floor(a / 60)) + ":" + pad2(a % 60);
+  }
+  function inputLocal(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+  function niceWhen(iso) {
+    var d = new Date(iso); if (isNaN(d)) return "";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + ", " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+  var editingScheduled = null;   // publishAt of the scheduled topic being edited
+  var planAt = null;             // a day picked on the calendar for a new topic
+  async function goLiveNow(slug, btn) {
+    var token = needToken(); if (!token) return;
+    if (!confirm("Put this scheduled topic live now?")) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Going live…"; }
+    try {
+      var sched = await ghJSON(SCHED_PATH, token, []), s = sched.filter(function (x) { return x.slug === slug; })[0];
+      if (!s) throw new Error("It isn’t scheduled any more (it may have just gone live).");
+      var index = await ghJSON("curation/topics/index.json", token, []), topic = await ghJSON("curation/topics/" + slug + ".json", token, null);
+      var today = new Date().toISOString().slice(0, 10), entry = Object.assign({}, s.entry, { date: today });
+      index = [entry].concat(index.filter(function (t) { return t.slug !== slug; }));
+      var files = [
+        { path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) },
+        { path: SCHED_PATH, text: JSON.stringify(sched.filter(function (x) { return x.slug !== slug; }), null, 2) },
+        { path: "curation/feed.xml", text: feedXML(index) }
+      ];
+      if (topic) { topic.date = today; delete topic.publishAt; files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) }); }
+      await commitFiles(token, files, 'Curation: go live "' + (entry.title || slug) + '"');
+      if (editingSlug === slug) editingScheduled = null;
+      setTimeout(refreshViews, 400);
+    } catch (e) { alert("Couldn’t put it live: " + (e && e.message || e)); if (btn) { btn.disabled = false; btn.textContent = "Go live now"; } }
+  }
+  async function reschedule(slug, when) {
+    var token = needToken(); if (!token) return false;
+    try {
+      var sched = await ghJSON(SCHED_PATH, token, []), s = sched.filter(function (x) { return x.slug === slug; })[0];
+      if (!s) throw new Error("It isn’t scheduled any more.");
+      s.publishAt = isoLocal(when); s.entry.date = s.publishAt.slice(0, 10);
+      var topic = await ghJSON("curation/topics/" + slug + ".json", token, null), files = [{ path: SCHED_PATH, text: JSON.stringify(sched, null, 2) }];
+      if (topic) { topic.publishAt = s.publishAt; topic.date = s.entry.date; files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) }); }
+      await commitFiles(token, files, 'Curation: reschedule "' + (s.entry.title || slug) + '" for ' + niceWhen(s.publishAt));
+      if (editingSlug === slug) editingScheduled = s.publishAt;
+      schedCache = sched; return true;
+    } catch (e) { alert("Couldn’t reschedule: " + (e && e.message || e)); return false; }
+  }
+  // the site's copies lag a deploy (~1 min) behind a commit; what Studio just wrote wins meanwhile
+  var schedCache = null, indexCache = null;
+  function siteJSON(path) { return fetch(path, { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }); }
+  function loadLists() {
+    return Promise.all([siteJSON("/curation/topics/index.json"), siteJSON("/" + SCHED_PATH)]).then(function (r) {
+      indexCache = r[0] || []; if (!schedCache || r[1].length || !schedCache.length) schedCache = r[1] || [];
+      var live = {}; indexCache.forEach(function (t) { live[t.slug] = 1; });
+      schedCache = schedCache.filter(function (s) { return !live[s.slug]; });
+      knownThemes = themeList(indexCache.concat(schedCache.map(function (s) { return s.entry; })));
+      return { index: indexCache, sched: schedCache };
+    });
+  }
+  function refreshViews() {
+    if (document.body.classList.contains("view-topics")) renderTopicsList();
+    if (document.body.classList.contains("view-calendar")) renderCalendar();
+  }
+
+  /* ---------- themes: a few words per topic, stamped on its card; the feed filters by them ---------- */
+  var knownThemes = [];
+  function themeList(list) {
+    var seen = {}, out = [];
+    list.forEach(function (t) { ((t && t.themes) || []).forEach(function (x) { var k = x.toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push(x); } }); });
+    return out.sort(function (a, b) { return a.localeCompare(b); });
+  }
+  function cleanTheme(v) { v = String(v || "").replace(/\s+/g, " ").trim(); return v ? v.charAt(0).toUpperCase() + v.slice(1) : ""; }
+  // chips + an input; `list` is edited in place, `changed` runs after each edit
+  function themeEditor(list, changed) {
+    var wrap = document.createElement("div"); wrap.className = "theme-ed";
+    function paint() {
+      wrap.innerHTML = "";
+      var chips = document.createElement("div"); chips.className = "theme-chips";
+      list.forEach(function (x, i) {
+        var c = document.createElement("button"); c.type = "button"; c.className = "theme-chip is-on"; c.title = "Remove";
+        c.innerHTML = '<span></span><i aria-hidden="true">×</i>'; c.firstChild.textContent = x;
+        c.addEventListener("click", function () { list.splice(i, 1); changed(); paint(); });
+        chips.appendChild(c);
+      });
+      knownThemes.filter(function (x) { return !list.some(function (y) { return y.toLowerCase() === x.toLowerCase(); }); }).forEach(function (x) {
+        var c = document.createElement("button"); c.type = "button"; c.className = "theme-chip"; c.textContent = "+ " + x;
+        c.addEventListener("click", function () { list.push(x); changed(); paint(); });
+        chips.appendChild(c);
+      });
+      var inp = document.createElement("input"); inp.className = "insp-input theme-input"; inp.placeholder = list.length ? "Add another…" : "Add a theme (e.g. Music video) and press Return";
+      inp.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== ",") return;
+        e.preventDefault(); var v = cleanTheme(inp.value);
+        if (v && !list.some(function (y) { return y.toLowerCase() === v.toLowerCase(); })) { list.push(v); if (knownThemes.indexOf(v) < 0) knownThemes.push(v); changed(); paint(); wrap.querySelector(".theme-input").focus(); }
+        else inp.value = "";
+      });
+      wrap.appendChild(chips); wrap.appendChild(inp);
+    }
+    paint();
+    return wrap;
+  }
+  function themesField() {
+    state.themes = state.themes || [];
+    var w = themeEditor(state.themes, touch);
+    var n = document.createElement("div"); n.className = "insp-empty"; n.style.marginTop = "8px";
+    n.textContent = "Stamped on the card; readers can filter the feed by them.";
+    w.appendChild(n); return w;
+  }
+  // re-tag a published topic without republishing it (no re-render, its date stays)
+  async function saveThemes(slug, themes, btn) {
+    var token = needToken(); if (!token) return false;
+    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    try {
+      var index = await ghJSON("curation/topics/index.json", token, []), topic = await ghJSON("curation/topics/" + slug + ".json", token, null);
+      var sched = await ghJSON(SCHED_PATH, token, []), files = [];
+      var set = function (o) { if (themes.length) o.themes = themes.slice(); else delete o.themes; };
+      index.forEach(function (t) { if (t.slug === slug) set(t); });
+      sched.forEach(function (s) { if (s.slug === slug) set(s.entry); });
+      if (topic) { set(topic); files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) }); }
+      files.push({ path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) }, { path: "curation/feed.xml", text: feedXML(index) });
+      if (sched.some(function (s) { return s.slug === slug; })) files.push({ path: SCHED_PATH, text: JSON.stringify(sched, null, 2) });
+      await commitFiles(token, files, 'Curation: themes for "' + ((topic && topic.title) || slug) + '"');
+      if (editingSlug === slug) state.themes = themes.slice();
+      return true;
+    } catch (e) { alert("Couldn’t save the themes: " + (e && e.message || e)); return false; }
+    finally { if (btn) { btn.disabled = false; btn.textContent = "Save"; } }
+  }
+
+  /* ---------- Calendar: published and scheduled topics on a month ---------- */
+  var calMonth = (function () { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
+  function ymd(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function renderCalendar() {
+    var box = document.getElementById("calView"); if (!box) return;
+    loadLists().then(function (L) {
+      var byDay = {};
+      L.index.forEach(function (t) { if (t.date) (byDay[t.date] = byDay[t.date] || []).push({ t: t, live: true }); });
+      L.sched.forEach(function (s) { var d = new Date(s.publishAt); if (!isNaN(d)) (byDay[ymd(d)] = byDay[ymd(d)] || []).push({ t: s.entry, at: s.publishAt, slug: s.slug }); });
+      var now = new Date(), today = ymd(now), y = calMonth.getFullYear(), m = calMonth.getMonth();
+      var first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+      var title = first.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      // the cadence line: how this month is going, and what's next
+      var monthCount = L.index.filter(function (t) { return (t.date || "").slice(0, 7) === ymd(first).slice(0, 7); }).length;
+      var lastLive = L.index.map(function (t) { return t.date; }).filter(Boolean).sort().pop();
+      var since = lastLive ? Math.round((new Date(ymd(now)) - new Date(lastLive)) / 864e5) : null;
+      var next = L.sched.slice().sort(function (a, b) { return Date.parse(a.publishAt) - Date.parse(b.publishAt); })[0];
+      var bits = [monthCount + (monthCount === 1 ? " topic" : " topics") + " published in " + first.toLocaleDateString("en-GB", { month: "long" })];
+      if (since != null) bits.push("last one " + (since === 0 ? "today" : since === 1 ? "yesterday" : since + " days ago"));
+      bits.push(next ? "next: " + (next.entry.title || next.slug) + " · " + niceWhen(next.publishAt) : "nothing scheduled");
+      var h = '<div class="cal-head"><div class="cal-title"><h2>' + title + '</h2><p class="cal-cadence">' + htmlEsc(bits.join(" · ")) + "</p></div>"
+        + '<div class="cal-nav"><button class="sbtn" data-cal="-1" type="button" aria-label="Previous month">‹</button><button class="sbtn" data-cal="0" type="button">Today</button><button class="sbtn" data-cal="1" type="button" aria-label="Next month">›</button></div></div>'
+        + '<div class="cal-legend"><span><i class="cal-dot"></i>Published</span><span><i class="cal-dot is-sched"></i>Scheduled — drag to another day</span><span class="cal-hint">Click a free day to plan a new topic</span></div>'
+        + '<div class="cal-grid">' + ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(function (d) { return '<div class="cal-dow">' + d + "</div>"; }).join("");
+      for (var i = 0; i < lead; i++) h += '<div class="cal-day is-out"></div>';
+      for (var d = 1; d <= days; d++) {
+        var key = ymd(new Date(y, m, d)), evs = byDay[key] || [], past = key < today;
+        h += '<div class="cal-day' + (key === today ? " is-today" : "") + (past ? " is-past" : "") + '" data-day="' + key + '"><span class="cal-n">' + d + "</span>"
+          + evs.map(function (e) {
+            var t = e.t || {}, thumb = t.thumb || t.feed || t.cover || "";
+            return '<button type="button" class="cal-ev' + (e.live ? "" : " is-sched") + '" data-slug="' + htmlEsc(t.slug || e.slug) + '"' + (e.live ? "" : ' draggable="true" data-at="' + htmlEsc(e.at) + '"')
+              + ' title="' + htmlEsc((t.title || "") + (e.live ? "" : " — " + niceWhen(e.at))) + '">'
+              + (thumb ? '<img src="' + htmlEsc(thumb) + '" alt="">' : "") + '<span class="cal-ev-t">' + (e.live ? "" : '<b>' + niceWhen(e.at).split(", ")[1] + "</b> ") + htmlEsc(t.title || t.slug || "") + "</span></button>";
+          }).join("")
+          + (past ? "" : '<span class="cal-plan" aria-hidden="true">+ Plan</span>') + "</div>";
+      }
+      var tail = (7 - ((lead + days) % 7)) % 7; for (var k = 0; k < tail; k++) h += '<div class="cal-day is-out"></div>';
+      box.innerHTML = h + "</div>";
+    });
+  }
+  function htmlEsc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  (function () {
+    var box = document.getElementById("calView"); if (!box) return;
+    box.addEventListener("click", function (e) {
+      var nav = e.target.closest("[data-cal]");
+      if (nav) { var v = +nav.getAttribute("data-cal"), now = new Date(); calMonth = v === 0 ? new Date(now.getFullYear(), now.getMonth(), 1) : new Date(calMonth.getFullYear(), calMonth.getMonth() + v, 1); renderCalendar(); return; }
+      var ev = e.target.closest(".cal-ev"); if (ev) { editTopic(ev.getAttribute("data-slug")); return; }
+      var day = e.target.closest(".cal-day[data-day]:not(.is-past)");
+      if (day) {
+        if (!okToLeave()) return;
+        var p = day.getAttribute("data-day").split("-");
+        newTopic(true); planAt = new Date(+p[0], +p[1] - 1, +p[2], 18, 0);
+        docState();
+      }
+    });
+    var dragSlug = null, dragAt = null;
+    box.addEventListener("dragstart", function (e) { var ev = e.target.closest(".cal-ev.is-sched"); if (!ev) return; dragSlug = ev.getAttribute("data-slug"); dragAt = ev.getAttribute("data-at"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragSlug); ev.classList.add("is-dragging"); });
+    box.addEventListener("dragend", function () { dragSlug = null; [].forEach.call(box.querySelectorAll(".is-dragging, .is-drop"), function (x) { x.classList.remove("is-dragging", "is-drop"); }); });
+    box.addEventListener("dragover", function (e) { var day = dragSlug && e.target.closest(".cal-day[data-day]:not(.is-past)"); if (!day) return; e.preventDefault(); e.stopPropagation(); [].forEach.call(box.querySelectorAll(".is-drop"), function (x) { if (x !== day) x.classList.remove("is-drop"); }); day.classList.add("is-drop"); });
+    box.addEventListener("drop", function (e) {
+      var day = dragSlug && e.target.closest(".cal-day[data-day]:not(.is-past)"); if (!day) return;
+      e.preventDefault(); e.stopPropagation();
+      var old = new Date(dragAt), p = day.getAttribute("data-day").split("-"), when = new Date(+p[0], +p[1] - 1, +p[2], old.getHours(), old.getMinutes());
+      if (ymd(when) === ymd(old)) return;
+      if (when < new Date()) { alert("That time has already passed."); return; }
+      var slug = dragSlug; day.classList.add("is-saving");
+      reschedule(slug, when).then(function (ok) { if (ok) { schedCache.forEach(function (s) { if (s.slug === slug) s.publishAt = isoLocal(when); }); } renderCalendar(); });
+    });
+  })();
+
+  /* ---------- Stats: Umami's numbers for the site and for each topic ---------- */
+  var UMAMI_SITE = "acc04168-9788-4b72-ac3c-0bc99353c40e", UMAMI_KEY = "btbr_umami_key", statsRange = 30, statsMemo = {};
+  function umami(path, params) {
+    var key = (localStorage.getItem(UMAMI_KEY) || "").trim();
+    var q = Object.keys(params || {}).map(function (k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
+    var url = "https://api.umami.is/v1/websites/" + UMAMI_SITE + path + (q ? "?" + q : "");
+    var hit = statsMemo[url]; if (hit && Date.now() - hit.at < 5 * 60e3) return hit.p;
+    var p = fetch(url, { headers: { Authorization: "Bearer " + key, Accept: "application/json" } }).then(function (r) {
+      if (r.status === 401 || r.status === 403) throw new Error("Umami didn’t accept the API key.");
+      if (!r.ok) throw new Error("Umami answered " + r.status + ".");
+      return r.json();
+    });
+    p.catch(function () { delete statsMemo[url]; });
+    statsMemo[url] = { at: Date.now(), p: p };
+    return p;
+  }
+  function rangeOf(days) { var end = Date.now(); return { startAt: end - days * 864e5, endAt: end }; }
+  var TZ = (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch (e) { return "UTC"; } })();
+  function topicPath(slug) { return "/curation/" + slug + "/"; }
+  // views per topic over the range: its own address (/curation/<slug>/) is what the room shows while open
+  function topicViews(days) {
+    return umami("/metrics", Object.assign({ type: "path", limit: 500 }, rangeOf(days))).then(function (rows) {
+      var m = {}; (rows || []).forEach(function (r) { var k = /^\/curation\/([^\/]+)\/?$/.exec(r.x || ""); if (k && k[1] !== "topics" && k[1] !== "media") m[decodeURIComponent(k[1])] = (m[decodeURIComponent(k[1])] || 0) + (+r.y || 0); });
+      return m;
+    });
+  }
+  function topicReads(days) {
+    return umami("/event-data/values", Object.assign({ eventName: "topic-read", propertyName: "slug" }, rangeOf(days))).then(function (rows) {
+      var m = {}; (rows || []).forEach(function (r) { m[r.value] = +r.total || 0; }); return m;
+    }, function () { return {}; });
+  }
+  function daySeries(days, path) {
+    var p = Object.assign({ unit: "day", timezone: TZ }, rangeOf(days)); if (path) p.path = path;
+    return umami("/pageviews", p).then(function (r) { return fillDays(r && r.pageviews || [], days); });
+  }
+  function fillDays(rows, days) {
+    var m = {}; rows.forEach(function (r) { m[String(r.x).slice(0, 10)] = (+r.y || 0); });
+    var out = [], d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - days + 1);
+    for (var i = 0; i < days; i++) { var k = ymd(d); out.push({ day: k, y: m[k] || 0 }); d.setDate(d.getDate() + 1); }
+    return out;
+  }
+  function compact(n) { n = +n || 0; return n >= 1e4 ? (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, "") + "K" : n.toLocaleString("en-GB"); }
+  function sparkSVG(pts, w, h) {
+    if (!pts.length) return "";
+    var max = Math.max.apply(null, pts.map(function (p) { return p.y; })) || 1, step = w / Math.max(1, pts.length - 1);
+    var xy = pts.map(function (p, i) { return [+(i * step).toFixed(1), +(h - 3 - (p.y / max) * (h - 6)).toFixed(1)]; });
+    var line = xy.map(function (p) { return p.join(","); }).join(" "), last = xy[xy.length - 1];
+    return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" aria-hidden="true"><polyline points="' + line + '"/><circle cx="' + last[0] + '" cy="' + last[1] + '" r="2.5"/></svg>';
+  }
+  function statsSetupHTML(msg) {
+    return '<div class="stats-setup"><h2>Connect Umami</h2><p>Studio reads the visits from your Umami Cloud account. Make an API key in <a href="https://cloud.umami.is/settings/api-keys" target="_blank" rel="noopener">Umami → Settings → API keys</a> and paste it here. It stays in this browser, like your GitHub token.</p>'
+      + (msg ? '<p class="stats-err">' + htmlEsc(msg) + "</p>" : "")
+      + '<div class="stats-keyrow"><input class="insp-input" id="umamiKey" type="password" placeholder="api_…" autocomplete="off"><button class="sbtn primary" id="umamiSave" type="button">Connect</button></div></div>';
+  }
+  function renderStats() {
+    var box = document.getElementById("statsView"); if (!box) return;
+    if (!(localStorage.getItem(UMAMI_KEY) || "").trim()) { box.innerHTML = statsSetupHTML(); return; }
+    var days = statsRange, r = rangeOf(days);
+    box.innerHTML = '<div class="stats-head"><h2>Stats</h2><div class="lang-seg stats-range" role="group" aria-label="Range">'
+      + [7, 30, 90].map(function (d) { return '<button type="button" data-days="' + d + '" aria-pressed="' + (d === days) + '">' + d + " days</button>"; }).join("")
+      + '</div><button class="linkbtn stats-forget" type="button">Change key</button></div><p class="topics-loading">Loading…</p>';
+    Promise.all([
+      umami("/stats", Object.assign({ compare: "prev" }, r)),
+      daySeries(days),
+      topicViews(days),
+      topicReads(days),
+      umami("/metrics", Object.assign({ type: "referrer", limit: 6 }, r)).catch(function () { return []; }),
+      loadLists()
+    ]).then(function (res) {
+      if (statsRange !== days) return;
+      var st = res[0] || {}, series = res[1], views = res[2], reads = res[3], refs = res[4] || [], list = res[5].index.slice();
+      list.sort(function (a, b) { return (views[b.slug] || 0) - (views[a.slug] || 0) || (+b.no || 0) - (+a.no || 0); });
+      var cmp = st.comparison || {};
+      var opens = 0, readSum = 0, readBase = 0;
+      list.forEach(function (t) { opens += views[t.slug] || 0; if (reads[t.slug]) { readSum += reads[t.slug]; } readBase += reads[t.slug] != null ? (views[t.slug] || 0) : 0; });
+      var readPct = readBase ? Math.round(readSum / readBase * 100) : null;
+      function delta(now, prev) {
+        if (!prev) return "";
+        var d = Math.round((now - prev) / prev * 100), up = d >= 0;
+        return '<span class="kpi-delta ' + (up ? "is-up" : "is-down") + '">' + (up ? "▲ " : "▼ ") + Math.abs(d) + "%</span>";
+      }
+      var avg = st.visits ? Math.round((st.totaltime || 0) / st.visits) : 0;
+      var kpis = [
+        ["Visitors", compact(st.visitors), delta(st.visitors, cmp.visitors)],
+        ["Page views", compact(st.pageviews), delta(st.pageviews, cmp.pageviews)],
+        ["Topic opens", compact(opens), ""],
+        ["Read to the end", readPct == null ? "—" : readPct + "%", readPct == null ? '<span class="kpi-note">counting from now on</span>' : '<span class="kpi-note">of opens, where tracked</span>'],
+        ["Time per visit", avg ? Math.floor(avg / 60) + ":" + pad2(avg % 60) : "—", ""]
+      ];
+      var h = box.querySelector(".stats-head").outerHTML
+        + '<div class="kpi-row">' + kpis.map(function (k) { return '<div class="kpi"><div class="kpi-label">' + k[0] + '</div><div class="kpi-value">' + k[1] + "</div>" + k[2] + "</div>"; }).join("") + "</div>"
+        + '<section class="stats-card"><div class="stats-card-head"><h3>Page views per day</h3><span class="kpi-note">vs the ' + days + ' days before: ' + compact(cmp.pageviews || 0) + "</span></div>" + lineChart(series) + "</section>"
+        + '<div class="stats-cols"><section class="stats-card stats-topics"><div class="stats-card-head"><h3>Topics</h3><span class="kpi-note">opens · read to the end</span></div><div class="st-rows">'
+        + list.map(function (t) {
+          var v = views[t.slug] || 0, rd = reads[t.slug] || 0;
+          return '<button type="button" class="st-row" data-slug="' + htmlEsc(t.slug) + '"><img class="st-thumb" src="' + htmlEsc(t.thumb || t.feed || t.cover || "") + '" alt=""><span class="st-name"><b>' + htmlEsc(t.title || t.slug) + '</b><span>No. ' + ("00" + (t.no || "")).slice(-3) + " · " + niceDate(t.date) + '</span></span><span class="st-spark" data-path="' + htmlEsc(topicPath(t.slug)) + '"></span>'
+            + '<span class="st-num">' + compact(v) + '</span><span class="st-num st-read">' + (rd ? Math.min(100, Math.round(rd / Math.max(1, v) * 100)) + "%" : "—") + "</span></button>";
+        }).join("") + "</div></section>"
+        + '<section class="stats-card stats-refs"><div class="stats-card-head"><h3>Where readers come from</h3></div>' + refsHTML(refs) + "</section></div>";
+      box.innerHTML = h;
+      wireLineChart(box.querySelector(".lc"), series);
+      [].forEach.call(box.querySelectorAll(".st-spark"), function (el) {
+        daySeries(Math.min(days, 30), el.getAttribute("data-path")).then(function (s) { el.innerHTML = sparkSVG(s, 96, 26); }, function () {});
+      });
+    }).catch(function (e) {
+      var msg = e && e.message || String(e);
+      if (/API key/.test(msg)) { box.innerHTML = statsSetupHTML(msg); return; }
+      var l = box.querySelector(".topics-loading"); if (l) l.textContent = "Couldn’t load the stats: " + msg;
+    });
+  }
+  function refsHTML(refs) {
+    refs = refs.filter(function (r) { return r.x; });
+    if (!refs.length) return '<p class="kpi-note" style="padding:6px 0">Mostly direct visits — no referring sites in this period.</p>';
+    var max = Math.max.apply(null, refs.map(function (r) { return +r.y || 0; })) || 1;
+    return '<div class="ref-rows">' + refs.map(function (r) {
+      return '<div class="ref-row"><span class="ref-name">' + htmlEsc(String(r.x).replace(/^www\./, "")) + '</span><span class="ref-bar"><i style="width:' + Math.max(2, (+r.y || 0) / max * 100) + '%"></i></span><span class="ref-n">' + compact(r.y) + "</span></div>";
+    }).join("") + "</div>";
+  }
+  // one series: a 2px line over a 10% wash, hairline grid, a crosshair + tooltip on hover
+  function lineChart(series) {
+    var W = 760, H = 200, L = 36, R = 12, T = 12, B = 24;
+    var max = Math.max.apply(null, series.map(function (p) { return p.y; })), top = niceTop(max), iw = W - L - R, ih = H - T - B;
+    var x = function (i) { return L + (series.length < 2 ? iw / 2 : i / (series.length - 1) * iw); }, y = function (v) { return T + ih - v / top * ih; };
+    var grid = [0, 0.5, 1].map(function (f) { var v = Math.round(top * f); return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + compact(v) + "</text>"; }).join("");
+    var pts = series.map(function (p, i) { return x(i).toFixed(1) + "," + y(p.y).toFixed(1); });
+    var every = Math.ceil(series.length / 6), ticks = series.map(function (p, i) {
+      if (i % every && i !== series.length - 1) return "";
+      var d = new Date(p.day + "T12:00:00"); return '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + "</text>";
+    }).join("");
+    var last = series.length - 1;
+    return '<div class="lc"><svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Page views per day">'
+      + '<g class="lc-grid">' + grid + "</g>"
+      + '<polygon class="lc-area" points="' + x(0) + "," + y(0) + " " + pts.join(" ") + " " + x(last) + "," + y(0) + '"/>'
+      + '<polyline class="lc-line" points="' + pts.join(" ") + '"/>'
+      + '<circle class="lc-end" cx="' + x(last) + '" cy="' + y(series[last].y) + '" r="4"/>'
+      + '<g class="lc-axis">' + ticks + "</g>"
+      + '<line class="lc-cross" y1="' + T + '" y2="' + (T + ih) + '" x1="0" x2="0"/><circle class="lc-dot" r="4" cx="0" cy="0"/></svg><div class="lc-tip" hidden></div></div>';
+  }
+  function niceTop(v) { if (v <= 5) return 5; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+  function wireLineChart(el, series) {
+    if (!el) return;
+    var svg = el.querySelector("svg"), cross = el.querySelector(".lc-cross"), dot = el.querySelector(".lc-dot"), tip = el.querySelector(".lc-tip");
+    var W = 760, L = 36, R = 12, T = 12, ih = 200 - 12 - 24, top = niceTop(Math.max.apply(null, series.map(function (p) { return p.y; })));
+    function show(e) {
+      var b = svg.getBoundingClientRect(), fx = (e.clientX - b.left) / b.width * W;
+      var i = Math.max(0, Math.min(series.length - 1, Math.round((fx - L) / (W - L - R) * (series.length - 1))));
+      var px = L + (series.length < 2 ? 0 : i / (series.length - 1) * (W - L - R)), py = T + ih - series[i].y / top * ih;
+      cross.setAttribute("x1", px); cross.setAttribute("x2", px); dot.setAttribute("cx", px); dot.setAttribute("cy", py);
+      el.classList.add("is-hover"); tip.hidden = false;
+      tip.innerHTML = "<b>" + series[i].y.toLocaleString("en-GB") + "</b> page views<br><span>" + new Date(series[i].day + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + "</span>";
+      var left = px / W * b.width; tip.style.left = Math.min(b.width - tip.offsetWidth - 4, Math.max(4, left - tip.offsetWidth / 2)) + "px";
+    }
+    el.addEventListener("pointermove", show);
+    el.addEventListener("pointerleave", function () { el.classList.remove("is-hover"); tip.hidden = true; });
+  }
+  (function () {
+    var box = document.getElementById("statsView"); if (!box) return;
+    box.addEventListener("click", function (e) {
+      if (e.target.closest("#umamiSave")) {
+        var v = (document.getElementById("umamiKey").value || "").trim(); if (!v) return;
+        localStorage.setItem(UMAMI_KEY, v); statsMemo = {}; renderStats(); return;
+      }
+      if (e.target.closest(".stats-forget")) { if (confirm("Forget the Umami key on this device?")) { localStorage.removeItem(UMAMI_KEY); statsMemo = {}; renderStats(); } return; }
+      var rb = e.target.closest("[data-days]"); if (rb) { statsRange = +rb.getAttribute("data-days"); renderStats(); return; }
+      var row = e.target.closest(".st-row"); if (row) editTopic(row.getAttribute("data-slug"));
+    });
+    box.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "umamiKey") document.getElementById("umamiSave").click(); });
+  })();
+  // a quiet line of numbers on each Topics row: opens over 7 days + their trend
+  function topicRowStats(listEl) {
+    if (!(localStorage.getItem(UMAMI_KEY) || "").trim()) return;
+    topicViews(7).then(function (views) {
+      [].forEach.call(listEl.querySelectorAll(".topic-row[data-slug]"), function (row) {
+        var slug = row.getAttribute("data-slug"), slot = row.querySelector(".topic-stat"); if (!slot) return;
+        slot.innerHTML = '<span class="topic-stat-n">' + compact(views[slug] || 0) + "</span><span>opens · 7 d</span>";
+        daySeries(7, topicPath(slug)).then(function (s) { slot.insertAdjacentHTML("afterbegin", sparkSVG(s, 64, 22)); }, function () {});
+      });
+    }, function () {});
+  }
+
+  /* ---------- EN | FR: the two languages side by side, field by field ---------- */
+  var translating = false, trOnlyMissing = false;
+  function trFields() {
+    var out = [{ label: "Title", o: state, key: "title", kind: "line" }];
+    var n = 0;
+    state.blocks.forEach(function (b) {
+      n++;
+      var at = " · block " + n;
+      if (b.type === "text") out.push({ label: (b.head ? "Heading" : "Text") + at, o: b, key: "html", kind: "rich" });
+      else if (b.type === "quote") { out.push({ label: "Quote" + at, o: b, key: "text", kind: "rich" }); out.push({ label: "Quote, who said it" + at, o: b, key: "cite", kind: "line" }); }
+      else if (b.type === "hand") out.push({ label: "Handwritten" + at, o: b, key: "text", kind: "plain" });
+      else if (b.type === "sign") out.push({ label: "Signature" + at, o: b, key: "text", kind: "line" });
+      else if (b.type === "image") {
+        out.push({ label: "Picture caption" + at, o: b, key: "caption", kind: "rich", thumb: b.src });
+        out.push({ label: "Picture note" + at, o: b, key: "note", kind: "line", thumb: b.src });
+        out.push({ label: "Picture description (alt)" + at, o: b, key: "alt", kind: "line", thumb: b.src });
+      } else if (b.type === "video") out.push({ label: "Video caption" + at, o: b, key: "caption", kind: "rich" });
+      else if (b.type === "board") (b.items || []).forEach(function (it, i) { if (it.kind !== "video") out.push({ label: "Board picture " + (i + 1) + " note" + at, o: it, key: "note", kind: "line", thumb: it.src }); });
+    });
+    // only what has English to translate
+    return out.filter(function (f) { return plain(f.o[f.key]); });
+  }
+  function frOf(f) { return f.o === state ? (state.fr && state.fr.title) || "" : (f.o.fr && f.o.fr[f.key]) || ""; }
+  function setFr(f, v) {
+    if (f.o === state) { state.fr = state.fr || {}; state.fr.title = v; return; }
+    f.o.fr = f.o.fr || {};
+    if (plain(v)) f.o.fr[f.key] = v; else delete f.o.fr[f.key];
+  }
+  function renderTranslate() {
+    var box = document.getElementById("trView"); if (!box) return;
+    var fields = trFields(), done = fields.filter(function (f) { return plain(frOf(f)); }).length;
+    box.innerHTML = '<div class="tr-head"><div><h2>French, side by side</h2><p class="tr-sub">English is the source. Anything left empty shows in English on the French site.</p></div>'
+      + '<div class="tr-progress"><span class="tr-count"><b>' + done + "</b> of " + fields.length + ' translated</span><span class="tr-meter"><i style="width:' + (fields.length ? done / fields.length * 100 : 0) + '%"></i></span>'
+      + '<label class="tr-only"><input type="checkbox" id="trOnly"' + (trOnlyMissing ? " checked" : "") + "> Only what’s missing</label></div></div>"
+      + '<div class="tr-cols"><span>English</span><span>Français</span></div><div class="tr-rows"></div>';
+    var rows = box.querySelector(".tr-rows");
+    if (!fields.length) rows.innerHTML = '<p class="topics-empty">Write the English first — its fields show up here to translate.</p>';
+    fields.forEach(function (f) {
+      var row = document.createElement("div"); row.className = "tr-row";
+      var miss = !plain(frOf(f)); row.classList.toggle("is-missing", miss); if (trOnlyMissing && !miss) row.hidden = true;
+      var lab = document.createElement("div"); lab.className = "tr-label"; lab.textContent = f.label;
+      var en = document.createElement("div"); en.className = "tr-en" + (f.kind === "plain" ? " is-plain" : "");
+      if (f.thumb) { var im = document.createElement("img"); im.src = f.thumb; im.alt = ""; im.className = "tr-thumb"; en.appendChild(im); }
+      var ent = document.createElement("div"); if (f.kind === "rich") ent.innerHTML = cleanRich(f.o[f.key]); else ent.textContent = f.o[f.key]; en.appendChild(ent);
+      var fr = document.createElement("div"); fr.className = "tr-fr" + (f.kind === "plain" ? " is-plain" : ""); fr.contentEditable = "true"; fr.spellcheck = true; fr.lang = "fr";
+      fr.dataset.ph = "Missing — write the French here";
+      if (f.kind === "rich") fr.innerHTML = frOf(f); else fr.textContent = frOf(f);
+      fr.addEventListener("input", function () {
+        var v = f.kind === "rich" ? fr.innerHTML : (f.kind === "plain" ? fr.innerText.replace(/\n$/, "") : fr.textContent);
+        setFr(f, v); touch();
+        var m = !plain(v); row.classList.toggle("is-missing", m);
+        var all = trFields(), d = all.filter(function (x) { return plain(frOf(x)); }).length;
+        box.querySelector(".tr-count").innerHTML = "<b>" + d + "</b> of " + all.length + " translated";
+        box.querySelector(".tr-meter i").style.width = (all.length ? d / all.length * 100 : 0) + "%";
+      });
+      fr.addEventListener("keydown", function (e) { if (e.key === "Enter" && f.kind === "line") e.preventDefault(); });
+      fr.addEventListener("paste", function (e) {
+        if (!e.clipboardData) return; e.preventDefault();
+        var h = f.kind === "rich" && e.clipboardData.getData("text/html");
+        if (h) document.execCommand("insertHTML", false, cleanRich(h)); else document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+      });
+      row.appendChild(lab); row.appendChild(en); row.appendChild(fr); rows.appendChild(row);
+    });
+    var only = box.querySelector("#trOnly");
+    if (only) only.addEventListener("change", function () { trOnlyMissing = only.checked; [].forEach.call(rows.querySelectorAll(".tr-row"), function (r) { r.hidden = trOnlyMissing && !r.classList.contains("is-missing"); }); });
+  }
+  function setTranslating(on) {
+    translating = on;
+    document.body.classList.toggle("view-translate", on);
+    var tv = document.getElementById("trView"); if (tv) tv.hidden = !on;
+    [].forEach.call(langSeg.children, function (c) { c.setAttribute("aria-pressed", String(on ? c.dataset.lang === "both" : c.dataset.lang === lang)); });
+    if (on) { hideFmtBar(); selectedId = null; renderTranslate(); }
+    else render();
+  }
+
   render();
   showDraftBanner();
+  loadLists().catch(function () {});
 })();

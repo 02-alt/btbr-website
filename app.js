@@ -342,6 +342,7 @@
       return;
     }
     songStop();
+    radioPause();
     if (window.__btbrAudio && !window.__btbrAudio.paused) window.__btbrAudio.pause();
     var f = document.createElement("iframe");
     f.allow = "autoplay; encrypted-media";
@@ -854,6 +855,8 @@
     frameVideos(modal); developPrints(modal);
     buildTOC(modal);
     renderSources(modal, curTopic.inspiration);
+    watchReadToEnd(modal, curTopic.slug);
+    if (findAfterOpen && findAfterOpen.slug === curTopic.slug) { var fa = findAfterOpen; findAfterOpen = null; setTimeout(function () { findInRoom(modal, fa, true); }, 760); }
   }
   function htmlEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // the inspiration list, as the exhibition's closing credits card. A line
@@ -909,7 +912,8 @@
   function curLabelHTML(t, asButton) {
     var desc = String(loc(t, "desc") || "").trim().replace(/[.,;:]+$/, ""), date = curDate(t.date);
     var tail = [desc, date].filter(Boolean), title = esc(loc(t, "title"));
-    return '<span class="cur-author">' + esc(t.author || "") + ",</span> "
+    // the writer is named in the room, not on the feed's card (as on the Instagram + Reel covers)
+    return (asButton ? "" : '<span class="cur-author">' + esc(t.author || "") + ",</span> ")
       // a <button> is always an atomic inline-block (even with all: unset), so a comma
       // after it can't share the title's last line — it goes inside instead
       + (asButton ? '<h2 class="cur-title"><button class="cur-open" type="button">' + title
@@ -936,7 +940,13 @@
   var CUR_MARK_SVG = '<svg class="cur-mark" viewBox="-3 -3 272 280" aria-hidden="true" focusable="false"><path d="'
     + "M0 0h126v10H0zM0 38h10v126H0zM256 148h10v126h-10zM68 132h10v126H68zM10 194h122v10H10zM104 248h126v10H104z"
     + '"/></svg>';
-  function curFoot(t) { var no = curNo(t); return '<div class="cur-foot">' + CUR_MARK_SVG + (no ? '<span class="cur-no">' + no + "</span>" : "") + "</div>"; }
+  function curFoot(t) {
+    var no = curNo(t), th = curThemes(t);
+    return '<div class="cur-foot">' + CUR_MARK_SVG
+      + (th.length ? '<span class="cur-stamps">' + th.map(function (x) { return '<span class="cur-stamp">' + htmlEsc(x) + "</span>"; }).join("") + "</span>" : "")
+      + (no ? '<span class="cur-no">' + no + "</span>" : "") + "</div>";
+  }
+  function curThemes(t) { return ((t && t.themes) || []).filter(Boolean); }
   function curCard(t) {
     // with a tray, its frame is laid out at once and the photo fades into it once it's cut out of
     // its window — never the raw window first
@@ -1050,11 +1060,14 @@
       // newest catalogue number first (the index keeps publish order, so a
       // re-published topic would otherwise jump to the top); unnumbered first
       curList = (list || []).slice().sort(function (a, b) { return (+b.no || 1e9) - (+a.no || 1e9); });
+      searchData = null; curFilter = "";
       if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
       feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
       dressTrays(feed);
+      renderFilter(feed);
       // after the grid, not in it, so a short row of cards stays centred
-      feed.insertAdjacentHTML("afterend", '<p class="cur-end">' + ui("end") + "</p>");
+      feed.insertAdjacentHTML("afterend", '<section class="cur-next" aria-label="Next topic">' + curNextHTML() + "</section>");
+      loadUpcoming();
       openFromHash();
     }).catch(function () { curList = []; feed.insertAdjacentHTML("beforeend", curEmptyHTML()); });
   }
@@ -1089,12 +1102,368 @@
         if (t && box) { box.innerHTML = curCardText(t); touched.push(box); }
         var no = card.querySelector(".cur-no"); if (t && no) no.textContent = curNo(t);
       });
-      var end = frame.querySelector(".cur-end"); if (end) { end.textContent = ui("end"); touched.push(end); }
+      frame.querySelectorAll(".cur-card .cur-foot").forEach(function (f) {
+        var t = curList.filter(function (x) { return x.slug === f.closest(".cur-card").dataset.slug; })[0];
+        if (t) f.outerHTML = curFoot(t);
+      });
+      var nx = frame.querySelector(".cur-next"); if (nx) { nx.innerHTML = curNextHTML(); touched.push(nx); }
+      if (frame.querySelector(".cur-filter")) renderFilter(frame.querySelector("[data-curation]"));
+      if (searchEl) { searchEl.remove(); searchEl = null; }
+      radioPaint();
       var empty = frame.querySelector(".cur-empty"); if (empty) { empty.outerHTML = curEmptyHTML(); touched.push(frame.querySelector(".cur-empty")); }
     }
     var modal = frame.querySelector(".cur-modal");
     if (modal && !modal.hidden && curTopic) { renderCurTopic(modal); touched.push(modal.querySelector(".cur-modal-panel")); }
   }
+
+  // ---- themes: a few words stamped on each card's foot; the chips above the
+  // table keep only the topics carrying that theme (the others fold away) ----
+  var curFilter = "";
+  function allThemes() {
+    var seen = {}, out = [];
+    (curList || []).forEach(function (t) {
+      curThemes(t).forEach(function (x) { var k = x.toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push(x); } });
+    });
+    return out;
+  }
+  function themeChip(key, label) {
+    return '<button class="cur-chip" type="button" data-theme="' + htmlEsc(key).replace(/"/g, "&quot;") + '" aria-pressed="' + (curFilter === key) + '">' + htmlEsc(label) + "</button>";
+  }
+  function renderFilter(feed) {
+    if (!feed) return;
+    var old = feed.parentNode.querySelector(".cur-filter"); if (old) old.remove();
+    var th = allThemes();
+    if (!th.length) return;
+    if (curFilter && !th.some(function (x) { return x.toLowerCase() === curFilter; })) curFilter = "";
+    var fr = siteLang() === "fr";
+    feed.insertAdjacentHTML("beforebegin", '<nav class="cur-filter" aria-label="' + (fr ? "Thèmes" : "Themes") + '">'
+      + themeChip("", fr ? "Tout" : "All") + th.map(function (x) { return themeChip(x.toLowerCase(), x); }).join("") + "</nav>");
+    applyFilter(false);
+  }
+  function applyFilter(animate) {
+    [].forEach.call(document.querySelectorAll(".cur-chip"), function (c) { c.setAttribute("aria-pressed", String((c.getAttribute("data-theme") || "") === curFilter)); });
+    [].forEach.call(document.querySelectorAll(".curation .cur-card"), function (card) {
+      var t = (curList || []).filter(function (x) { return x.slug === card.dataset.slug; })[0];
+      var on = !curFilter || (t && curThemes(t).some(function (x) { return x.toLowerCase() === curFilter; }));
+      card.hidden = !on;
+      if (on && animate && !reduceMotion) { card.classList.remove("is-refound"); void card.offsetWidth; card.classList.add("is-refound"); }
+    });
+  }
+  function setFilter(key) {
+    curFilter = curFilter === key ? "" : key;
+    applyFilter(true);
+    var bar = document.querySelector(".cur-filter");
+    if (bar && bar.getBoundingClientRect().top < 0) bar.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  }
+
+  // ---- the last card on the table: the next number, and where to follow it ----
+  var upcoming = null, upcomingNo = 0;             // the next scheduled topic's day (and number), when there is one
+  var RSS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 11a8 8 0 0 1 8 8"/><path d="M5 5a14 14 0 0 1 14 14"/><circle cx="5.5" cy="18.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
+  var READ_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9 4.5v15"/></svg>';
+  function nextNo() { var m = 0; (curList || []).forEach(function (t, i) { m = Math.max(m, +t.no || ((curList || []).length - i)); }); return m + 1; }
+  function curNextHTML() {
+    var fr = siteLang() === "fr", n = (fr ? "N° " : "No. ") + ("00" + (upcoming && upcomingNo || nextNo())).slice(-3);
+    var when = upcoming ? '<span class="cur-nowrap">' + curDate(upcoming) + "</span>" : "";
+    var head = when ? (fr ? n + " arrive le " + when + "." : n + " arrives on " + when + ".")
+                    : (fr ? n + " est en cours d’écriture." : n + " is being written.");
+    return '<div class="cur-next-card">'
+      + '<p class="cur-next-title">' + head + "</p>"
+      + '<p class="cur-next-sub">' + (fr ? "Pour le lire le jour de sa sortie :" : "Read it the day it’s out:") + "</p>"
+      + '<div class="cur-next-links">'
+      + '<a class="cur-next-link" href="/curation/feed.xml" target="_blank" rel="noopener">' + RSS_SVG + "<span>" + (fr ? "Flux RSS" : "RSS feed") + "</span></a>"
+      + '<a class="cur-next-link" href="/reed/">' + READ_SVG + "<span>" + (fr ? "Dans Reed" : "In Reed") + "</span></a>"
+      + "</div>"
+      + '<div class="cur-foot">' + CUR_MARK_SVG + '<span class="cur-no">' + n + "</span></div></div>";
+  }
+  function loadUpcoming() {
+    fetch("/curation/topics/scheduled.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
+      var now = Date.now(), soon = (list || []).map(function (s) { return s && s.publishAt; })
+        .filter(function (a) { return a && Date.parse(a) > now; }).sort(function (a, b) { return Date.parse(a) - Date.parse(b); })[0];
+      if (!soon) return;
+      var s = list.filter(function (x) { return x.publishAt === soon; })[0];
+      upcoming = soon.slice(0, 10); upcomingNo = s && s.entry && +s.entry.no || 0;
+      var nx = document.querySelector(".cur-next"); if (nx) nx.innerHTML = curNextHTML();
+    }).catch(function () {});
+  }
+
+  // ---- reading to the end: one quiet analytics event per topic, so Studio can
+  // tell how many readers made it past the last picture ----
+  var readSent = {};
+  function watchReadToEnd(modal, slug) {
+    if (modal.__readObs) { modal.__readObs.disconnect(); modal.__readObs = null; }
+    var scroller = modal.querySelector(".cur-modal-body"), art = modal.querySelector(".cur-article");
+    if (readSent[slug] || !scroller || !art || !("IntersectionObserver" in window)) return;
+    var mark = art.querySelector(".cur-read-mark");
+    if (!mark) { mark = document.createElement("i"); mark.className = "cur-read-mark"; mark.setAttribute("aria-hidden", "true"); art.appendChild(mark); }
+    var obs = new IntersectionObserver(function (es) {
+      if (readSent[slug] || !es.some(function (e) { return e.isIntersecting; })) return;
+      readSent[slug] = true; obs.disconnect();
+      try { if (window.umami && window.umami.track) window.umami.track("topic-read", { slug: slug }); } catch (e) {}
+    }, { root: scroller, threshold: 0 });
+    modal.__readObs = obs;
+    // a real read takes a while: a short topic that fits at once doesn't count straight away
+    setTimeout(function () { if (modal.__readObs === obs && modal.dataset.slug === slug && !modal.hidden) obs.observe(mark); }, 4000);
+  }
+
+  // ---- search (⌘K): titles, text, sources and picture notes of every topic ----
+  var findAfterOpen = null, searchEl = null, searchSel = 0, searchHits = [], searchData = null, searchTimer = 0;
+  var SEARCH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>';
+  function fold(s) { return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+  function textOf(html) { return new DOMParser().parseFromString(String(html || ""), "text/html").body.textContent.replace(/\s+/g, " ").trim(); }
+  function paragraphsOf(html) {
+    return String(html || "").split(/<\/?div[^>]*>|<\/?p[^>]*>|<br\s*\/?>/i).map(textOf).filter(Boolean);
+  }
+  function searchLoad() {
+    if (!searchData) searchData = Promise.all((curList || []).map(function (t) {
+      return topicData(t.slug).then(function (d) { return { t: t, d: d || {} }; });
+    }));
+    return searchData;
+  }
+  function snippet(text, fq) {
+    var i = fold(text).indexOf(fq); if (i < 0) return htmlEsc(text.slice(0, 120));
+    var a = Math.max(0, i - 48), b = Math.min(text.length, i + fq.length + 72);
+    return (a ? "…" : "") + htmlEsc(text.slice(a, i)) + "<mark>" + htmlEsc(text.slice(i, i + fq.length)) + "</mark>" + htmlEsc(text.slice(i + fq.length, b)) + (b < text.length ? "…" : "");
+  }
+  function searchUI() {
+    if (searchEl) return searchEl;
+    var fr = siteLang() === "fr";
+    searchEl = document.createElement("div");
+    searchEl.className = "cur-search"; searchEl.hidden = true;
+    searchEl.innerHTML = '<div class="cur-search-backdrop"></div><div class="cur-search-panel" role="dialog" aria-modal="true" aria-label="' + (fr ? "Rechercher" : "Search") + '">'
+      + '<label class="cur-search-field">' + SEARCH_SVG + '<input type="text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="curSearchList" /><kbd>esc</kbd></label>'
+      + '<div class="cur-search-results" id="curSearchList" role="listbox"></div></div>';
+    document.body.appendChild(searchEl);
+    var input = searchEl.querySelector("input");
+    input.addEventListener("input", function () { clearTimeout(searchTimer); searchTimer = setTimeout(function () { runSearch(input.value); }, 70); });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSearch(); return; }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSel(e.key === "ArrowDown" ? 1 : -1); return; }
+      if (e.key === "Enter") { e.preventDefault(); if (searchHits[searchSel]) searchGo(searchHits[searchSel]); }
+    });
+    searchEl.querySelector(".cur-search-backdrop").addEventListener("click", closeSearch);
+    var list = searchEl.querySelector(".cur-search-results");
+    list.addEventListener("click", function (e) { var it = e.target.closest(".cur-sr"); if (it) searchGo(searchHits[+it.getAttribute("data-i")]); });
+    list.addEventListener("pointermove", function (e) { var it = e.target.closest(".cur-sr"); if (it && +it.getAttribute("data-i") !== searchSel) { searchSel = +it.getAttribute("data-i"); paintSel(false); } });
+    return searchEl;
+  }
+  function openSearch() {
+    if (!curList || !document.querySelector(".curation-frame")) return;
+    var el = searchUI(), fr = siteLang() === "fr", input = el.querySelector("input");
+    input.placeholder = fr ? "Chercher un sujet, un passage, une source, une image" : "Search topics, words, sources, pictures";
+    el.hidden = false;
+    requestAnimationFrame(function () { el.classList.add("is-open"); });
+    input.value = ""; runSearch(""); input.focus();
+    try { if (window.umami && window.umami.track) window.umami.track("search-open"); } catch (e) {}
+  }
+  function closeSearch() {
+    if (!searchEl || searchEl.hidden) return;
+    searchEl.classList.remove("is-open");
+    setTimeout(function () { if (!searchEl.classList.contains("is-open")) searchEl.hidden = true; }, reduceMotion ? 0 : 180);
+  }
+  function moveSel(d) { if (!searchHits.length) return; searchSel = (searchSel + d + searchHits.length) % searchHits.length; paintSel(true); }
+  function paintSel(scroll) {
+    [].forEach.call(searchEl.querySelectorAll(".cur-sr"), function (it) {
+      var on = +it.getAttribute("data-i") === searchSel;
+      it.classList.toggle("is-sel", on); it.setAttribute("aria-selected", String(on));
+      if (on && scroll) it.scrollIntoView({ block: "nearest" });
+    });
+  }
+  function runSearch(q) {
+    var fq = fold(q.trim()), fr = siteLang() === "fr";
+    searchLoad().then(function (docs) {
+      if (!searchEl || fold(searchEl.querySelector("input").value.trim()) !== fq) return; // typed on since
+      var groups = { topic: [], text: [], source: [], pic: [] };
+      docs.forEach(function (x) {
+        var t = x.t, d = x.d, title = loc(t, "title");
+        var song = d.song ? [d.song.title, d.song.artist].filter(Boolean).join(" — ") : "";
+        if (!fq) { groups.topic.push({ kind: "topic", t: t, sub: [curNo(t), loc(t, "desc")].filter(Boolean).join(" · ") }); return; }
+        var meta = [title, loc(t, "desc"), t.author, curThemes(t).join(" "), song].filter(Boolean).join(" · ");
+        if (fold(meta).indexOf(fq) >= 0) groups.topic.push({ kind: "topic", t: t, subHTML: snippet(meta, fq) });
+        (d.blocks || []).forEach(function (b) {
+          var paras = [];
+          if (b.type === "text") paras = paragraphsOf(loc(b, "html"));
+          else if (b.type === "quote") paras = [textOf(loc(b, "text")), String(loc(b, "cite") || "")];
+          else if (b.type === "hand" || b.type === "sign") paras = [String(loc(b, "text") || "")];
+          else if (b.type === "video") paras = [textOf(loc(b, "caption"))];
+          paras.forEach(function (p) { if (p && fold(p).indexOf(fq) >= 0) groups.text.push({ kind: "text", t: t, text: p, q: q.trim() }); });
+          if (b.type === "image") {
+            var pics = b.board && b.board.items && b.board.items.length ? b.board.items.map(function (it) { return { src: it.src, words: [loc(it, "note"), it.name].filter(Boolean).join(" · ") }; })
+              : [{ src: b.src, words: [textOf(loc(b, "caption")), loc(b, "note"), loc(b, "alt")].filter(Boolean).join(" · ") }];
+            pics.forEach(function (p) { if (p.words && fold(p.words).indexOf(fq) >= 0) groups.pic.push({ kind: "pic", t: t, src: p.src, text: p.words, q: q.trim() }); });
+          }
+        });
+        String(d.inspiration || "").split(/\n+/).map(function (l) { return l.trim(); }).filter(function (l) { return l && !/^(inspirations?|sources?)\s*:?$/i.test(l); })
+          .forEach(function (l) { if (fold(l).indexOf(fq) >= 0) groups.source.push({ kind: "source", t: t, text: l, q: q.trim() }); });
+      });
+      var LIM = { topic: 12, text: 6, source: 5, pic: 6 };
+      var NAMES = fr ? { topic: "Sujets", text: "Dans le texte", source: "Sources", pic: "Images" } : { topic: "Topics", text: "In the text", source: "Sources", pic: "Pictures" };
+      searchHits = []; var html = "";
+      ["topic", "text", "source", "pic"].forEach(function (k) {
+        var g = groups[k].slice(0, LIM[k]); if (!g.length) return;
+        html += '<div class="cur-sr-group">' + NAMES[k] + "</div>";
+        g.forEach(function (h) {
+          var i = searchHits.push(h) - 1, thumb = h.kind === "pic" ? h.src : (h.t.thumb || h.t.feed || "");
+          var main = h.kind === "topic" ? htmlEsc(loc(h.t, "title")) : snippet(h.text, fq);
+          var sub = h.kind === "topic" ? (h.subHTML || htmlEsc(h.sub || "")) : htmlEsc(loc(h.t, "title"));
+          html += '<button class="cur-sr cur-sr-' + h.kind + '" type="button" role="option" data-i="' + i + '">'
+            + '<span class="cur-sr-thumb">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy">' : "") + "</span>"
+            + '<span class="cur-sr-text"><span class="cur-sr-main">' + main + '</span><span class="cur-sr-sub">' + sub + "</span></span></button>";
+        });
+      });
+      if (!html) html = '<p class="cur-sr-none">' + (fr ? "Rien trouvé pour « " : "Nothing found for “") + htmlEsc(q.trim()) + (fr ? " »." : "”.") + "</p>";
+      searchEl.querySelector(".cur-search-results").innerHTML = html;
+      searchSel = 0; paintSel(false);
+    });
+  }
+  function searchGo(hit) {
+    if (!hit) return;
+    closeSearch();
+    var slug = hit.t.slug, fa = hit.kind === "topic" ? null : { slug: slug, kind: hit.kind, text: hit.text, q: hit.q, src: hit.src };
+    var m = document.querySelector(".cur-modal");
+    if (m && !m.hidden && !m.classList.contains("is-closing") && m.dataset.slug === slug && curTopic) { if (fa) findInRoom(m, fa); return; }
+    findAfterOpen = fa;
+    if (curFilter) setFilter(curFilter);           // the card it grows out of must be on the table
+    if (m && !m.hidden) { closeCurModal(); setTimeout(function () { openCurTopic(slug); }, reduceMotion ? 220 : 600); }
+    else openCurTopic(slug);
+  }
+  function findInRoom(modal, fa, jump) {
+    var root = modal.querySelector(".cur-article"); if (!root) return;
+    var el = null, fq = fold(fa.q);
+    if (fa.kind === "pic") {
+      [].some.call(root.querySelectorAll("img"), function (im) { if (im.getAttribute("src") === fa.src) { el = im.closest(".cur-print, figure") || im; return true; } return false; });
+    }
+    if (!el) {
+      var sel = fa.kind === "source" ? ".cur-sources li" : "p, h3, blockquote, figcaption, .cur-vprint-note, .cur-print-note, .cur-sources li";
+      [].some.call(root.querySelectorAll(sel), function (n) { if (fold(n.textContent).indexOf(fq) >= 0) { el = n; return true; } return false; });
+    }
+    if (!el) return;
+    var sc = modal.querySelector(".cur-modal-body"), sb = sc.getBoundingClientRect(), eb = el.getBoundingClientRect();
+    sc.scrollTo({ top: sc.scrollTop + eb.top - sb.top - Math.max(80, (sc.clientHeight - eb.height) / 2), behavior: reduceMotion || jump ? "auto" : "smooth" });
+    el.classList.remove("cur-found"); void el.offsetWidth; el.classList.add("cur-found");
+    setTimeout(function () { el.classList.remove("cur-found"); }, 2600);
+  }
+
+  // ---- Curation radio: every topic's soundtrack, one after another, in a small
+  // player that stays put while you move between rooms and pages ----
+  var radio = null;
+  var RADIO_ICONS = {
+    play: '<svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4c.6-.4.6-1.3 0-1.7l-10-6.4c-.7-.5-1.6 0-1.6.8z"/></svg>'
+        + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="2.2" height="12" rx="1"/><path d="M19 6.9v10.2c0 .8-.9 1.2-1.5.8L9.8 12.8a1 1 0 0 1 0-1.6l7.7-5.1c.6-.4 1.5 0 1.5.8z"/></svg>',
+    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="16.8" y="6" width="2.2" height="12" rx="1"/><path d="M5 6.9v10.2c0 .8.9 1.2 1.5.8l7.7-5.1a1 1 0 0 0 0-1.6L6.5 6.1C5.9 5.7 5 6.1 5 6.9z"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>'
+  };
+  function radioTracks() {
+    return searchLoad().then(function (docs) {
+      return docs.map(function (x) {
+        var s = x.d.song || (x.d.blocks || []).filter(function (b) { return b.type === "song"; })[0], id = s && youtubeId(s.src);
+        return id ? { slug: x.t.slug, t: x.t, id: id, start: +s.start || 0, title: String(s.title || "").trim() || "Untitled", artist: String(s.artist || "").trim(), art: s.art || x.t.thumb || x.t.feed || "" } : null;
+      }).filter(Boolean);
+    });
+  }
+  function radioStart() {
+    if (radio) { radioToggle(); return; }
+    radio = { tracks: [], i: 0, playing: false, fails: 0 };
+    radioTracks().then(function (tracks) {
+      if (!radio) return;
+      if (!tracks.length) { radio = null; return; }
+      radio.tracks = tracks;
+      // start with the open room's song, else the newest topic's
+      var m = document.querySelector(".cur-modal"), open = m && !m.hidden ? m.dataset.slug : "";
+      var at = Math.max(0, tracks.map(function (x) { return x.slug; }).indexOf(open));
+      radioBuild(); radioLoad(at);
+      try { if (window.umami && window.umami.track) window.umami.track("radio-play"); } catch (e) {}
+    });
+  }
+  function radioBuild() {
+    var el = document.createElement("div");
+    el.className = "cur-radio"; el.setAttribute("role", "region"); el.setAttribute("aria-label", "Curation radio");
+    el.innerHTML = '<span class="cur-radio-art"><img alt=""></span>'
+      + '<span class="cur-radio-meta"><span class="cur-radio-kicker"></span><span class="cur-radio-title"></span><button class="cur-radio-from" type="button"></button></span>'
+      + '<span class="cur-radio-ctl"><button class="cur-radio-prev" type="button" aria-label="Previous">' + RADIO_ICONS.prev + "</button>"
+      + '<button class="cur-radio-play" type="button" aria-label="Pause">' + RADIO_ICONS.play + "</button>"
+      + '<button class="cur-radio-next" type="button" aria-label="Next">' + RADIO_ICONS.next + "</button></span>"
+      + '<button class="cur-radio-close" type="button" aria-label="Close the radio">' + RADIO_ICONS.close + "</button>"
+      + '<span class="cur-radio-bar" aria-hidden="true"><span></span></span>';
+    document.body.appendChild(el);
+    radio.el = el;
+    el.querySelector(".cur-radio-prev").addEventListener("click", function () { radioLoad(radio.i - 1); });
+    el.querySelector(".cur-radio-next").addEventListener("click", function () { radioLoad(radio.i + 1); });
+    el.querySelector(".cur-radio-play").addEventListener("click", radioToggle);
+    el.querySelector(".cur-radio-close").addEventListener("click", radioClose);
+    el.querySelector(".cur-radio-from").addEventListener("click", function () { radioGoTo(radio.tracks[radio.i].slug); });
+    requestAnimationFrame(function () { el.classList.add("is-in"); });
+  }
+  function radioPaint() {
+    var r = radio; if (!r || !r.el) return;
+    var tr = r.tracks[r.i], el = r.el, fr = siteLang() === "fr";
+    el.querySelector(".cur-radio-kicker").textContent = (fr ? "Radio curation" : "Curation radio") + " · " + (r.i + 1) + "/" + r.tracks.length;
+    el.querySelector(".cur-radio-title").innerHTML = htmlEsc(tr.title) + (tr.artist ? '<span class="cur-radio-by"> · ' + htmlEsc(tr.artist) + "</span>" : "");
+    el.querySelector(".cur-radio-from").textContent = (fr ? "dans " : "from ") + loc(tr.t, "title");
+    var im = el.querySelector(".cur-radio-art img"); if (im.getAttribute("src") !== tr.art) { im.classList.remove("is-in"); im.onload = function () { im.classList.add("is-in"); }; im.src = tr.art; }
+    el.classList.toggle("is-playing", r.playing);
+    el.classList.toggle("is-loading", !!r.loading);
+    el.querySelector(".cur-radio-play").setAttribute("aria-label", r.playing ? (fr ? "Pause" : "Pause") : (fr ? "Lecture" : "Play"));
+  }
+  function radioCmd(func, args) { try { radio.frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), "*"); } catch (e) {} }
+  function radioQuietOthers() {
+    songStop();
+    if (window.__btbrAudio && !window.__btbrAudio.paused) window.__btbrAudio.pause();
+  }
+  function radioLoad(i) {
+    var r = radio; if (!r || !r.tracks.length) return;
+    r.i = (i + r.tracks.length) % r.tracks.length;
+    var tr = r.tracks[r.i];
+    radioQuietOthers();
+    if (!r.frame) {
+      var f = document.createElement("iframe");
+      f.allow = "autoplay; encrypted-media"; f.className = "cur-song-player"; f.title = "Radio player"; f.setAttribute("aria-hidden", "true"); f.tabIndex = -1;
+      f.src = "https://www.youtube-nocookie.com/embed/" + tr.id + "?enablejsapi=1&autoplay=1&playsinline=1&controls=0&start=" + tr.start + "&origin=" + encodeURIComponent(location.origin);
+      f.addEventListener("load", function () { try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 2, channel: "widget" }), "*"); } catch (e) {} });
+      document.body.appendChild(f); r.frame = f;
+    } else {
+      // the same player takes the next video, so it keeps the permission to play
+      radioCmd("loadVideoById", [{ videoId: tr.id, startSeconds: tr.start }]);
+    }
+    r.playing = true; r.loading = true; r.dur = 0;
+    var bar = r.el.querySelector(".cur-radio-bar span"); if (bar) bar.style.width = "0";
+    radioPaint();
+  }
+  function radioToggle() {
+    var r = radio; if (!r || !r.frame) return;
+    if (r.playing) { radioCmd("pauseVideo"); r.playing = false; }
+    else { radioQuietOthers(); radioCmd("playVideo"); r.playing = true; }
+    radioPaint();
+  }
+  function radioPause() { if (radio && radio.playing && radio.frame) { radioCmd("pauseVideo"); radio.playing = false; radioPaint(); } }
+  function radioClose() {
+    var r = radio; if (!r) return; radio = null;
+    if (r.frame) r.frame.remove();
+    if (r.el) { r.el.classList.remove("is-in"); setTimeout(function () { r.el.remove(); }, reduceMotion ? 0 : 260); }
+  }
+  // "from <topic>": open its room — here on the table, or by walking back to it (soft navigation, so the music goes on)
+  function radioGoTo(slug) {
+    if (document.querySelector(".curation-frame") && curList) {
+      searchGo({ kind: "topic", t: curList.filter(function (x) { return x.slug === slug; })[0] || { slug: slug } });
+      return;
+    }
+    var a = document.createElement("a"); a.href = "/curation/#" + encodeURIComponent(slug); a.hidden = true;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  window.addEventListener("message", function (e) {
+    var r = radio; if (!r || !r.frame || e.source !== r.frame.contentWindow) return;
+    var d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (x) { return; }
+    if (!d) return;
+    if (d.event === "onError") { if (++r.fails < r.tracks.length) radioLoad(r.i + 1); else radioClose(); return; }
+    var info = d.info; if (!info) return;
+    if (info.playerState === 1) { r.fails = 0; if (r.loading || !r.playing) { r.loading = false; r.playing = true; radioPaint(); } }
+    if (info.playerState === 2 && r.playing && !r.loading) { r.playing = false; radioPaint(); }
+    if (info.playerState === 0) { radioLoad(r.i + 1); return; }
+    if (info.duration) r.dur = info.duration;
+    if (info.currentTime != null && r.dur) {
+      var bar = r.el && r.el.querySelector(".cur-radio-bar span"); if (bar) bar.style.width = Math.min(100, info.currentTime / r.dur * 100) + "%";
+    }
+  });
 
   // ---- site language (EN / FR) ----
   // English by default; the choice is remembered per device. Static page text
@@ -1231,6 +1600,10 @@
     // the label's title button and the cover tray both open the topic
     var openBtn = t.closest(".cur-open, .cur-card .cur-tray");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
+    if (t.closest(".cur-search-btn")) { openSearch(); return; }
+    if (t.closest(".cur-radio-btn")) { radioStart(); return; }
+    var chip = t.closest(".cur-chip");
+    if (chip) { setFilter(chip.getAttribute("data-theme") || ""); return; }
     var sp = t.closest(".cur-song-play");
     if (sp) { var tune = sp.closest(".cur-tune"); if (tune) songToggle(tune); return; }
     var sh = t.closest(".cur-modal-share");
@@ -1251,6 +1624,10 @@
     if (h && !h.__pre) { h.__pre = new Image(); h.__pre.src = h.getAttribute("data-src"); }
   });
   document.addEventListener("keydown", function (e) {
+    if (document.querySelector(".curation-frame") && !e.altKey && (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k")
+        || (e.key === "/" && !e.metaKey && !e.ctrlKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !e.target.isContentEditable))) {
+      e.preventDefault(); openSearch(); return;
+    }
     if (e.key === "Escape") { if (!closeFocus()) closeCurModal(); return; }
     if (focusState && (e.key === "ArrowRight" || e.key === "ArrowLeft")) { e.preventDefault(); stepFocus(e.key === "ArrowRight" ? 1 : -1); return; }
     var z = e.target && e.target.classList && e.target.classList.contains("cur-zoomable");

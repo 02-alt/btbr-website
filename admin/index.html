@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-dark.png?v=5" media="(prefers-color-scheme: light)" />
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-light.png?v=5" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
-  <link rel="stylesheet" href="/admin/editor.css?v=32" />
+  <link rel="stylesheet" href="/admin/editor.css?v=33" />
 </head>
 <body class="studio">
   <header class="studio-bar">
@@ -17,12 +17,15 @@
     <div class="studio-tabs" role="tablist">
       <button class="studio-tab is-active" data-tab="write" type="button">Write</button>
       <button class="studio-tab" data-tab="topics" type="button">Topics</button>
+      <button class="studio-tab" data-tab="calendar" type="button">Calendar</button>
+      <button class="studio-tab" data-tab="stats" type="button">Stats</button>
     </div>
     <div class="studio-actions">
       <span class="doc-state" id="docState" aria-live="polite"></span>
       <div class="lang-seg" id="langSeg" role="group" aria-label="Language">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
         <button type="button" data-lang="fr" aria-pressed="false">FR</button>
+        <button type="button" data-lang="both" aria-pressed="false" title="English and French side by side">EN | FR</button>
       </div>
       <button class="sbtn quiet insp-toggle" id="inspToggle" type="button" aria-expanded="false" aria-controls="inspector">Settings</button>
       <button class="sbtn quiet" id="previewBtn" type="button">Preview</button>
@@ -53,6 +56,10 @@
       <div class="topics-list" id="topicsList"></div>
     </section>
 
+    <section class="cal-view" id="calView" hidden></section>
+    <section class="stats-view" id="statsView" hidden></section>
+    <section class="tr-view" id="trView" hidden></section>
+
     <aside class="studio-inspector" id="inspector" aria-label="Settings"></aside>
   </div>
 
@@ -74,6 +81,14 @@
     <div class="pub-panel" role="dialog" aria-modal="true" aria-label="Publish">
       <h2 class="pub-title" id="pubTitle">Publish topic</h2>
       <p class="pub-note" id="pubNote">It goes live on the curation page in a minute or two.</p>
+      <div class="pub-when" id="pubWhen">
+        <div class="lang-seg pub-when-seg" id="pubWhenSeg" role="group" aria-label="When">
+          <button type="button" data-when="now" aria-pressed="true">Now</button>
+          <button type="button" data-when="later" aria-pressed="false">Schedule</button>
+        </div>
+        <input class="insp-input pub-at" id="pubAt" type="datetime-local" aria-label="Go live at" hidden />
+        <p class="pub-when-note" id="pubWhenNote" hidden></p>
+      </div>
       <p class="pub-saved" id="pubSaved" hidden>Using the GitHub token saved on this device. <button class="linkbtn" id="pubChange" type="button">Change</button></p>
       <div id="pubTokenBox">
         <label class="insp-label" for="pubToken">GitHub token</label>
@@ -93,6 +108,6 @@
   <script src="/assets/macwin.js?v=4"></script>
   <script src="/assets/sharecard.js?v=2"></script>
   <script src="/assets/prints.js?v=2"></script>
-  <script src="/admin/editor.js?v=45"></script>
+  <script src="/admin/editor.js?v=46"></script>
 </body>
 </html>
