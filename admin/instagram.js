@@ -746,6 +746,11 @@
     ctx.fillText(t, x, y); ctx.restore();
   }
   function descOf() { return String(topic.desc || "").trim().replace(/[.,;:]+$/, ""); }
+  // the writer goes in the caption; on the cover only if you switch it on (remembered on this Mac)
+  var byOnCover = (function () { try { return localStorage.getItem("btbr-ig-by") === "1"; } catch (e) { return false; } })();
+  function byline() { return byOnCover ? String(topic.author || "").trim() : ""; }
+  function joinDot(parts, sep) { return parts.filter(Boolean).join(sep || "  \u00B7  "); }
+  function labelRuns(desc) { var by = byline(); return (by ? plainRuns(by + ",").concat([{ br: true }]) : []).concat(plainRuns(topic.title + (desc ? ", " + desc : ""))); }
   var CREAM = "#f3e7c9";
   var COVERS = {
     museum: function (ctx, s) {
@@ -754,7 +759,7 @@
         var bx = im ? (bare(im) || { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight }) : null;
         // the museum label, overlapping the photo's foot: "Author, / Title, desc"
         var desc = String(topic.desc || "").trim().replace(/[.,;:]+$/, "");
-        var words = plainRuns(topic.author + ",").concat([{ br: true }], plainRuns(topic.title + (desc ? ", " + desc : "")));
+        var words = labelRuns(desc);
         var cw = 680, size = 50, lines = wrap(words, size, SANS, cw - 84), lh = size * 1.13, ch = 44 + linesH(lines, lh) + 96;
         var k = im ? Math.min((W - 2 * M) / bx.w, 800 / bx.h) : 0, w = im ? bx.w * k : 0, h = im ? bx.h * k : 0;
         var y = Math.max(70, (H - FOOT - (h + ch - 80)) / 2), bottom = y;
@@ -791,7 +796,7 @@
       var ty = H - titleH + 40;
       titleLine(ctx, topic.title.toUpperCase(), W / 2, ty + 110, 120, CREAM, "center", 800, "6px");
       ctx.font = font(30, SERIF, true); ctx.fillStyle = "rgba(243,231,201,0.75)"; ctx.textAlign = "center";
-      ctx.fillText("a curation by " + topic.author + (descOf() ? " \u00B7 " + descOf() : ""), W / 2, ty + 170); ctx.textAlign = "left";
+      ctx.fillText(joinDot([byline() ? "a curation by " + byline() : "", descOf()], " \u00B7 "), W / 2, ty + 170); ctx.textAlign = "left";
     },
     // 70s · split screen: one shot in nine panels at nine framings, the title in the middle one (The Thomas Crown Affair)
     split: function (ctx, s, im) {
@@ -812,7 +817,7 @@
       var size = fitText(ctx, topic.title.toUpperCase(), 64, SANS, cw - 40, false, 800);
       titleLine(ctx, topic.title.toUpperCase(), mx + cw / 2, my + chh / 2 + size * 0.2, size, CREAM, "center", 800, "3px");
       ctx.font = font(20, SERIF, true); ctx.fillStyle = "rgba(243,231,201,0.7)"; ctx.textAlign = "center";
-      ctx.fillText(topic.author, mx + cw / 2, my + chh / 2 + size * 0.2 + 40); ctx.textAlign = "left";
+      ctx.fillText(byline(), mx + cw / 2, my + chh / 2 + size * 0.2 + 40); ctx.textAlign = "left";
     },
     // 70s · tunnel: the shot inside itself, frame after frame, falling toward the title
     tunnel: function (ctx, s, im) {
@@ -828,7 +833,7 @@
       ctx.fillStyle = g2; ctx.fillRect(0, H - 420, W, 420);
       titleLine(ctx, topic.title.toUpperCase(), W / 2, H - 170, 104, CREAM, "center", 800, "8px");
       ctx.font = font(28, SERIF, true); ctx.fillStyle = "rgba(243,231,201,0.75)"; ctx.textAlign = "center";
-      ctx.fillText(topic.author + (descOf() ? " \u00B7 " + descOf() : ""), W / 2, H - 116); ctx.textAlign = "left";
+      ctx.fillText(joinDot([byline(), descOf()], " \u00B7 "), W / 2, H - 116); ctx.textAlign = "left";
     },
     // bleed: the photo edge to edge, the museum label in its corner
     bleed: function (ctx, s, im) {
@@ -846,7 +851,7 @@
       ctx.font = font(34, SERIF, true); ctx.fillStyle = onWall(0.7); ctx.fillText(descOf(), 70, y + 10);
       if (im) cover(ctx, im, 70, y + 50, W - 140, H - FOOT - (y + 50) - 40, 4, crop(im));
       ctx.font = font(20, SANS, false, 600); ctx.fillStyle = onWall(0.6); ctx.textAlign = "right";
-      ctx.fillText(topic.author + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), W - 70, y + 10); ctx.textAlign = "left";
+      ctx.fillText(joinDot([byline(), topic.no ? "No. " + pad(topic.no) : ""]), W - 70, y + 10); ctx.textAlign = "left";
     },
     // grid: the whole topic at a glance — nine of its photos, the label in the middle
     grid: function (ctx, s, im) {
@@ -875,7 +880,7 @@
       ctx.save(); ctx.font = font(120, SERIF); ctx.fillStyle = "#111"; ctx.fillText(topic.title, 56, ph + 150); ctx.restore();
       ctx.font = font(34, SERIF, true); ctx.fillStyle = "#444"; ctx.fillText(descOf(), 60, ph + 214);
       ctx.font = font(20, SANS); ctx.fillStyle = "#777";
-      ctx.fillText(topic.author + "  \u00B7  " + String(topic.date || "").replace(/-/g, ".") + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), 60, ph + 270);
+      ctx.fillText(joinDot([byline(), String(topic.date || "").replace(/-/g, "."), topic.no ? "No. " + pad(topic.no) : ""]), 60, ph + 270);
     },
     // ink: the photo dimmed, the title written over it in Isaac's hand
     ink: function (ctx, s, im) {
@@ -887,13 +892,13 @@
       ctx.fillStyle = "#fbf8f2"; ctx.fillText(topic.title, 80, 640);
       ctx.font = font(52, HAND); ctx.fillText(descOf(), 86, 740);
       ctx.restore();
-      ctx.font = font(22, SANS); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(topic.author + (topic.no ? "  \u00B7  No. " + pad(topic.no) : ""), 86, H - 110);
+      ctx.font = font(22, SANS); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(joinDot([byline(), topic.no ? "No. " + pad(topic.no) : ""]), 86, H - 110);
     }
   };
   // the museum label (as on the site) — "Author, / Title, desc" — at (x, y) or centred
   function coverLabel(ctx, x, y, cw, centred) {
     var desc = descOf(), size = 46, lh = size * 1.13;
-    var words = plainRuns(topic.author + ",").concat([{ br: true }], plainRuns(topic.title + (desc ? ", " + desc : "")));
+    var words = labelRuns(desc);
     var lines = wrap(words, size, SANS, cw - 84), ch = 40 + linesH(lines, lh) + 84;
     if (centred) { x = (W - cw) / 2; y = (H - ch) / 2; }
     if (x == null) x = 70;
@@ -921,7 +926,8 @@
   function caption() {
     var first = (topic.blocks || []).filter(function (b) { return b.type === "text" && !b.head; })[0];
     var lead = first ? plain(String(first.html).replace(/<\/p>|<br\s*\/?>/gi, "\n")).replace(/\n{3,}/g, "\n\n") : "";
-    var parts = [topic.title + (topic.desc ? " — " + topic.desc : ""), lead];
+    var head = topic.title + (topic.desc ? " — " + topic.desc : "") + (topic.author ? "\nA curation by " + topic.author + "." : "");
+    var parts = [head, lead];
     parts.push(whatsOnSite() + " — link in bio → " + SITE + "/curation/" + topic.slug);
     if (topic.song && topic.song.title) parts.push("♪ " + topic.song.title + (topic.song.artist ? " — " + topic.song.artist : ""));
     return parts.filter(Boolean).join("\n\n").slice(0, 2200);
@@ -1091,7 +1097,7 @@
     var blk = s.bi != null ? (topic.blocks || [])[s.bi] : null;
     if (s.kind === "cover") {
       orig = orig || { title: topic.title, desc: topic.desc, author: topic.author };
-      return [["Author", topic.author, function (v) { topic.author = v; }], ["Title", topic.title, function (v) { topic.title = v; }], ["Description", topic.desc || "", function (v) { topic.desc = v; }, true]];
+      return [["Writer", topic.author, function (v) { topic.author = v; }], ["Title", topic.title, function (v) { topic.title = v; }], ["Description", topic.desc || "", function (v) { topic.desc = v; }, true]];
     }
     if (s.kind === "text" || s.kind === "chapter")
       return [["Text", edits[s.ekey] != null ? edits[s.ekey] : htmlToText(blk && blk.html), function (v) { edits[s.ekey] = v; }, true]];
@@ -1121,7 +1127,7 @@
       }
       return;
     }
-    $("textNote").textContent = s.kind === "text" && s.part ? "Spans " + s.part.split("/")[1] + " slides" : (s.kind === "cover" ? "Author, title, description" : fields.map(function (f) { return f[0]; }).join(", "));
+    $("textNote").textContent = s.kind === "text" && s.part ? "Spans " + s.part.split("/")[1] + " slides" : (s.kind === "cover" ? "Title, description, writer" : fields.map(function (f) { return f[0]; }).join(", "));
     var key = s.ekey || s.kind;
     if ($("texter").hidden || texterFor === key) return;      // same words being edited: leave the fields (and the caret) alone
     texterFor = key;
@@ -1139,6 +1145,14 @@
       });
       lab.appendChild(inp); body.appendChild(lab);
     });
+    if (s.kind === "cover") {
+      var bw = document.createElement("label"); bw.className = "tx-row"; bw.innerHTML = '<span>Writer on the cover</span><input class="switch" type="checkbox" role="switch" />';
+      var bs = bw.querySelector("input"); bs.checked = byOnCover;
+      bs.addEventListener("change", function () { byOnCover = bs.checked; try { localStorage.setItem("btbr-ig-by", byOnCover ? "1" : "0"); } catch (e) {} chipsFor = ""; render(); });
+      body.insertBefore(bw, body.children[1] || null);
+      var bn = document.createElement("p"); bn.className = "tx-note"; bn.style.margin = "-4px 0 14px"; bn.textContent = "Either way, the caption says “A curation by …”.";
+      body.insertBefore(bn, bw.nextSibling);
+    }
     var note = document.createElement("p"); note.className = "tx-note";
     note.textContent = s.kind === "text" ? "Blank line = new paragraph. Long text flows onto more slides by itself. Only this export changes, not the topic."
       : "Only this export changes, not the topic.";

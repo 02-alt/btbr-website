@@ -94,7 +94,7 @@
   function defaults() {
     var desc = String(topic.desc || "").trim().replace(/[.,;:]+$/, "");
     var stops = [{ kind: "text", size: "L", hold: 1.8,
-      text: topic.author + ",\n" + topic.title + (desc ? ", " + desc : "") + ",\n" + longDate(topic.date), small: noLine() }];
+      text: topic.title + (desc ? ", " + desc : "") + ",\n" + longDate(topic.date), small: noLine() }];   // the writer goes in the caption
     // the cover, then the first picture of each board
     var all = photos(), pick = all.slice(0, 1);
     (topic.blocks || []).forEach(function (b) {
@@ -1507,6 +1507,8 @@
         reel = restore() || defaults();
         if (!reel.mood) reel.mood = "day";
         if (!reel.open) reel.open = openDefaults(true);
+        var s0 = reel.stops[0], by = String(topic.author || "") + ",\n";              // older reels opened with the writer's name: not any more
+        if (s0 && s0.kind === "text" && topic.author && s0.text.indexOf(by) === 0) s0.text = s0.text.slice(by.length);
         reel.stops.forEach(function (st) { if (st.kind === "video") loadVideo(st); });
         return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); }).concat(openSrcs(reel.open).map(loadImg))); });
       });
