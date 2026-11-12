@@ -2369,7 +2369,10 @@
     var q = Object.keys(params || {}).map(function (k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
     var url = "https://api.umami.is/v1/websites/" + UMAMI_SITE + path + (q ? "?" + q : "");
     var hit = statsMemo[url]; if (hit && Date.now() - hit.at < 5 * 60e3) return hit.p;
-    var p = fetch(url, { headers: { Authorization: "Bearer " + key, Accept: "application/json" } }).then(function (r) {
+    // x-umami-api-key, not Authorization: Umami's CORS answer is "Allow-Headers: *", which Safari doesn't take to cover Authorization
+    var p = fetch(url, { headers: { "x-umami-api-key": key, Accept: "application/json" } }).catch(function () {
+      throw new Error("The browser couldn’t reach Umami — a content blocker may be blocking umami.is on this page.");
+    }).then(function (r) {
       if (r.status === 401 || r.status === 403) throw new Error("Umami didn’t accept the API key.");
       if (!r.ok) throw new Error("Umami answered " + r.status + ".");
       return r.json();
