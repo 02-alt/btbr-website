@@ -829,6 +829,50 @@
     ctx.restore();
   }
 
+  /* ---------- the caption: written for you, editable, one click to copy ----------
+     The same shape as the Instagram post's: who curates it on top, the opening of the text, what the
+     full topic holds and where, the song, and who wrote it at the end. */
+  function whatsOnSite() {
+    var vids = 0, pics = 0, n = function (k, one, many) { return k + " " + (k === 1 ? one : many); };
+    (topic.blocks || []).forEach(function (b) {
+      if (b.type === "video" && b.src) vids++;
+      if (b.type === "image" && b.src) pics += b.board && b.board.items && b.board.items.length ? b.board.items.length : 1;
+    });
+    var srcs = String(topic.inspiration || "").split(/\n+/).filter(function (l) { l = l.trim(); return l && !/^(inspirations?|sources?)\s*:?$/i.test(l); }).length;
+    var bits = [vids ? n(vids, "video", "videos") : "", pics ? n(pics, "picture", "pictures") : "", srcs ? n(srcs, "source", "sources") : ""].filter(Boolean);
+    var list = bits.length > 1 ? bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] : bits[0];
+    return list ? "The full topic, with " + list : "Read the full topic";
+  }
+  function autoCaption() {
+    var first = (topic.blocks || []).filter(function (b) { return b.type === "text" && !b.head; })[0];
+    var lead = first ? String(first.html || "").split(/<\/p>|<br\s*\/?>/i).map(plain).filter(Boolean).join("\n\n") : "";
+    var head = "A curation by builtoberemembered\n" + topic.title + (topic.desc ? " — " + String(topic.desc).trim() : "");
+    var tail = [whatsOnSite() + " — link in bio → " + SITE + "/curation/" + topic.slug];
+    var song = reel.yt && reel.yt.url ? ytName() : topic.song && topic.song.title ? topic.song.title + (topic.song.artist ? " — " + topic.song.artist : "") : "";
+    if (song && song !== "YouTube") tail.push("♪ " + song);
+    if (topic.author) tail.push("Written by " + topic.author + ".");
+    var room = 2200 - (head + "\n\n" + tail.join("\n\n")).length - 4;          // a long text gives way, the ending stays
+    if (lead.length > room) lead = room > 40 ? lead.slice(0, room - 1).replace(/\s+\S*$/, "") + "…" : "";
+    return [head, lead].concat(tail).filter(Boolean).join("\n\n");
+  }
+  function captionUI() {
+    var box = $("caption"); if (document.activeElement !== box) box.value = reel.caption != null ? reel.caption : autoCaption();
+    $("capReset").hidden = reel.caption == null;
+    var n = box.value.length; $("capCount").textContent = n > 2200 ? n + " / 2,200 — too long for Instagram" : n.toLocaleString("en") + " / 2,200";
+    $("capCount").classList.toggle("warn", n > 2200);
+  }
+  function wireCaption() {
+    var box = $("caption");
+    box.addEventListener("input", function () { reel.caption = box.value; persist(); captionUI(); });
+    $("capReset").addEventListener("click", function () { reel.caption = null; persist(); box.value = autoCaption(); captionUI(); });
+    $("capCopy").addEventListener("click", function () {
+      var b = $("capCopy"), done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1600); };
+      if (navigator.clipboard) navigator.clipboard.writeText(box.value).then(done, function () { box.select(); document.execCommand("copy"); done(); });
+      else { box.select(); document.execCommand("copy"); done(); }
+    });
+    captionUI();
+  }
+
   /* ---------- the sound: footsteps every stride while walking, a gallery's echo, low room air ---------- */
   var soundCache = { key: "", buf: null };
   function noise(ac, secs, seed) {
@@ -1198,7 +1242,7 @@
     });
     $("pickerDone").addEventListener("click", closePicker); $("scrim").addEventListener("click", closePicker);
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("picker").hidden) closePicker(); });
-    $("reset").addEventListener("click", function () { if (confirm("Start over from the topic? Your changes to this reel will be lost.")) { reel = defaults(); sel = 0; settings(); inspector(); changed(); } });
+    $("reset").addEventListener("click", function () { if (confirm("Start over from the topic? Your changes to this reel will be lost.")) { reel = defaults(); sel = 0; settings(); inspector(); changed(); captionUI(); } });
     $("topic").addEventListener("change", function () { location.search = "?t=" + encodeURIComponent($("topic").value); });
   }
   function settings() {
@@ -1392,6 +1436,7 @@
   }
   function ytName() { var song = topic.song || {}; return yt.title || (ytId(song.src) === yt.id && song.title) || "YouTube"; }
   function ytUI() {
+    if (reel && $("caption")) captionUI();
     var y = reel.yt; $("ytBox").hidden = !y;
     if (!y) { if (!reel.audio && !rec) audioUI(); return; }
     if (document.activeElement !== $("ytUrl")) $("ytUrl").value = y.url;
@@ -1513,7 +1558,7 @@
         return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); }).concat(openSrcs(reel.open).map(loadImg))); });
       });
     }).then(function () {
-      sizeView(); settings(); wireTransport(); wireEditor(); wireAudio(); wireYt(); ytUI(); ytLoad();
+      sizeView(); settings(); wireTransport(); wireEditor(); wireAudio(); wireYt(); wireCaption(); ytUI(); ytLoad();
       build(); ticks(); list(); inspector(); now = 0; paint();
       $("count").textContent = fmt(scene.dur) + " · " + reel.stops.length + " stops";
       $("export").addEventListener("click", exportVideo);

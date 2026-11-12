@@ -54,6 +54,8 @@
     .panel h3 { margin: 0; font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
     .panel h3 .val { text-transform: none; letter-spacing: 0; color: var(--ink2); font-weight: 500; }
     .panel h3 .link { margin-left: auto; }
+    .field textarea.caption { min-height: 220px; font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+    .note.warn { color: #d70015; }
     .rule { height: 1px; background: var(--hair); margin: 0 -20px; flex: none; }
     .link { border: 0; background: none; padding: 0; color: var(--blue); font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
     .link.danger { color: #d70015; }
@@ -225,6 +227,12 @@
           <input type="file" id="videoFile" accept="video/*" hidden />
         </div>
       </section>
+      <div class="rule"></div>
+      <section>
+        <h3>Caption <span class="acts" style="margin-left:auto"><button class="link quiet" id="capReset" type="button" hidden>Write it again</button><button class="link" id="capCopy" type="button">Copy</button></span></h3>
+        <label class="field"><textarea id="caption" class="caption" aria-label="Caption for the reel" spellcheck="true"></textarea></label>
+        <p class="note" id="capCount"></p>
+      </section>
     </aside>
 
     <div class="phone" id="phone">
@@ -297,6 +305,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/reel.js?v=16"></script>
+  <script src="/admin/reel.js?v=17"></script>
 </body>
 </html>
