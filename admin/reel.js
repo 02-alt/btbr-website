@@ -105,7 +105,7 @@
       stops.splice(Math.min(stops.length, 3), 0, { kind: "text", size: "M", hold: 2.6, text: "“" + b.text.trim() + "”", small: b.cite || "" });
     });
     stops.push({ kind: "text", size: "L", hold: 1.6, text: "Read it on\n" + SITE, small: noLine() + " — " + topic.title });
-    return { v: 1, stops: stops, pace: "normal", mood: "day", mblur: true, steps: true, sun: true, pillars: true, audio: null };
+    return { v: 1, stops: stops, pace: "normal", mood: "day", mblur: true, steps: true, sun: true, pillars: true, audio: null, open: openDefaults(true) };
   }
   var KEY = function () { return "btbr-reel:" + topic.slug; };
   function persist() { try { localStorage.setItem(KEY(), JSON.stringify(reel)); } catch (e) {} }
@@ -179,7 +179,8 @@
       items.push(it);
     });
     var V = PACE[reel.pace] || PACE.normal, eff = reel.stops.map(function (s) { return s.hold; });
-    if (+reel.fit) { var f = fitTo(items.slice(1).map(function (it, i) { return it.x - items[i].x; }), eff, V, +reel.fit); V = f.V; eff = f.holds; }
+    var od = openDur();
+    if (+reel.fit) { var f = fitTo(items.slice(1).map(function (it, i) { return it.x - items[i].x; }), eff, V, Math.max(4, +reel.fit - od)); V = f.V; eff = f.holds; }
     var grid = beatGrid();
     // the walk: hold, ease up to pace, walk, ease to a halt, hold …
     var X = [], Z = [], ZD = [], YC = [], R = 240, holds = [];
@@ -203,6 +204,7 @@
         X.push(it.x + shift * e + (tx - it.x) * ed); Z.push(LEAN * e); ZD.push((D - dep * push) * ed); YC.push(ty * ed);
       }
     }
+    for (var o0 = 0; o0 < Math.round(od * R); o0++) { X.push(items[0].x); Z.push(0); ZD.push(0); YC.push(0); }   // the opening: standing at the first stop, unseen
     hold(items[0], eff[0]);
     for (var i = 0; i + 1 < items.length; i++) {
       var D0 = items[i + 1].x - items[i].x, tc = Math.max(0, (D0 - V * RAMP) / V), T2 = 2 * RAMP + tc;
@@ -223,7 +225,7 @@
     var pillars = [], suns = [];
     if (reel.pillars) for (var p = 2; p + 1 < items.length; p += 3) pillars.push((items[p].x + items[p + 1].x) / 2);
     if (reel.sun && (MOODS[reel.mood] || MOODS.day).sun) for (var sx = 750; sx < x + 800; sx += 4100) suns.push(sx);
-    scene = { ver: ++builds, fit: +reel.fit || 0, items: items, X: X, Z: Z, ZD: ZD, YC: YC, R: R, V: V, eff: eff, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x };
+    scene = { ver: ++builds, fit: +reel.fit || 0, items: items, X: X, Z: Z, ZD: ZD, YC: YC, R: R, V: V, eff: eff, holds: holds, dur: (X.length - 1) / R, pillars: pillars, suns: suns, end: x, open: Math.round(od * R) / R };
   }
   /* ---------- a video stop: projected onto the wall ---------- */
   var VIDEO = { S: 640, M: 820, L: 980 };
@@ -477,7 +479,9 @@
   function render(ctx, t, s) {
     renderScene(ctx, t, s);
     if (reel.mblur !== false) smear(ctx, t, s);
+    drawOpening(ctx, t, s);
     if (reel.film) film(ctx, t, s);
+    timeRing(ctx, t, s);
   }
   function lightFromAbove(ctx, w, h) {                  // brighter at the top, falling off below
     var g = ctx.createLinearGradient(0, 0, 0, h);
@@ -520,6 +524,311 @@
     ctx.restore();
   }
 
+  /* ---------- the opening: one picture, full screen, before the walk ----------
+     Poster: a photo filling the screen, the title in a corner. Table: the topic's prints dropped on
+     Curation's grey table, the label card beside them. Either holds for a moment, pushing in a little,
+     then leaves: if the walk starts on the same photo it flies into its frame on the wall; otherwise
+     the poster lifts away, or the camera dives into the print on top. Text stays clear of the bottom
+     of the screen, where Instagram puts its caption and buttons. */
+  var EXIT = 0.7, SAFE_TOP = 230, SAFE_BOTTOM = H - 400;
+  function openDefaults(on) {
+    var all = photos(), desc = String(topic.desc || "").trim();
+    return { on: !!on, style: "poster", hold: 2.2,
+      poster: { src: topic.cover || (all[0] && all[0].src) || "", crop: null, title: topic.title, sub: desc, no: noLine(), pos: "bottom" },
+      table: { srcs: all.slice(0, 5).map(function (p) { return p.src; }), title: topic.title, sub: desc, no: noLine(), layout: "pile", seed: 0 } };
+  }
+  function openSrcs(o) { return !o ? [] : o.style === "table" ? (o.table.srcs || []).filter(Boolean).slice(0, 5) : o.poster.src ? [o.poster.src] : []; }
+  function opening() { var o = reel && reel.open; return o && o.on && openSrcs(o).length ? o : null; }
+  function openDur() { var o = opening(); return o ? Math.max(EXIT + 0.5, +o.hold || 2.2) : 0; }
+  function pic(src) { var im = loaded[src]; if (!im && src) loadImg(src).then(function (x) { if (x) paint(); }); return im || null; }
+  function lerp(a, b, q) { return a + (b - a) * q; }
+  function clamp01(p) { return Math.max(0, Math.min(1, p)); }
+  function inOut(p) { p = clamp01(p); return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+  function outCubic(p) { p = clamp01(p); return 1 - Math.pow(1 - p, 3); }
+  // where the first stop's photo sits on screen as the walk begins — if it's the same picture
+  function landing(src) {
+    var it = scene && scene.items[0]; if (!it || it.stop.kind !== "photo" || it.stop.src !== src || !it.im) return null;
+    var k = F / (D - 8);
+    return { x: W / 2 + (66 - it.total / 2) * k, y: H / 2 + (Y - it.fh / 2 + 66) * k, w: it.pw * k, h: it.ph * k };
+  }
+  var ks = 1;                                  // the canvas scale, for shadows (they ignore the transform)
+  function drawOpening(ctx, t, s) {
+    var o = opening(), dur = scene.open; if (!o || !dur || t >= dur) return;
+    var q = inOut((t - (dur - EXIT)) / EXIT), push = 1 + 0.035 * clamp01(t / (dur - EXIT));
+    ks = s; ctx.save(); ctx.setTransform(s, 0, 0, s, 0, 0);
+    if (o.style === "table") drawTable(ctx, o.table, t, q, push); else drawPoster(ctx, o.poster, q, push);
+    ctx.restore();
+  }
+  function font(ctx, weight, size, track) { ctx.font = weight + " " + size + "px " + SANS; if ("letterSpacing" in ctx) ctx.letterSpacing = (track * size).toFixed(2) + "px"; }
+  function lines(ctx, text, maxW) {
+    var out = [];
+    String(text || "").split("\n").forEach(function (para) {
+      var line = "";
+      para.split(/\s+/).filter(Boolean).forEach(function (w) { var t = line ? line + " " + w : w; if (line && ctx.measureText(t).width > maxW) { out.push(line); line = w; } else line = t; });
+      if (line) out.push(line);
+    });
+    return out;
+  }
+
+  /* the poster */
+  function posterMin(im) { var b = bare(im); return Math.min(1, (9 / 16) / (b.w / b.h), Math.max(0.1, 360 / b.w)); }
+  function posterCrop(P, im) {
+    var b = bare(im), ar = b.w / b.h, z = P.crop;
+    if (!z) { var w = Math.min(1, (9 / 16) / ar); z = { x: (1 - w) / 2, y: (1 - w * ar * 16 / 9) / 2, w: w }; }
+    return zoomFit(z, ar, posterMin(im));
+  }
+  function drawPoster(ctx, P, q, push) {
+    var im = pic(P.src);
+    if (!im) { ctx.globalAlpha = 1 - q; ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H); return; }
+    var b = bare(im), z = posterCrop(P, im);
+    // the whole photo, placed so the framed part fills the screen
+    var fw = W / z.w * push, fh = H / z.h * push, fx = W / 2 - (z.x + z.w / 2) * fw, fy = H / 2 - (z.y + z.h / 2) * fh;
+    var to = landing(P.src), clip = { x: 0, y: 0, w: W, h: H }, alpha = 1;
+    if (to) {
+      fx = lerp(fx, to.x, q); fy = lerp(fy, to.y, q); fw = lerp(fw, to.w, q); fh = lerp(fh, to.h, q);
+      clip = { x: lerp(0, to.x, q), y: lerp(0, to.y, q), w: lerp(W, to.w, q), h: lerp(H, to.h, q) };
+      alpha = 1 - clamp01((q - 0.82) / 0.18);                                     // and hands over to the print on the wall
+    } else if (q > 0) {                                                          // lifts away
+      alpha = 1 - q; ctx.translate(W / 2, H / 2 - 120 * q); ctx.scale(1 + 0.05 * q, 1 + 0.05 * q); ctx.translate(-W / 2, -H / 2);
+    }
+    ctx.save(); ctx.globalAlpha = alpha; ctx.beginPath(); ctx.rect(clip.x, clip.y, clip.w, clip.h); ctx.clip();
+    ctx.drawImage(im, b.x, b.y, b.w, b.h, fx, fy, fw, fh);
+    var ta = alpha * (1 - clamp01(q * 2.5)), top = P.pos === "top";
+    if (ta > 0 && (P.title || P.sub || P.no)) {
+      ctx.globalAlpha = ta;
+      var g = ctx.createLinearGradient(0, top ? 0 : H, 0, top ? H * 0.5 : H * 0.42);
+      g.addColorStop(0, "rgba(0,0,0,0.66)"); g.addColorStop(0.5, "rgba(0,0,0,0.36)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      posterText(ctx, P, top);
+    }
+    ctx.restore();
+  }
+  function posterText(ctx, P, top) {
+    var M = 72, size = 128, ls;
+    do { font(ctx, 500, size, -0.03); ls = lines(ctx, P.title, W - 2 * M); size -= 8; } while (ls.length > 3 && size > 64);
+    size += 8;
+    ctx.fillStyle = "#fff"; ctx.textBaseline = "alphabetic";
+    var lh = size * 1.02, subY, titleY0;
+    var rb = ringBox(), room = rb && rb.top === top ? 2 * rb.R + 36 : 0;          // the time-left circle keeps its corner
+    if (top) { titleY0 = SAFE_TOP + room + size * 0.8; subY = titleY0 + (ls.length - 1) * lh + 72; }
+    else { subY = SAFE_BOTTOM - room; titleY0 = subY - (P.sub || P.no ? 76 : 0) - (ls.length - 1) * lh; }
+    font(ctx, 500, size, -0.03); ls.forEach(function (l, i) { ctx.fillText(l, M, titleY0 + i * lh); });
+    font(ctx, 400, 40, -0.01); ctx.globalAlpha *= 0.9;
+    var noW = 0; if (P.no) { font(ctx, 400, 32, 0.01); noW = ctx.measureText(P.no).width + 40; }
+    font(ctx, 400, 40, -0.01); var sub = lines(ctx, P.sub, W - 2 * M - noW)[0] || "";
+    if (sub && lines(ctx, P.sub, W - 2 * M - noW).length > 1) { while (sub.length > 1 && ctx.measureText(sub + "…").width > W - 2 * M - noW) sub = sub.slice(0, -1); sub = sub.replace(/[\s,.;:]+$/, "") + "…"; }
+    if (sub) ctx.fillText(sub, M, subY);
+    if (P.no) { font(ctx, 400, 32, 0.01); ctx.globalAlpha *= 0.8; ctx.textAlign = "right"; ctx.fillText(P.no, W - M, subY); ctx.textAlign = "left"; }
+  }
+
+  /* the table — each layout: the prints' [x, y, width, turn] (the first is the one on top), and the label's [x, y, turn] */
+  var LAYOUTS = {
+    pile:    { p: [[540, 900, 720, -3], [360, 560, 600, -9], [790, 800, 560, 7], [330, 1240, 560, 4], [750, 1310, 540, -5]], label: [690, 1410, 2] },
+    fan:     { p: [[540, 820, 640, 0], [265, 940, 560, -22], [815, 940, 560, 22], [395, 865, 560, -11], [685, 865, 560, 11]], label: [540, 1420, 0] },
+    scatter: { p: [[560, 900, 680, 3], [290, 420, 540, -14], [820, 540, 500, 11], [270, 1300, 520, 8], [830, 1340, 540, -10]], label: [320, 1410, -4] },
+    stack:   { p: [[620, 930, 700, -1.5], [425, 720, 680, -3], [475, 770, 680, 2], [525, 820, 680, -1], [575, 870, 680, 2.5]], label: [360, 1420, -2] }
+  };
+  var LAYOUT_NAMES = [["pile", "Pile"], ["fan", "Fan"], ["scatter", "Scatter"], ["stack", "Stack"]];
+  function rng(seed) { var a = (seed * 2654435761) >>> 0 || 1; return function () { a ^= a << 13; a >>>= 0; a ^= a >>> 17; a ^= a << 5; a >>>= 0; return a / 4294967296; }; }
+  function tableLayout(T) {
+    var L = LAYOUTS[T.layout] || LAYOUTS.pile, srcs = (T.srcs || []).filter(Boolean).slice(0, 5), r = rng(T.seed || 0), j = T.seed ? 1 : 0;
+    var slots = [1, 2, 3, 4].slice(0, Math.max(0, srcs.length - 1));
+    if (j) for (var i = slots.length - 1; i > 0; i--) { var k = Math.floor(r() * (i + 1)), tmp = slots[i]; slots[i] = slots[k]; slots[k] = tmp; }
+    var pics = srcs.map(function (src, n) {
+      var slot = n ? slots[n - 1] : 0, p = L.p[slot];
+      return { src: src, z: slot, cx: p[0] + (r() - 0.5) * 90 * j, cy: p[1] + (r() - 0.5) * 90 * j, w: p[2], rot: p[3] + (r() - 0.5) * (n ? 9 : 5) * j };
+    });
+    return { pics: pics, label: [L.label[0] + (r() - 0.5) * 50 * j, L.label[1], L.label[2] + (r() - 0.5) * 4 * j] };
+  }
+  function printSize(p, im) { var b = bare(im), ar = b.w / b.h, w = p.w, h = w / ar; if (h > 800) { h = 800; w = h * ar; } return { w: w, h: h, m: Math.round(w * 0.035) + 6 }; }
+  function drawPrint(ctx, im, cx, cy, w, h, rot, m, lift) {
+    var b = bare(im), sc = 1 + 0.05 * lift;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot * Math.PI / 180); ctx.scale(sc, sc);
+    ctx.save(); ctx.shadowColor = "rgba(30,24,30," + (0.22 + 0.08 * lift) + ")"; ctx.shadowBlur = (26 + 50 * lift) * ks; ctx.shadowOffsetY = (12 + 34 * lift) * ks;
+    ctx.fillStyle = "#fbfaf7"; ctx.fillRect(-w / 2 - m, -h / 2 - m, w + 2 * m, h + 2 * m); ctx.restore();
+    ctx.drawImage(im, b.x, b.y, b.w, b.h, -w / 2, -h / 2, w, h);
+    ctx.strokeStyle = "rgba(0,0,0,0.07)"; ctx.lineWidth = 1.5; ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+  function clip(ctx, ls, n, maxW) {           // at most n lines, the last one ending in … if there was more
+    if (ls.length <= n) return ls;
+    var out = ls.slice(0, n), l = out[n - 1];
+    while (l.length > 1 && ctx.measureText(l + "…").width > maxW) l = l.slice(0, -1);
+    out[n - 1] = l.replace(/[\s,.;:]+$/, "") + "…"; return out;
+  }
+  function drawLabel(ctx, T, cx, cy, rot) {
+    var w = 500, pad = 38;
+    font(ctx, 500, 46, -0.02); var tl = clip(ctx, lines(ctx, T.title, w - 2 * pad), 3, w - 2 * pad);
+    font(ctx, 400, 29, -0.01); var sl = clip(ctx, lines(ctx, T.sub, w - 2 * pad), 2, w - 2 * pad);
+    var h = pad + 8 + tl.length * 50 + (sl.length ? 14 + sl.length * 36 : 0) + (T.no ? 74 : 26);
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot * Math.PI / 180); ctx.translate(-w / 2, -h / 2);
+    ctx.save(); ctx.shadowColor = "rgba(30,24,30,0.16)"; ctx.shadowBlur = 22 * ks; ctx.shadowOffsetY = 8 * ks; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); ctx.restore();
+    var y = pad + 38; ctx.fillStyle = "#151315"; font(ctx, 500, 46, -0.02);
+    tl.forEach(function (l) { ctx.fillText(l, pad, y); y += 50; });
+    ctx.fillStyle = "#6f6c71"; font(ctx, 400, 29, -0.01); y += 6;
+    sl.forEach(function (l) { ctx.fillText(l, pad, y); y += 36; });
+    if (T.no) { ctx.fillStyle = "#9a989b"; font(ctx, 400, 24, 0.02); ctx.fillText(T.no, pad, h - 32); }
+    ctx.restore();
+  }
+  function drawTable(ctx, T, t, q, push) {
+    var lay = tableLayout(T), cov = lay.pics[0], im0 = cov && pic(cov.src), g0 = im0 ? printSize(cov, im0) : null;
+    var to = im0 ? landing(cov.src) : null, dive = to ? 0 : q, settle = 1 - outCubic(t / 0.45);
+    var rest = to ? 1 - q : 1 - clamp01((q - 0.45) / 0.55);                  // the table, the other prints, the label
+    var A = cov ? { x: W / 2 + (cov.cx - W / 2) * push, y: H / 2 + (cov.cy - H / 2) * push } : { x: W / 2, y: H / 2 };
+    var fill = g0 ? Math.max(W / (g0.w + 2 * g0.m), H / (g0.h + 2 * g0.m)) * 1.04 : 1;
+    ctx.save(); ctx.globalAlpha = rest;
+    ctx.fillStyle = "#e6e4e6"; ctx.fillRect(0, 0, W, H);
+    var lg = ctx.createRadialGradient(W * 0.45, H * 0.16, 0, W * 0.45, H * 0.16, H * 0.75);
+    lg.addColorStop(0, "rgba(255,255,255,0.42)"); lg.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+    var vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.72);
+    vg.addColorStop(0, "rgba(40,30,40,0)"); vg.addColorStop(1, "rgba(40,30,40,0.1)"); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    // the table, pushed in a little — and on the way out without a frame to land in, the camera dives into the top print
+    ctx.translate(lerp(A.x, W / 2, dive), lerp(A.y, H / 2, dive)); ctx.rotate(-(cov ? cov.rot : 0) * Math.PI / 180 * dive);
+    var sc = push * lerp(1, fill, dive); ctx.scale(sc, sc); ctx.translate(-(cov ? cov.cx : W / 2), -(cov ? cov.cy : H / 2));
+    lay.pics.slice(1).sort(function (a, b) { return a.z - b.z; }).forEach(function (p) {
+      var im = pic(p.src); if (!im) return; var g = printSize(p, im); drawPrint(ctx, im, p.cx, p.cy, g.w, g.h, p.rot, g.m, 0);
+    });
+    if (im0 && !to) { ctx.globalAlpha = 1 - clamp01((q - 0.62) / 0.38); drawPrint(ctx, im0, cov.cx, cov.cy, g0.w, g0.h, cov.rot, g0.m, settle); ctx.globalAlpha = rest; }
+    if (T.title || T.sub || T.no) drawLabel(ctx, T, lay.label[0], lay.label[1], lay.label[2]);
+    ctx.restore();
+    if (im0 && to) {                                                            // the top print flies into its frame on the wall
+      ctx.save(); ctx.globalAlpha = 1 - clamp01((q - 0.82) / 0.18);
+      drawPrint(ctx, im0, lerp(A.x, to.x + to.w / 2, q), lerp(A.y, to.y + to.h / 2, q), lerp(g0.w * push, to.w, q), lerp(g0.h * push, to.h, q), lerp(cov.rot, 0, q), lerp(g0.m * push, 0, q), settle * (1 - q));
+      ctx.restore();
+    }
+  }
+
+  // the opening as a picture: full size, once it has settled (the film look if it's on, no time-left circle)
+  function saveStill() {
+    var o = opening(); if (!o) return Promise.resolve();
+    return Promise.all(openSrcs(o).map(loadImg)).then(function () {
+      var c = document.createElement("canvas"); c.width = W; c.height = H;
+      var ctx = c.getContext("2d"), t = Math.min(0.6, Math.max(0, scene.open - EXIT - 0.05));
+      renderScene(ctx, t, 1); drawOpening(ctx, t, 1); if (reel.film) film(ctx, t, 1);
+      return new Promise(function (res) { c.toBlob(res, "image/jpeg", 0.95); });
+    }).then(function (blob) {
+      if (!blob) return;
+      var name = topic.slug + "-" + (o.style === "table" ? "table" : "poster") + ".jpg";
+      save(new File([blob], name, { type: "image/jpeg" }), name);
+      $("exportNote").textContent = "Saved " + name + " (1080 × 1920).";
+    });
+  }
+
+  /* the opening in the editor: the first row of the walk, and its inspector */
+  function openRow() {
+    var o = reel.open, li = document.createElement("li"); li.className = "stop lead"; li.setAttribute("aria-selected", sel === -1);
+    var src = openSrcs(o)[0], th = document.createElement(src ? "img" : "span"); th.className = "th" + (o.on ? "" : " off");
+    if (src) { th.src = src; th.alt = ""; } else th.textContent = "—";
+    var tx = document.createElement("span"); tx.className = "tx";
+    var b = document.createElement("b"); b.textContent = "Opening";
+    var sm = document.createElement("small"); sm.textContent = !o.on ? "Off" : (o.style === "table" ? "On the table" : "Poster") + " · " + openDur().toFixed(1) + " s";
+    tx.appendChild(b); tx.appendChild(sm); li.appendChild(th); li.appendChild(tx);
+    li.addEventListener("click", function () { select(-1); });
+    return li;
+  }
+  function noteOf(src) { var p = photos().filter(function (x) { return x.src === src; })[0]; return p ? p.note : ""; }
+  function openInspector(box, field, segRow) {
+    var o = reel.open;
+    function note(t) { var p = document.createElement("p"); p.className = "note"; p.textContent = t; box.appendChild(p); return p; }
+    function pickBtn(src, title, sub, onClick) {
+      var pb = document.createElement("button"); pb.type = "button"; pb.className = "pickbtn";
+      pb.innerHTML = '<img alt="" /><span><b></b><small></small></span>'; pb.querySelector("img").src = src; pb.querySelector("b").textContent = title; pb.querySelector("small").textContent = sub;
+      pb.addEventListener("click", onClick); box.appendChild(pb);
+    }
+    var h = document.createElement("h3"); h.innerHTML = 'Opening <span class="val"></span>';
+    h.querySelector(".val").textContent = !o.on ? "Off" : o.style === "table" ? "On the table" : "Poster"; box.appendChild(h);
+    var r = document.createElement("div"); r.className = "row"; r.innerHTML = '<span>Show an opening</span><input class="switch" type="checkbox" role="switch" aria-label="Show an opening" />';
+    var sw = r.querySelector("input"); sw.checked = !!o.on; sw.addEventListener("change", function () { o.on = sw.checked; inspector(); changed(); }); box.appendChild(r);
+    if (!o.on) { note("One picture, full screen, for the first second or two — before the walk starts."); return; }
+    segRow("Style", [["poster", "Poster"], ["table", "On the table"]], o.style, function (v) { o.style = v; inspector(); });
+    if (o.style === "table") {
+      var T = o.table, row = document.createElement("div"); row.className = "thumbs";
+      T.srcs.forEach(function (src, i) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (i ? "" : " first"); b.title = i ? "Change this print" : "The print on top — change it";
+        var im = document.createElement("img"); im.src = src; im.alt = ""; b.appendChild(im);
+        b.addEventListener("click", function () { photoPicker(function (p) { T.srcs[i] = p.src; inspector(); changed(); }, src); });
+        if (T.srcs.length > 1) {
+          var x = document.createElement("span"); x.className = "x"; x.textContent = "×"; x.title = "Take it off the table";
+          x.addEventListener("click", function (e) { e.stopPropagation(); T.srcs.splice(i, 1); inspector(); changed(); }); b.appendChild(x);
+        }
+        row.appendChild(b);
+      });
+      if (T.srcs.length < 5) {
+        var add = document.createElement("button"); add.type = "button"; add.className = "thumb add"; add.textContent = "+"; add.title = "Add a print";
+        add.addEventListener("click", function () { photoPicker(function (p) { T.srcs.push(p.src); inspector(); changed(); }); }); row.appendChild(add);
+      }
+      var hd = document.createElement("div"); hd.className = "row"; hd.innerHTML = "<span>Prints</span>"; box.appendChild(hd); box.appendChild(row);
+      note("Up to 5. The first one (outlined) lies on top.");
+      segRow("Layout", LAYOUT_NAMES, T.layout || "pile", function (v) { T.layout = v; T.seed = 0; inspector(); });
+      var sh = document.createElement("div"); sh.className = "row"; sh.innerHTML = '<span>Arrangement</span><span class="acts"></span>';
+      [["Shuffle", function () { T.seed = (T.seed || 0) + 1 + Math.floor(Math.random() * 1000); }], ["Tidy", function () { T.seed = 0; }]].forEach(function (a, i) {
+        if (i && !T.seed) return;
+        var lb = document.createElement("button"); lb.type = "button"; lb.className = "link"; lb.textContent = a[0];
+        lb.addEventListener("click", function () { a[1](); inspector(); changed(); }); sh.querySelector(".acts").appendChild(lb);
+      });
+      box.appendChild(sh);
+      field("Label", T.title, true, function (v) { T.title = v; });
+      field("Small line", T.sub || "", false, function (v) { T.sub = v; });
+      field("Number", T.no || "", false, function (v) { T.no = v; });
+    } else {
+      var P = o.poster;
+      pickBtn(P.src, "Photo", "Change the picture", function () { photoPicker(function (p) { P.src = p.src; P.crop = null; inspector(); changed(); }, P.src); });
+      var im0 = loaded[P.src];
+      if (im0) box.appendChild(framer(im0, posterCrop(P, im0), posterMin(im0), function (z) { P.crop = z; changed(); }, "Drag the frame to choose what fills the screen; drag its corner to go closer."));
+      else if (P.src) loadImg(P.src).then(function () { if (sel < 0) inspector(); });
+      field("Title", P.title, true, function (v) { P.title = v; });
+      field("Small line", P.sub || "", false, function (v) { P.sub = v; });
+      field("Number", P.no || "", false, function (v) { P.no = v; });
+      segRow("Text", [["bottom", "Bottom"], ["top", "Top"]], P.pos || "bottom", function (v) { P.pos = v; });
+    }
+    var hr = document.createElement("div"); hr.className = "row"; hr.innerHTML = '<span>Show for</span><div class="hold"><input type="range" min="1.2" max="4" step="0.1" aria-label="Seconds the opening stays" /><output></output></div>';
+    var rg = hr.querySelector("input"), out = hr.querySelector("output"); rg.value = openDur(); out.textContent = (+rg.value).toFixed(1) + " s";
+    rg.addEventListener("input", function () { o.hold = +rg.value; out.textContent = o.hold.toFixed(1) + " s"; });
+    rg.addEventListener("change", function () { changed(); });
+    box.appendChild(hr);
+    var sv = document.createElement("button"); sv.type = "button"; sv.className = "add"; sv.style.alignSelf = "flex-start"; sv.textContent = "Save as picture";
+    sv.title = "A 1080 × 1920 JPEG of the opening — for a cover, a story, or a post";
+    sv.addEventListener("click", function () { sv.disabled = true; saveStill().then(function () { sv.disabled = false; }); });
+    box.appendChild(sv);
+    var cov = openSrcs(o)[0], s0 = reel.stops[0];
+    if (cov && s0 && s0.kind === "photo" && s0.src === cov) note("It lands in its frame on the wall as the walk begins.");
+    else if (cov) {
+      var lk = document.createElement("button"); lk.type = "button"; lk.className = "link"; lk.style.alignSelf = "flex-start"; lk.textContent = "Start the walk on this photo";
+      lk.addEventListener("click", function () {
+        var k = reel.stops.findIndex(function (s) { return s.kind === "photo" && s.src === cov; });
+        if (k > 0) reel.stops.unshift(reel.stops.splice(k, 1)[0]);
+        else reel.stops.unshift({ kind: "photo", src: cov, label: labelOf(noteOf(cov)), size: "M", hold: 1.6 });
+        loadImg(cov).then(function () { inspector(); changed(); });
+      });
+      box.appendChild(lk);
+      note("Then the opening flies into its frame on the wall, instead of " + (o.style === "table" ? "diving into the print." : "lifting away."));
+    }
+  }
+
+  /* ---------- time left: a small circle that fills as the reel plays, the seconds left inside ----------
+     On a dark disc so it reads over the light wall and over a photo alike; up where Instagram leaves room. */
+  var RING_SIZE = { S: 0.8, M: 1, L: 1.3 };
+  function ringAt() { var a = reel.ringAt; return a === "left" ? "tl" : !a || a === "right" ? "tr" : a; }   // tl tr bl br
+  function ringBox() {                       // where the circle sits, or null: top, under Instagram's bar; bottom, just above the caption
+    var mode = reel.ring; if (!mode || mode === "off") return null;
+    var k = RING_SIZE[reel.ringSize] || 1, at = ringAt(), r = (mode === "secs" ? 46 : 36) * k, R2 = r + 12 * k;
+    return { k: k, r: r, R: R2, top: at[0] === "t", cx: at[1] === "l" ? 72 + R2 - 12 * k : W - 72 - R2 + 12 * k, cy: at[0] === "t" ? SAFE_TOP + R2 - 20 : SAFE_BOTTOM - R2 + 10 };
+  }
+  function timeRing(ctx, t, s) {
+    var mode = reel.ring, rb = ringBox(); if (!rb || !scene.dur) return;
+    var k = rb.k, p = clamp01(t / scene.dur), r = rb.r, cx = rb.cx, cy = rb.cy;
+    ctx.save(); ctx.setTransform(s, 0, 0, s, 0, 0);
+    ctx.fillStyle = "rgba(14,12,14,0.3)"; ctx.beginPath(); ctx.arc(cx, cy, r + 12 * k, 0, 2 * Math.PI); ctx.fill();
+    ctx.lineWidth = 7 * k; ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.stroke();
+    if (p > 0) { ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + p * 2 * Math.PI); ctx.stroke(); }
+    if (mode === "secs") {
+      font(ctx, 500, 34 * k, -0.01); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(Math.max(0, Math.ceil(scene.dur - t - 1e-3))), cx, cy + 1);
+    }
+    ctx.restore();
+  }
+
   /* ---------- the sound: footsteps every stride while walking, a gallery's echo, low room air ---------- */
   var soundCache = { key: "", buf: null };
   function noise(ac, secs, seed) {
@@ -530,7 +839,7 @@
   // the walk's sound, then your file or voice laid over it
   var mixCache = { key: "", buf: null };
   function soundtrack() {
-    var a = reel.audio, sv = stepsVol(), key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps, sv, a, user.id]);
+    var a = reel.audio, sv = stepsVol(), key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, scene.dur, reel.pace, reel.steps, sv, a, user.id]);
     if (mixCache.key === key) return Promise.resolve(mixCache.buf);
     return walkSound().then(function (base) {
       var u = a && user.buf;
@@ -555,7 +864,7 @@
   }
   function stepsVol() { return reel.stepsVol == null ? 1 : +reel.stepsVol; }
   function walkSound() {
-    var key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, reel.pace, reel.steps]);
+    var key = JSON.stringify([reel.stops.map(function (s) { return [s.hold, !!s.lean]; }), scene.end, scene.dur, reel.pace, reel.steps]);
     if (soundCache.key === key) return Promise.resolve(soundCache.buf);
     var SR = 48000, len = Math.ceil((scene.dur + 0.3) * SR), ac = new OfflineAudioContext(2, len, SR);
     var dry = ac.createGain(), wet = ac.createGain(), verb = ac.createConvolver();
@@ -677,7 +986,7 @@
   /* ---------- the editor ---------- */
   function changed(keepTime) {
     persist(); build(); ticks();
-    if (!keepTime) now = scene.holds[sel] + Math.min(0.5, reel.stops[sel].hold / 2);
+    if (!keepTime) now = sel < 0 ? Math.min(0.5, scene.open) : scene.holds[sel] + Math.min(0.5, reel.stops[sel].hold / 2);
     if (playing) { stop(); play(); } else paint();
     list(); $("count").textContent = fmt(scene.dur) + " · " + reel.stops.length + " stops";
     $("fitNote").hidden = !(scene.fit && scene.dur > scene.fit + 0.5);
@@ -688,6 +997,7 @@
   function list() {
     var ol = $("stops"); ol.innerHTML = "";
     $("stopCount").textContent = reel.stops.length;
+    ol.appendChild(openRow());
     reel.stops.forEach(function (s, i) {
       var li = document.createElement("li"); li.className = "stop"; li.draggable = true; li.setAttribute("aria-selected", i === sel);
       var th = s.kind === "photo" ? document.createElement("img") : document.createElement("span");
@@ -719,7 +1029,7 @@
     if (to < 0 || to >= reel.stops.length || from === to) { list(); return; }
     var s = reel.stops.splice(from, 1)[0]; reel.stops.splice(to, 0, s); sel = to; inspector(); changed();
   }
-  function select(i) { sel = Math.max(0, Math.min(reel.stops.length - 1, i)); stop(); now = scene.holds[sel] + Math.min(0.5, reel.stops[sel].hold / 2); paint(); list(); inspector(); }
+  function select(i) { sel = i < 0 ? -1 : Math.max(0, Math.min(reel.stops.length - 1, i)); stop(); now = sel < 0 ? Math.min(0.5, scene.open) : scene.holds[sel] + Math.min(0.5, reel.stops[sel].hold / 2); paint(); list(); inspector(); }
   function seg(el, value, onPick) {
     el.querySelectorAll("button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.dataset.v === value);
@@ -727,8 +1037,9 @@
     });
   }
   function inspector() {
-    var s = reel.stops[sel], box = $("inspector"); box.innerHTML = "";
-    var h = document.createElement("h3"); h.innerHTML = "Stop " + (sel + 1) + ' <span class="val"></span>'; h.querySelector(".val").textContent = KIND[s.kind];
+    var box = $("inspector"); box.innerHTML = "";
+    if (sel < 0) { openInspector(box, field, segRow); return; }
+    var s = reel.stops[sel], h = document.createElement("h3"); h.innerHTML = "Stop " + (sel + 1) + ' <span class="val"></span>'; h.querySelector(".val").textContent = KIND[s.kind];
     box.appendChild(h);
     function field(label, value, multi, onInput) {
       var l = document.createElement("label"); l.className = "field"; var sp = document.createElement("span"); sp.textContent = label;
@@ -791,12 +1102,16 @@
   }
   // framing the zoom: the photo, and on it the 9:16 window the screen will fill — drag it, or its corner to size it
   function zoomFramer(st) {
-    var it = scene.items[sel], wrap = document.createElement("div"); wrap.className = "framer";
-    if (!it || !it.im) { wrap.textContent = "Loading the photo…"; return wrap; }
-    var b = bare(it.im), ar = b.w / b.h, cv = document.createElement("canvas"), win = document.createElement("div"), knob = document.createElement("i");
-    cv.width = 600; cv.height = Math.round(600 / ar); cv.getContext("2d").drawImage(it.im, b.x, b.y, b.w, b.h, 0, 0, cv.width, cv.height);
+    var it = scene.items[sel];
+    if (!it || !it.im) { var w0 = document.createElement("div"); w0.className = "framer"; w0.textContent = "Loading the photo…"; return w0; }
+    return framer(it.im, zoomRect(it), zoomMin(it), function (z) { st.zoom = z; changed(); },
+      "Drag the frame to choose what fills the screen; drag its corner to zoom closer (as close as the photo stays sharp).");
+  }
+  function framer(im, z, minW, onSet, tip) {
+    var wrap = document.createElement("div"); wrap.className = "framer";
+    var b = bare(im), ar = b.w / b.h, cv = document.createElement("canvas"), win = document.createElement("div"), knob = document.createElement("i");
+    cv.width = 600; cv.height = Math.round(600 / ar); cv.getContext("2d").drawImage(im, b.x, b.y, b.w, b.h, 0, 0, cv.width, cv.height);
     win.className = "framer-win"; knob.className = "framer-knob"; win.appendChild(knob); wrap.appendChild(cv); wrap.appendChild(win);
-    var z = zoomRect(it);
     function show() { win.style.left = z.x * 100 + "%"; win.style.top = z.y * 100 + "%"; win.style.width = z.w * 100 + "%"; win.style.height = z.h * 100 + "%"; }
     show();
     win.addEventListener("pointerdown", function (e) {
@@ -804,15 +1119,15 @@
       var r = wrap.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, z0 = { x: z.x, y: z.y, w: z.w }, resize = e.target === knob;
       function mv(ev) {
         var dx = (ev.clientX - sx) / r.width, dy = (ev.clientY - sy) / r.height;
-        z = zoomFit(resize ? { x: z0.x, y: z0.y, w: z0.w + dx } : { x: z0.x + dx, y: z0.y + dy, w: z0.w }, ar, zoomMin(it)); show();
+        z = zoomFit(resize ? { x: z0.x, y: z0.y, w: z0.w + dx } : { x: z0.x + dx, y: z0.y + dy, w: z0.w }, ar, minW); show();
       }
       function up() {
         win.removeEventListener("pointermove", mv); win.removeEventListener("pointerup", up);
-        st.zoom = { x: +z.x.toFixed(4), y: +z.y.toFixed(4), w: +z.w.toFixed(4) }; changed();
+        onSet({ x: +z.x.toFixed(4), y: +z.y.toFixed(4), w: +z.w.toFixed(4) });
       }
       win.addEventListener("pointermove", mv); win.addEventListener("pointerup", up);
     });
-    var note = document.createElement("p"); note.className = "note"; note.textContent = "Drag the frame to choose what fills the screen; drag its corner to zoom closer (as close as the photo stays sharp).";
+    var note = document.createElement("p"); note.className = "note"; note.textContent = tip;
     var out = document.createElement("div"); out.appendChild(wrap); out.appendChild(note); return out;
   }
   // the article, to take words from: click a sentence, or select any passage and use it
@@ -895,6 +1210,15 @@
     beatUI();
     function sunRow() { $("sunRow").hidden = !(MOODS[reel.mood] || MOODS.day).sun; }
     seg($("mood"), reel.mood || "day", function (v) { reel.mood = v; sunRow(); changed(true); }); sunRow();
+    function ringUI() {
+      var on = !!reel.ring && reel.ring !== "off";
+      $("ringOn").checked = on; $("ringBox").hidden = !on; $("ringSecs").checked = reel.ring === "secs"; $("ringNote").hidden = ringAt()[0] !== "b";
+    }
+    $("ringOn").onchange = function () { reel.ring = $("ringOn").checked ? "secs" : "off"; ringUI(); changed(true); };
+    $("ringSecs").onchange = function () { reel.ring = $("ringSecs").checked ? "secs" : "ring"; changed(true); };
+    seg($("ringAt"), ringAt(), function (v) { reel.ringAt = v; ringUI(); changed(true); });
+    seg($("ringSize"), reel.ringSize || "M", function (v) { reel.ringSize = v; changed(true); });
+    ringUI();
     audioUI();
     $("mblur").checked = reel.mblur !== false; $("mblur").onchange = function () { reel.mblur = $("mblur").checked; changed(true); };
     ["steps", "sun", "pillars", "film", "lit"].forEach(function (k) { $(k).checked = !!reel[k]; $(k).onchange = function () { reel[k] = $(k).checked; stepsUI(); changed(true); }; });
@@ -1126,7 +1450,7 @@
     btn.disabled = true; $("progress").hidden = false; bar.style.width = "0"; note.textContent = "Getting ready…";
     var canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext("2d"), N = Math.floor(scene.dur * FPS) + 1;
-    Promise.all([import(MB), soundtrack(), Promise.all(scene.items.map(function (it) { return it.stop.src ? loadImg(it.stop.src) : null; }))]).then(function (r) {
+    Promise.all([import(MB), soundtrack(), Promise.all(scene.items.map(function (it) { return it.stop.src ? loadImg(it.stop.src) : null; }).concat(openSrcs(reel.open).map(loadImg)))]).then(function (r) {
       var mb = r[0], buf = r[1];
       return Promise.all([mb.canEncodeVideo("avc", { width: W, height: H }), mb.canEncodeAudio("aac")]).then(function (ok) {
         if (!ok[0]) throw new Error("This browser can’t encode H.264 video.");
@@ -1182,8 +1506,9 @@
         $("topicName").textContent = t.title; document.title = "Reel — " + t.title;
         reel = restore() || defaults();
         if (!reel.mood) reel.mood = "day";
+        if (!reel.open) reel.open = openDefaults(true);
         reel.stops.forEach(function (st) { if (st.kind === "video") loadVideo(st); });
-        return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); })); });
+        return restoreAudio().then(function () { return Promise.all(reel.stops.filter(function (s) { return s.src; }).map(function (s) { return loadImg(s.src); }).concat(openSrcs(reel.open).map(loadImg))); });
       });
     }).then(function () {
       sizeView(); settings(); wireTransport(); wireEditor(); wireAudio(); wireYt(); ytUI(); ytLoad();
@@ -1191,7 +1516,7 @@
       $("count").textContent = fmt(scene.dur) + " · " + reel.stops.length + " stops";
       $("export").addEventListener("click", exportVideo);
       window.__reel = { render: render, scene: function () { return scene; }, reel: function () { return reel; }, exportVideo: exportVideo, seek: seek,   // dev hooks
-        select: select, changed: changed, useAudio: useAudio, soundtrack: soundtrack };
+        select: select, changed: changed, saveStill: saveStill, useAudio: useAudio, soundtrack: soundtrack };
     }).catch(function (e) { $("count").textContent = "Couldn’t load “" + slug + "”: " + e.message; });
   }
   start();

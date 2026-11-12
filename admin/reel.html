@@ -74,6 +74,19 @@
     .stop .tx small { display: block; font-size: 11px; color: var(--ink3); }
     .stop .grip { width: 14px; height: 10px; flex: none; opacity: 0.35; cursor: grab;
       background: linear-gradient(currentColor 0 0) 0 0 / 100% 1.5px no-repeat, linear-gradient(currentColor 0 0) 0 50% / 100% 1.5px no-repeat, linear-gradient(currentColor 0 0) 0 100% / 100% 1.5px no-repeat; }
+    .stop.lead { counter-increment: none; margin-bottom: 6px; box-shadow: 0 1px 0 var(--hair); border-radius: 10px 10px 0 0; }
+    .stop.lead[aria-selected="true"] { border-radius: 10px; box-shadow: none; }
+    .stop.lead::before { content: ""; }
+    .stop .th.off { opacity: 0.35; filter: grayscale(1); }
+    .seg.corners button { font-size: 15px; padding: 3px 10px; line-height: 1; }
+    .thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .thumb { position: relative; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); transition: transform 0.1s ease; }
+    .thumb:active { transform: scale(0.95); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb.first { box-shadow: 0 0 0 2px var(--blue); }
+    .thumb .x { position: absolute; top: 3px; right: 3px; width: 17px; height: 17px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; font-size: 12px; line-height: 17px; text-align: center; }
+    .thumb.add { display: grid; place-items: center; font-size: 22px; font-weight: 300; color: var(--ink2); background: rgba(0,0,0,0.05); box-shadow: none; }
+    .thumb.add:hover { background: rgba(0,0,0,0.09); }
     .adds { display: flex; gap: 6px; flex-wrap: wrap; }
     .add { border: 0; border-radius: 99px; background: rgba(0,0,0,0.05); padding: 6px 12px; font-size: 12px; font-weight: 500; transition: background 0.15s ease; }
     .add:hover { background: rgba(0,0,0,0.09); }
@@ -246,6 +259,13 @@
         <div class="row"><span>Motion blur</span><input class="switch" type="checkbox" role="switch" id="mblur" /></div>
         <div class="row"><span>Pillars in front</span><input class="switch" type="checkbox" role="switch" id="pillars" /></div>
         <div class="row"><span>Film look</span><input class="switch" type="checkbox" role="switch" id="film" /></div>
+        <div class="row"><span>Time left</span><input class="switch" type="checkbox" role="switch" id="ringOn" aria-label="A circle that fills as the reel plays" /></div>
+        <div id="ringBox" class="audio" hidden>
+          <div class="row"><span>Seconds inside</span><input class="switch" type="checkbox" role="switch" id="ringSecs" /></div>
+          <div class="row"><span>Corner</span><div class="seg corners" id="ringAt"><button type="button" data-v="tl" title="Top left" aria-label="Top left">◰</button><button type="button" data-v="tr" title="Top right" aria-label="Top right">◳</button><button type="button" data-v="bl" title="Bottom left" aria-label="Bottom left">◱</button><button type="button" data-v="br" title="Bottom right" aria-label="Bottom right">◲</button></div></div>
+          <div class="row"><span>Size</span><div class="seg" id="ringSize"><button type="button" data-v="S">Small</button><button type="button" data-v="M">Medium</button><button type="button" data-v="L">Large</button></div></div>
+          <p class="note" id="ringNote" hidden>Down here it sits just above the caption. On the right, check it isn’t under Instagram’s buttons.</p>
+        </div>
       </section>
       <div class="rule"></div>
       <section>
@@ -277,6 +297,6 @@
     <div class="picker-body" id="pickerBody"></div>
   </div>
 
-  <script src="/admin/reel.js?v=10"></script>
+  <script src="/admin/reel.js?v=15"></script>
 </body>
 </html>
