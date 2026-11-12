@@ -1,0 +1,162 @@
+# Curation: scheduled topics go live on their own.
+# Studio writes curation/topics/scheduled.json on the site branch; every 10 minutes this moves the ones
+# whose time has come into curation/topics/index.json, sets their date, and rebuilds curation/feed.xml.
+# (Scheduled workflows only run from the default branch, so this file lives on main and works on the site branch.)
+name: Curation schedule
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: curation-schedule
+  cancel-in-progress: false
+
+jobs:
+  go-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: minimalist-apps-showcase
+
+      - name: Put due topics live
+        id: run
+        run: |
+          python3 - > /tmp/msg <<'PY'
+          # Curation: put scheduled topics live once their time has come, and rebuild the RSS feed.
+          # Run from the site's root (the Pages branch). Studio writes curation/topics/scheduled.json:
+          #   [{ "slug": ..., "publishAt": "2026-11-16T18:00:00+01:00", "entry": { ...the index entry... } }]
+          import datetime
+          import html
+          import json
+          import os
+          import sys
+          from email.utils import format_datetime
+
+          SITE = "https://buildtoberemembered.com"
+          TOPICS = "curation/topics"
+
+
+          def load(path, default):
+              try:
+                  with open(path, encoding="utf-8") as f:
+                      return json.load(f)
+              except FileNotFoundError:
+                  return default
+
+
+          def save(path, obj):
+              # the same shape Studio writes: JSON.stringify(x, null, 2)
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(json.dumps(obj, indent=2, ensure_ascii=False))
+
+
+          def absolute(u):
+              return u if not u or u.startswith("http") else SITE + u
+
+
+          def feed_xml(index):
+              def no(t):
+                  try:
+                      return int(t.get("no") or 0)
+                  except (TypeError, ValueError):
+                      return 0
+              items = []
+              for t in sorted(index, key=no, reverse=True):
+                  link = f"{SITE}/curation/{t['slug']}/"
+                  try:
+                      when = datetime.datetime.fromisoformat(t.get("date", "")[:10] + "T12:00:00+00:00")
+                  except ValueError:
+                      when = datetime.datetime.now(datetime.timezone.utc)
+                  pic = absolute(t.get("thumb") or t.get("feed") or "")
+                  body = (f'<p><img src="{html.escape(pic)}" alt=""></p>' if pic else "") + f"<p>{html.escape(t.get('desc', ''))}</p>"
+                  cats = "".join(f"\n      <category>{html.escape(x)}</category>" for x in t.get("themes", []))
+                  media = f'\n      <media:content url="{html.escape(pic)}" medium="image"/>' if pic else ""
+                  items.append(f"""    <item>
+                <title>{html.escape(t.get('title', 'Untitled'))}</title>
+                <link>{link}</link>
+                <guid isPermaLink="true">{link}</guid>
+                <pubDate>{format_datetime(when, usegmt=True)}</pubDate>
+                <dc:creator>{html.escape(t.get('author', ''))}</dc:creator>{cats}
+                <description><![CDATA[{body}]]></description>{media}
+              </item>""")
+              now = format_datetime(datetime.datetime.now(datetime.timezone.utc), usegmt=True)
+              return f"""<?xml version="1.0" encoding="UTF-8"?>
+          <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
+            <channel>
+              <title>builtoberemembered — Curation</title>
+              <link>{SITE}/curation/</link>
+              <atom:link href="{SITE}/curation/feed.xml" rel="self" type="application/rss+xml"/>
+              <description>An ongoing curation — topics worth remembering.</description>
+              <language>en</language>
+              <lastBuildDate>{now}</lastBuildDate>
+          {chr(10).join(items)}
+            </channel>
+          </rss>
+          """
+
+
+          def main():
+              index = load(f"{TOPICS}/index.json", [])
+              sched = load(f"{TOPICS}/scheduled.json", None)
+              live = []
+              if sched:
+                  now = datetime.datetime.now(datetime.timezone.utc)
+                  keep = []
+                  for s in sched:
+                      try:
+                          due = datetime.datetime.fromisoformat(s["publishAt"].replace("Z", "+00:00")) <= now
+                      except (KeyError, ValueError):
+                          due = False
+                      if not due:
+                          keep.append(s)
+                          continue
+                      entry = dict(s["entry"])
+                      entry["date"] = s["publishAt"][:10]
+                      index = [t for t in index if t.get("slug") != entry["slug"]]
+                      index.insert(0, entry)
+                      tp = f"{TOPICS}/{entry['slug']}.json"
+                      topic = load(tp, None)
+                      if topic is not None:
+                          topic["date"] = entry["date"]
+                          topic.pop("publishAt", None)
+                          save(tp, topic)
+                      live.append(entry.get("title", entry["slug"]))
+                  if live:
+                      save(f"{TOPICS}/index.json", index)
+                      save(f"{TOPICS}/scheduled.json", keep)
+              old = open("curation/feed.xml", encoding="utf-8").read() if os.path.exists("curation/feed.xml") else ""
+              new = feed_xml(index)
+              # lastBuildDate alone changing isn't worth a commit
+              strip = lambda x: "\n".join(l for l in x.splitlines() if "<lastBuildDate>" not in l)
+              if strip(old) != strip(new):
+                  with open("curation/feed.xml", "w", encoding="utf-8") as f:
+                      f.write(new)
+              if live:
+                  print("Curation: go live " + ", ".join(f"“{t}”" for t in live))
+              elif strip(old) != strip(new):
+                  print("Curation: refresh the feed")
+
+
+          if __name__ == "__main__":
+              sys.exit(main())
+          PY
+          cat /tmp/msg
+
+      - name: Commit and deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain curation)" ]; then echo "Nothing due."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add curation
+          git commit -m "$(cat /tmp/msg)"
+          git push origin HEAD:minimalist-apps-showcase
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
