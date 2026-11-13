@@ -133,7 +133,10 @@
     ],
     "feed": "/curation/media/gnuhr/board-4-3.png",
     "fr": {},
-    "thumb": "/curation/media/gnuhr/feed.jpg"
+    "thumb": "/curation/media/gnuhr/feed.jpg",
+    "themes": [
+      "FASHION"
+    ]
   },
   {
     "slug": "djh20",

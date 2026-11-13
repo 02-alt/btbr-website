@@ -252,5 +252,8 @@
     "en",
     "fr"
   ],
-  "no": 3
+  "no": 3,
+  "themes": [
+    "FASHION"
+  ]
 }
