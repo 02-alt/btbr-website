@@ -101,7 +101,10 @@
     ],
     "feed": "/curation/media/phones-personal-journey/board-2-2.png",
     "fr": {},
-    "thumb": "/curation/media/phones-personal-journey/feed.jpg"
+    "thumb": "/curation/media/phones-personal-journey/feed.jpg",
+    "themes": [
+      "TECH"
+    ]
   },
   {
     "slug": "marathon",
