@@ -1415,42 +1415,67 @@
     document.documentElement.style.setProperty("--ci-close", islandEasing.close);
   }
   var WAVE = '<span class="ci-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>';
+  var SPIN = '<span class="ci-spin" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>';
+  var ISLAND_SVG = {
+    queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="4.5" cy="6.5" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><circle cx="4.5" cy="17.5" r="1.6"/><rect x="8.5" y="5.5" width="12.5" height="2" rx="1"/><rect x="8.5" y="11" width="12.5" height="2" rx="1"/><rect x="8.5" y="16.5" width="12.5" height="2" rx="1"/></svg>',
+    volLow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.2h3.2l4.6-3.9c.7-.6 1.7-.1 1.7.8v11.8c0 .9-1 1.4-1.7.8l-4.6-3.9H3.5c-.6 0-1-.4-1-1V10.2c0-.6.4-1 1-1z"/><path class="ci-vol-mute" d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    volHigh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 9.2h3l4.3-3.7c.7-.6 1.7-.1 1.7.8v11.4c0 .9-1 1.4-1.7.8l-4.3-3.7h-3c-.6 0-1-.4-1-1V10.2c0-.6.4-1 1-1z"/><path d="M14.6 9.2a4 4 0 0 1 0 5.6M17.4 6.6a7.7 7.7 0 0 1 0 10.8M20.2 4a11.4 11.4 0 0 1 0 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+  };
+  var VOL_KEY = "btbr_radio_vol";
   function radioBuild() {
     islandSprings();
     var fr = siteLang() === "fr", el = document.createElement("div");
     el.className = "cur-island is-born"; el.setAttribute("role", "region"); el.setAttribute("aria-label", fr ? "Radio curation" : "Curation radio");
-    el.innerHTML = '<button class="ci-compact" type="button" aria-expanded="false"><span class="ci-art"><img alt=""></span>' + WAVE + "</button>"
+    el.innerHTML = '<button class="ci-compact" type="button" aria-expanded="false"><span class="ci-art"><img alt=""></span>' + WAVE + SPIN + "</button>"
       + '<div class="ci-expanded">'
       +   '<div class="ci-top"><button class="ci-art ci-art-lg ci-open" type="button" tabindex="-1"><img alt=""></button>'
       +     '<button class="ci-meta ci-open" type="button"><span class="ci-title"></span><span class="ci-sub"></span></button>' + WAVE + "</div>"
-      +   '<div class="ci-progress"><span class="ci-time ci-now">0:00</span><span class="ci-track"><span class="ci-fill"></span></span><span class="ci-time ci-left">–:––</span></div>'
-      +   '<div class="ci-ctl"><button class="ci-no ci-open" type="button"></button>'
+      +   '<div class="ci-progress"><span class="ci-time ci-now">0:00</span><span class="ci-track"><span class="ci-fill"></span></span><span class="ci-time ci-left">–:––</span>'
+      +     '<span class="ci-status" aria-live="polite"></span></div>'
+      +   '<div class="ci-ctl"><button class="ci-queue" type="button" aria-pressed="false">' + ISLAND_SVG.queue + "</button>"
       +     '<span class="ci-ctl-mid"><button class="ci-prev" type="button">' + RADIO_ICONS.prev + "</button>"
-      +     '<button class="ci-play" type="button">' + RADIO_ICONS.play + "</button>"
+      +     '<button class="ci-play" type="button">' + RADIO_ICONS.play + SPIN + "</button>"
       +     '<button class="ci-next" type="button">' + RADIO_ICONS.next + "</button></span>"
       +     '<button class="ci-close" type="button">' + RADIO_ICONS.close + "</button></div>"
+      +   '<div class="ci-vol"><button class="ci-mute" type="button">' + ISLAND_SVG.volLow + "</button>"
+      +     '<span class="ci-vtrack" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100"><span class="ci-vfill"></span></span>'
+      +     '<span class="ci-vol-hi" aria-hidden="true">' + ISLAND_SVG.volHigh + "</span></div>"
+      +   '<div class="ci-q"><div class="ci-q-head"><b></b><span></span></div><div class="ci-q-list" role="list"></div></div>'
       + "</div>";
     document.body.appendChild(el);
     radio.el = el;
+    radio.vol = (function () { var v = null; try { v = localStorage.getItem(VOL_KEY); } catch (e) {} return v == null ? 100 : Math.max(0, Math.min(100, +v || 0)); })();
     el.querySelector(".ci-prev").addEventListener("click", function () { radioLoad(radio.i - 1); });
     el.querySelector(".ci-next").addEventListener("click", function () { radioLoad(radio.i + 1); });
     el.querySelector(".ci-play").addEventListener("click", radioToggle);
     el.querySelector(".ci-close").addEventListener("click", radioClose);
+    el.querySelector(".ci-queue").addEventListener("click", function () { queueSet(!radio.queue); });
+    el.querySelector(".ci-q-list").addEventListener("click", function (e) { var b = e.target.closest(".ci-q-row"); if (b) radioLoad(+b.getAttribute("data-i"), true); });
     [].forEach.call(el.querySelectorAll(".ci-open"), function (b) { b.addEventListener("click", function () { islandSet(false); radioGoTo(radio.tracks[radio.i].slug); }); });
     el.querySelector(".ci-compact").addEventListener("click", function () { islandSet(!radio.open); });
+    wireVolume(el);
     // pointer devices open it on hover; touch opens it with a tap and closes it with a tap elsewhere
     var hover = matchMedia("(hover: hover) and (pointer: fine)").matches;
     if (hover) {
       el.addEventListener("pointerenter", function () { clearTimeout(radio.peekT); clearTimeout(radio.leaveT); radio.hovered = true; islandSet(true); });
-      el.addEventListener("pointerleave", function () { radio.hovered = false; radio.leaveT = setTimeout(function () { if (radio && !el.contains(document.activeElement)) islandSet(false); }, 260); });
+      el.addEventListener("pointerleave", function () { radio.hovered = false; if (radio.dragging) return; radio.leaveT = setTimeout(function () { if (radio && !radio.hold && !el.contains(document.activeElement)) islandSet(false); }, 320); });
     }
-    el.addEventListener("focusout", function (e) { if (radio && !el.contains(e.relatedTarget) && !radio.hovered) islandSet(false); });
-    document.addEventListener("pointerdown", radio.outside = function (e) { if (radio && radio.open && !el.contains(e.target)) islandSet(false); }, true);
+    el.addEventListener("focusout", function (e) { if (radio && !el.contains(e.relatedTarget) && !radio.hovered && !radio.hold) islandSet(false); });
+    document.addEventListener("pointerdown", radio.outside = function (e) { if (radio && radio.open && !el.contains(e.target)) { radio.hold = false; islandSet(false); } }, true);
+    paintVol(); islandSize();
     requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.remove("is-born"); }); });
+  }
+  // the island's open height: the player, plus the queue when it's showing (up to five rows, then it scrolls)
+  var CI_BASE = 197, CI_ROW = 48;
+  function islandSize() {
+    var r = radio; if (!r || !r.el) return;
+    var h = CI_BASE + (r.queue ? 12 + 1 + 12 + 18 + 8 + Math.min(5, r.tracks.length) * CI_ROW + 8 : 0);
+    r.el.style.setProperty("--ci-xh", h + "px");
   }
   function islandSet(open) {
     var r = radio; if (!r || !r.el || r.open === open) return;
     r.open = open;
+    if (!open && r.queue) queueSet(false);
     r.el.classList.toggle("is-expanded", open);
     r.el.querySelector(".ci-compact").setAttribute("aria-expanded", String(open));
     r.el.querySelector(".ci-expanded").inert = !open;
@@ -1460,7 +1485,65 @@
     var r = radio; if (!r || !r.el || r.open) return;
     islandSet(true);
     clearTimeout(r.peekT);
-    r.peekT = setTimeout(function () { if (radio && !radio.hovered && !radio.el.contains(document.activeElement)) islandSet(false); }, 2600);
+    r.peekT = setTimeout(function () { if (radio && !radio.hovered && !radio.hold && !radio.el.contains(document.activeElement)) islandSet(false); }, 2600);
+  }
+  // ---- Up next: every song, the playing one marked; a tap plays it ----
+  function queueSet(on) {
+    var r = radio; if (!r || !r.el) return;
+    r.queue = on;
+    r.el.classList.toggle("is-queue", on);
+    r.el.querySelector(".ci-queue").setAttribute("aria-pressed", String(on));
+    if (on) queuePaint();
+    islandSize();
+    if (on) { var cur = r.el.querySelector(".ci-q-row.is-now"); if (cur) cur.scrollIntoView({ block: "nearest" }); }
+  }
+  function queuePaint() {
+    var r = radio; if (!r || !r.el) return;
+    var fr = siteLang() === "fr";
+    r.el.querySelector(".ci-q-head b").textContent = fr ? "À suivre" : "Up next";
+    r.el.querySelector(".ci-q-head span").textContent = r.tracks.length + (fr ? " chansons" : " songs");
+    r.el.querySelector(".ci-q-list").innerHTML = r.tracks.map(function (tr, k) {
+      var now = k === r.i;
+      return '<button class="ci-q-row' + (now ? " is-now" : "") + '" type="button" role="listitem" data-i="' + k + '"' + (now ? ' aria-current="true"' : "") + ">"
+        + '<span class="ci-q-art">' + (tr.art ? '<img src="' + esc(tr.art) + '" alt="" loading="lazy">' : "") + "</span>"
+        + '<span class="ci-q-text"><span class="ci-q-title">' + htmlEsc(tr.title) + '</span><span class="ci-q-sub">' + htmlEsc([tr.artist, loc(tr.t, "title")].filter(Boolean).join(" — ")) + "</span></span>"
+        + '<span class="ci-q-end">' + (now ? WAVE : htmlEsc(curNo(tr.t))) + "</span></button>";
+    }).join("");
+  }
+  // ---- volume: YouTube's own 0–100, remembered on this device ----
+  function radioVol(v, save) {
+    var r = radio; if (!r) return;
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    if (v > 0) r.volBefore = v;
+    r.vol = v;
+    radioCmd("setVolume", [v]); radioCmd(v ? "unMute" : "mute");
+    paintVol();
+    if (save) try { localStorage.setItem(VOL_KEY, String(v)); } catch (e) {}
+  }
+  function paintVol() {
+    var r = radio; if (!r || !r.el) return;
+    var fr = siteLang() === "fr", t = r.el.querySelector(".ci-vtrack");
+    r.el.querySelector(".ci-vfill").style.width = r.vol + "%";
+    t.setAttribute("aria-valuenow", r.vol); t.setAttribute("aria-label", "Volume"); t.setAttribute("aria-valuetext", r.vol + "%");
+    r.el.classList.toggle("is-muted", r.vol === 0);
+    r.el.querySelector(".ci-mute").setAttribute("aria-label", r.vol ? (fr ? "Couper le son" : "Mute") : (fr ? "Remettre le son" : "Unmute"));
+  }
+  function wireVolume(el) {
+    var t = el.querySelector(".ci-vtrack");
+    function at(e) { var b = t.getBoundingClientRect(); return (e.clientX - b.left) / b.width * 100; }
+    t.addEventListener("pointerdown", function (e) {
+      e.preventDefault(); t.setPointerCapture(e.pointerId); radio.dragging = true; el.classList.add("is-dragging"); radioVol(at(e));
+    });
+    t.addEventListener("pointermove", function (e) { if (radio && radio.dragging) radioVol(at(e)); });
+    function end() { if (!radio || !radio.dragging) return; radio.dragging = false; el.classList.remove("is-dragging"); radioVol(radio.vol, true); }
+    t.addEventListener("pointerup", end); t.addEventListener("pointercancel", end);
+    t.addEventListener("keydown", function (e) {
+      var v = radio.vol, k = e.key;
+      if (k === "ArrowRight" || k === "ArrowUp") v += 5; else if (k === "ArrowLeft" || k === "ArrowDown") v -= 5;
+      else if (k === "Home") v = 0; else if (k === "End") v = 100; else return;
+      e.preventDefault(); radioVol(v, true);
+    });
+    el.querySelector(".ci-mute").addEventListener("click", function () { radioVol(radio.vol ? 0 : (radio.volBefore || 60), true); });
   }
   // the waveform takes the artwork's colour (kept light enough to read on black)
   function islandTint(src) {
@@ -1491,8 +1574,6 @@
     var tr = r.tracks[r.i], el = r.el, fr = siteLang() === "fr";
     el.querySelector(".ci-title").textContent = tr.title;
     el.querySelector(".ci-sub").textContent = [tr.artist, loc(tr.t, "title")].filter(Boolean).join(" — ");
-    el.querySelector(".ci-no").textContent = curNo(tr.t);
-    el.querySelector(".ci-no").setAttribute("aria-label", (fr ? "Ouvrir " : "Open ") + loc(tr.t, "title"));
     el.querySelector(".ci-meta").setAttribute("aria-label", (fr ? "Ouvrir " : "Open ") + loc(tr.t, "title"));
     [].forEach.call(el.querySelectorAll(".ci-art img"), function (im) {
       if (im.getAttribute("src") === tr.art) return;
@@ -1502,7 +1583,15 @@
     el.classList.toggle("is-playing", !!r.playing);              // the button shows the intent
     el.classList.toggle("is-sounding", r.playing && !r.loading); // the waveform moves only with sound
     el.classList.toggle("is-loading", !!r.loading);
-    el.querySelector(".ci-play").setAttribute("aria-label", r.playing ? "Pause" : (fr ? "Lecture" : "Play"));
+    // what's happening, said plainly: loading, waiting for a press (autoplay blocked), or couldn't start here
+    el.classList.toggle("is-blocked", !!(r.blocked || r.failed));
+    var st = el.querySelector(".ci-status");
+    if (r.failed) st.innerHTML = (fr ? "Votre navigateur ne la lance pas ici — " : "Your browser won’t start it here — ")
+      + '<a href="https://www.youtube.com/watch?v=' + tr.id + (tr.start ? "&t=" + tr.start : "") + '" target="_blank" rel="noopener">' + (fr ? "l’écouter sur YouTube" : "listen on YouTube") + " ↗</a>";
+    else st.textContent = r.blocked ? (fr ? "Appuyez sur lecture pour commencer" : "Press play to start") : "";
+    el.querySelector(".ci-queue").setAttribute("aria-label", fr ? "À suivre" : "Up next");
+    if (r.queue) queuePaint();
+    el.querySelector(".ci-play").setAttribute("aria-label", r.loading ? (fr ? "Chargement…" : "Loading…") : r.playing ? "Pause" : (fr ? "Lecture" : "Play"));
     el.querySelector(".ci-prev").setAttribute("aria-label", fr ? "Précédent" : "Previous");
     el.querySelector(".ci-next").setAttribute("aria-label", fr ? "Suivant" : "Next");
     el.querySelector(".ci-close").setAttribute("aria-label", fr ? "Fermer la radio" : "Close the radio");
@@ -1519,7 +1608,12 @@
     songStop();
     if (window.__btbrAudio && !window.__btbrAudio.paused) window.__btbrAudio.pause();
   }
-  function radioLoad(i) {
+  // still loading after a while: the browser held autoplay back, so ask for a press
+  function radioWatch(ms, then) {
+    var r = radio; clearTimeout(r.loadT);
+    r.loadT = setTimeout(function () { if (radio === r && r.loading) { r.loading = false; r.playing = false; then(r); radioPaint(); r.hold = true; islandSet(true); } }, ms);
+  }
+  function radioLoad(i, stayOpen) {
     var r = radio; if (!r || !r.tracks.length) return;
     r.i = (i + r.tracks.length) % r.tracks.length;
     var tr = r.tracks[r.i];
@@ -1534,22 +1628,28 @@
       // the same player takes the next video, so it keeps the permission to play
       radioCmd("loadVideoById", [{ videoId: tr.id, startSeconds: tr.start }]);
     }
-    r.playing = true; r.loading = true; r.dur = 0;
+    r.playing = true; r.loading = true; r.dur = 0; r.blocked = false; r.failed = false; r.hold = false;
     radioTime(0, 0);
     radioPaint();
-    setTimeout(islandPeek, r.started ? 0 : 420); r.started = true;
+    radioWatch(7000, function (x) { x.blocked = true; });
+    if (!stayOpen) setTimeout(islandPeek, r.started ? 0 : 420);
+    r.started = true;
   }
   function radioToggle() {
     var r = radio; if (!r || !r.frame) return;
-    if (r.playing) { radioCmd("pauseVideo"); r.playing = false; }
-    else { radioQuietOthers(); radioCmd("playVideo"); r.playing = true; }
+    if (r.playing && !r.loading) { radioCmd("pauseVideo"); r.playing = false; }
+    else if (r.loading) return;
+    else {
+      radioQuietOthers(); radioCmd("playVideo"); r.playing = true;
+      if (r.blocked || r.failed) { r.blocked = false; r.failed = false; r.loading = true; radioWatch(5000, function (x) { x.failed = true; }); }
+    }
     radioPaint();
   }
   function radioPause() { if (radio && radio.playing && radio.frame) { radioCmd("pauseVideo"); radio.playing = false; radioPaint(); } }
   function radioClose() {
     var r = radio; if (!r) return; radio = null;
     if (r.frame) r.frame.remove();
-    clearTimeout(r.peekT); clearTimeout(r.leaveT);
+    clearTimeout(r.peekT); clearTimeout(r.leaveT); clearTimeout(r.loadT);
     if (r.outside) document.removeEventListener("pointerdown", r.outside, true);
     if (r.el) { r.el.classList.remove("is-expanded"); r.el.classList.add("is-born"); setTimeout(function () { r.el.remove(); }, reduceMotion ? 0 : 420); }
   }
@@ -1568,7 +1668,13 @@
     if (!d) return;
     if (d.event === "onError") { if (++r.fails < r.tracks.length) radioLoad(r.i + 1); else radioClose(); return; }
     var info = d.info; if (!info) return;
-    if (info.playerState === 1) { r.fails = 0; if (r.loading || !r.playing) { r.loading = false; r.playing = true; radioPaint(); } }
+    if (!r.ready) { r.ready = true; radioVol(r.vol); }        // the player is listening: give it the remembered volume
+    if (info.playerState === 1) {
+      r.fails = 0; clearTimeout(r.loadT);
+      if (r.loading || !r.playing || r.blocked || r.failed) { r.loading = false; r.playing = true; r.blocked = false; r.failed = false; r.hold = false; radioPaint(); }
+    }
+    if (info.playerState === 3 && r.playing && !r.loading) { r.loading = true; radioPaint(); }   // buffering
+    if (info.playerState === 5 && r.loading) { clearTimeout(r.loadT); r.loading = false; r.playing = false; r.blocked = true; radioPaint(); r.hold = true; islandSet(true); }
     if (info.playerState === 2 && r.playing && !r.loading) { r.playing = false; radioPaint(); }
     if (info.playerState === 0) { radioLoad(r.i + 1); return; }
     if (info.duration) r.dur = info.duration;
