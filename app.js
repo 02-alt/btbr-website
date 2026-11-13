@@ -222,6 +222,7 @@
   function isInternal(link) {
     if (!link) return false;
     if (link.target === "_blank" || link.hasAttribute("download")) return false;
+    if (link.classList.contains("cur-next-rss")) return false;          // copies its address instead (curation)
     var href = link.getAttribute("href") || "";
     if (!href || href.charAt(0) === "#") return false;
     if (href.indexOf("mailto:") === 0) return false;
@@ -1168,10 +1169,25 @@
       + '<p class="cur-next-title">' + head + "</p>"
       + '<p class="cur-next-sub">' + (fr ? "Pour le lire le jour de sa sortie :" : "Read it the day it’s out:") + "</p>"
       + '<div class="cur-next-links">'
-      + '<a class="cur-next-link" href="/curation/feed.xml" target="_blank" rel="noopener">' + RSS_SVG + "<span>" + (fr ? "Flux RSS" : "RSS feed") + "</span></a>"
+      + '<a class="cur-next-link cur-next-rss" href="/curation/feed.xml" title="' + (fr ? "Copier l’adresse du flux" : "Copy the feed address") + '">' + RSS_SVG + "<span>" + (fr ? "Flux RSS" : "RSS feed") + "</span></a>"
       + '<a class="cur-next-link" href="/reed/">' + READ_SVG + "<span>" + (fr ? "Dans Reed" : "In Reed") + "</span></a>"
       + "</div>"
       + '<div class="cur-foot">' + CUR_MARK_SVG + '<span class="cur-no">' + n + "</span></div></div>";
+  }
+  // the RSS pill copies the feed's address (that's what a reader app wants) and says so, in place
+  var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  function copyFeed(a) {
+    var url = location.origin + "/curation/feed.xml", fr = siteLang() === "fr";
+    function said() {
+      clearTimeout(a.__t);
+      if (!a.__label) a.__label = a.innerHTML;
+      a.innerHTML = CHECK_SVG + "<span>" + (fr ? "Lien copié" : "Copied") + "</span>";
+      a.classList.add("is-copied");
+      if (!reduceMotion) { a.classList.remove("lang-in"); void a.offsetWidth; a.classList.add("lang-in"); }
+      a.__t = setTimeout(function () { a.innerHTML = a.__label; a.__label = null; a.classList.remove("is-copied"); }, 1800);
+    }
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(said, function () { window.prompt(fr ? "Copier l’adresse du flux" : "Copy the feed address", url); });
+    try { if (window.umami && window.umami.track) window.umami.track("rss-copy"); } catch (e) {}
   }
   function loadUpcoming() {
     fetch("/curation/topics/scheduled.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
@@ -1814,6 +1830,8 @@
     // the label's title button and the cover tray both open the topic
     var openBtn = t.closest(".cur-open, .cur-card .cur-tray");
     if (openBtn) { var card = openBtn.closest(".cur-card"); if (card) openCurTopic(card.dataset.slug); return; }
+    var rss = t.closest(".cur-next-rss");
+    if (rss) { e.preventDefault(); copyFeed(rss); return; }
     if (t.closest(".cur-search-btn")) { openSearch(); return; }
     var chip = t.closest(".cur-chip");
     if (chip) { setFilter(chip.getAttribute("data-theme") || ""); return; }

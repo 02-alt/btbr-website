@@ -2377,3 +2377,4 @@ body:has(.about-bare) { background: #fff; padding: 0; }
 .ci-q-row.is-now .ci-q-title { font-weight: 600; }
 .ci-q-end .ci-wave { height: 13px; gap: 2px; }
 .ci-q-end .ci-wave i { width: 2.5px; height: 13px; }
+.cur-next-link.is-copied { background: #1d1b1e; border-color: #1d1b1e; color: #fff; }
