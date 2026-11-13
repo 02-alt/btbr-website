@@ -44,7 +44,10 @@
     ],
     "feed": "/curation/media/the-frankenstein-era/board-1-2.png",
     "fr": {},
-    "thumb": "/curation/media/the-frankenstein-era/feed.jpg"
+    "thumb": "/curation/media/the-frankenstein-era/feed.jpg",
+    "themes": [
+      "GAMES"
+    ]
   },
   {
     "slug": "cadaqu-s-ux-architecture",
