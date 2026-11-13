@@ -12,7 +12,10 @@
     ],
     "tone": "#dfe2e5",
     "feed": "/curation/media/riots/board-1-3.png",
-    "thumb": "/curation/media/riots/feed.jpg"
+    "thumb": "/curation/media/riots/feed.jpg",
+    "themes": [
+      "SOCIETY"
+    ]
   },
   {
     "slug": "the-people-holding-the-city-together",

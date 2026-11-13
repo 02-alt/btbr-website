@@ -110,5 +110,8 @@
   "langs": [
     "en"
   ],
-  "no": 1
+  "no": 1,
+  "themes": [
+    "SOCIETY"
+  ]
 }
