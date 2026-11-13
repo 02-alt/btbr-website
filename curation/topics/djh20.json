@@ -218,5 +218,8 @@
   "langs": [
     "en"
   ],
-  "no": 2
+  "no": 2,
+  "themes": [
+    "ARCHITECTURE"
+  ]
 }

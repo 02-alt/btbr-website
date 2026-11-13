@@ -6,7 +6,7 @@
     <atom:link href="https://buildtoberemembered.com/curation/feed.xml" rel="self" type="application/rss+xml"/>
     <description>An ongoing curation — topics worth remembering.</description>
     <language>en</language>
-    <lastBuildDate>Fri, 13 Nov 2026 08:22:24 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 13 Nov 2026 08:22:29 GMT</lastBuildDate>
     <item>
       <title>The People Holding the City Together</title>
       <link>https://buildtoberemembered.com/curation/the-people-holding-the-city-together/</link>
@@ -80,6 +80,7 @@
       <guid isPermaLink="true">https://buildtoberemembered.com/curation/djh20/</guid>
       <pubDate>Sun, 25 Oct 2026 12:00:00 GMT</pubDate>
       <dc:creator>Isaaaaaaaac</dc:creator>
+      <category>ARCHITECTURE</category>
       <description><![CDATA[<p><img src="https://buildtoberemembered.com/curation/media/djh20/feed.jpg" alt=""></p><p>Built to Disappear</p>]]></description>
       <media:content url="https://buildtoberemembered.com/curation/media/djh20/feed.jpg" medium="image"/>
     </item>
