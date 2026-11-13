@@ -196,5 +196,8 @@
     "en",
     "fr"
   ],
-  "no": 9
+  "no": 9,
+  "themes": [
+    "SOCIETY"
+  ]
 }

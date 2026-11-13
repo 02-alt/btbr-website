@@ -28,7 +28,10 @@
     ],
     "feed": "/curation/media/the-people-holding-the-city-together/board-3-4.png",
     "fr": {},
-    "thumb": "/curation/media/the-people-holding-the-city-together/feed.jpg"
+    "thumb": "/curation/media/the-people-holding-the-city-together/feed.jpg",
+    "themes": [
+      "SOCIETY"
+    ]
   },
   {
     "slug": "the-frankenstein-era",
