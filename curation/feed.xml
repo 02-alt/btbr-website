@@ -6,7 +6,7 @@
     <atom:link href="https://buildtoberemembered.com/curation/feed.xml" rel="self" type="application/rss+xml"/>
     <description>An ongoing curation — topics worth remembering.</description>
     <language>en</language>
-    <lastBuildDate>Fri, 13 Nov 2026 08:22:29 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 13 Nov 2026 08:22:33 GMT</lastBuildDate>
     <item>
       <title>The People Holding the City Together</title>
       <link>https://buildtoberemembered.com/curation/the-people-holding-the-city-together/</link>
@@ -61,6 +61,7 @@
       <guid isPermaLink="true">https://buildtoberemembered.com/curation/marathon/</guid>
       <pubDate>Wed, 28 Oct 2026 12:00:00 GMT</pubDate>
       <dc:creator>Isaaaaaaaac</dc:creator>
+      <category>GAMES</category>
       <description><![CDATA[<p><img src="https://buildtoberemembered.com/curation/media/marathon/feed.jpg" alt=""></p><p>Beyond the Familiar: Bungie’s High-Concept Gamble with Marathon</p>]]></description>
       <media:content url="https://buildtoberemembered.com/curation/media/marathon/feed.jpg" medium="image"/>
     </item>

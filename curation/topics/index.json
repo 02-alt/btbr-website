@@ -117,7 +117,10 @@
     ],
     "feed": "/curation/media/marathon/board-1-1.png",
     "fr": {},
-    "thumb": "/curation/media/marathon/feed.jpg"
+    "thumb": "/curation/media/marathon/feed.jpg",
+    "themes": [
+      "GAMES"
+    ]
   },
   {
     "slug": "gnuhr",
