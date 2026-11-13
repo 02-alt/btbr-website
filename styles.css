@@ -2378,3 +2378,35 @@ body:has(.about-bare) { background: #fff; padding: 0; }
 .ci-q-end .ci-wave { height: 13px; gap: 2px; }
 .ci-q-end .ci-wave i { width: 2.5px; height: 13px; }
 .cur-next-link.is-copied { background: #1d1b1e; border-color: #1d1b1e; color: #fff; }
+
+/* ===== the header line as the theme filter ===== */
+.feedbar-left { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 5px; row-gap: 2px; min-width: 0; }
+.cur-sub { color: #8a888b; }
+.cur-pick {
+  all: unset; cursor: pointer; color: #1d1b1e; display: inline-flex; align-items: baseline; gap: 2px;
+  text-decoration: underline; text-decoration-color: rgba(0, 0, 0, 0.22); text-decoration-thickness: 1px; text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease;
+}
+.cur-pick:hover, .cur-pick[aria-expanded="true"] { text-decoration-color: rgba(0, 0, 0, 0.6); }
+.cur-pick:focus-visible { outline: 2px solid rgba(0, 113, 227, 0.55); outline-offset: 3px; border-radius: 3px; }
+.cur-pick span { display: inline-block; }
+.cur-caret { width: 9px; height: 9px; align-self: center; margin-top: 1px; color: #8a888b; transition: transform 0.2s ease; }
+.cur-pick[aria-expanded="true"] .cur-caret { transform: rotate(180deg); }
+@media (max-width: 620px) { .curation-frame .cur-sub { flex-basis: 100%; } }
+/* a menu in the macOS manner: frosted, small, a checkmark on the current item, blue under the pointer */
+.cur-menu {
+  position: fixed; z-index: 1150; min-width: 172px; padding: 5px;
+  background: rgba(246, 246, 247, 0.9); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 10px; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 12px 34px rgba(0, 0, 0, 0.18);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; letter-spacing: -0.005em;
+  opacity: 0; transform: scale(0.97) translateY(-3px); transform-origin: 14px 0;
+  transition: opacity 0.12s ease, transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.cur-menu.is-open { opacity: 1; transform: none; }
+.cur-menu-item {
+  all: unset; box-sizing: border-box; display: block; width: 100%; position: relative; cursor: default;
+  padding: 3px 14px 3px 24px; border-radius: 5px; color: #1d1d1f; line-height: 18px;
+}
+.cur-menu-item[aria-checked="true"]::before { content: "✓"; position: absolute; left: 8px; font-size: 12px; }
+.cur-menu-item:focus, .cur-menu-item:hover { background: #0a84ff; color: #fff; outline: none; }
+.cur-menu-sep { height: 1px; margin: 5px 8px; background: rgba(0, 0, 0, 0.1); }

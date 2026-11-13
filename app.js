@@ -1061,7 +1061,7 @@
       if (!curList.length) { feed.insertAdjacentHTML("beforeend", curEmptyHTML()); return; }
       feed.insertAdjacentHTML("beforeend", curList.map(curCard).join(""));
       dressTrays(feed);
-      renderFilter(feed);
+      renderFilter();
       // after the grid, not in it, so a short row of cards stays centred
       feed.insertAdjacentHTML("afterend", '<section class="cur-next" aria-label="Next topic">' + curNextHTML() + "</section>");
       loadUpcoming();
@@ -1104,7 +1104,7 @@
         if (t) f.outerHTML = curFoot(t);
       });
       var nx = frame.querySelector(".cur-next"); if (nx) { nx.innerHTML = curNextHTML(); touched.push(nx); }
-      if (frame.querySelector(".cur-filter")) renderFilter(frame.querySelector("[data-curation]"));
+      renderFilter(frame.querySelector("[data-curation]")); touched.push(frame.querySelector(".cur-sub"));
       if (searchEl) { searchEl.remove(); searchEl = null; }
       radioPaint();
       var empty = frame.querySelector(".cur-empty"); if (empty) { empty.outerHTML = curEmptyHTML(); touched.push(frame.querySelector(".cur-empty")); }
@@ -1113,9 +1113,10 @@
     if (modal && !modal.hidden && curTopic) { renderCurTopic(modal); touched.push(modal.querySelector(".cur-modal-panel")); }
   }
 
-  // ---- themes: a few words stamped on each card's foot; the chips above the
-  // table keep only the topics carrying that theme (the others fold away) ----
-  var curFilter = "";
+  // ---- themes: the header's own line is the filter — "An ongoing curation of everything ▾";
+  // the last word opens a small menu of themes, and becomes the one picked ----
+  var curFilter = "", curMenu = null;
+  var CARET = '<svg class="cur-caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.2 3.8 5 6.6l2.8-2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function allThemes() {
     var seen = {}, out = [];
     (curList || []).forEach(function (t) {
@@ -1123,22 +1124,18 @@
     });
     return out;
   }
-  function themeChip(key, label) {
-    return '<button class="cur-chip" type="button" data-theme="' + htmlEsc(key).replace(/"/g, "&quot;") + '" aria-pressed="' + (curFilter === key) + '">' + htmlEsc(label) + "</button>";
-  }
-  function renderFilter(feed) {
-    if (!feed) return;
-    var old = feed.parentNode.querySelector(".cur-filter"); if (old) old.remove();
-    var th = allThemes();
-    if (!th.length) return;
+  function renderFilter() {
+    var sub = document.querySelector(".curation-frame .cur-sub"); if (!sub) return;
+    var th = allThemes(), fr = siteLang() === "fr", base = fr ? "Une curation en cours" : "An ongoing curation";
     if (curFilter && !th.some(function (x) { return x.toLowerCase() === curFilter; })) curFilter = "";
-    var fr = siteLang() === "fr";
-    feed.insertAdjacentHTML("beforebegin", '<nav class="cur-filter" aria-label="' + (fr ? "Thèmes" : "Themes") + '">'
-      + themeChip("", fr ? "Tout" : "All") + th.map(function (x) { return themeChip(x.toLowerCase(), x); }).join("") + "</nav>");
+    if (!th.length) { sub.textContent = base; return; }
+    var word = curFilter || (fr ? "tout" : "everything");
+    sub.innerHTML = htmlEsc(base) + (fr ? " : " : " of ")
+      + '<button class="cur-pick" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="' + (fr ? "Thème : " : "Theme: ") + htmlEsc(word) + '">'
+      + "<span>" + htmlEsc(word) + "</span>" + CARET + "</button>";
     applyFilter(false);
   }
   function applyFilter(animate) {
-    [].forEach.call(document.querySelectorAll(".cur-chip"), function (c) { c.setAttribute("aria-pressed", String((c.getAttribute("data-theme") || "") === curFilter)); });
     [].forEach.call(document.querySelectorAll(".curation .cur-card"), function (card) {
       var t = (curList || []).filter(function (x) { return x.slug === card.dataset.slug; })[0];
       var on = !curFilter || (t && curThemes(t).some(function (x) { return x.toLowerCase() === curFilter; }));
@@ -1147,11 +1144,52 @@
     });
   }
   function setFilter(key) {
-    curFilter = curFilter === key ? "" : key;
-    applyFilter(true);
-    var bar = document.querySelector(".cur-filter");
-    if (bar && bar.getBoundingClientRect().top < 0) bar.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    if (key === curFilter) return;
+    curFilter = key;
+    renderFilter(); applyFilter(true);
+    var w = document.querySelector(".cur-pick span");
+    if (w && !reduceMotion) { w.classList.remove("lang-in"); void w.offsetWidth; w.classList.add("lang-in"); }
+    if (window.scrollY > 40) window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    try { if (key && window.umami && window.umami.track) window.umami.track("theme-filter", { theme: key }); } catch (e) {}
   }
+  // the menu: a small native-looking list under the word, a checkmark on the current choice
+  function openThemeMenu(btn) {
+    closeThemeMenu();
+    var fr = siteLang() === "fr", th = allThemes();
+    var items = [["", fr ? "tout" : "everything"]].concat(th.map(function (x) { return [x.toLowerCase(), x.toLowerCase()]; }));
+    var m = document.createElement("div"); m.className = "cur-menu"; m.setAttribute("role", "menu");
+    m.innerHTML = items.map(function (it, i) {
+      return (i === 1 ? '<div class="cur-menu-sep" role="separator"></div>' : "")
+        + '<button class="cur-menu-item" type="button" role="menuitemradio" aria-checked="' + (it[0] === curFilter) + '" data-theme="' + htmlEsc(it[0]).replace(/"/g, "&quot;") + '">' + htmlEsc(it[1]) + "</button>";
+    }).join("");
+    document.body.appendChild(m);
+    var b = btn.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, b.left - 14)) + "px";
+    m.style.top = (b.bottom + 6) + "px";
+    btn.setAttribute("aria-expanded", "true");
+    curMenu = { el: m, btn: btn };
+    requestAnimationFrame(function () { m.classList.add("is-open"); });
+    var cur = m.querySelector('[aria-checked="true"]') || m.querySelector(".cur-menu-item"); cur.focus({ preventScroll: true });
+    m.addEventListener("click", function (e) { var it = e.target.closest(".cur-menu-item"); if (!it) return; closeThemeMenu(true); setFilter(it.getAttribute("data-theme") || ""); });
+    m.addEventListener("pointermove", function (e) { var it = e.target.closest(".cur-menu-item"); if (it && document.activeElement !== it) it.focus({ preventScroll: true }); });
+    m.addEventListener("keydown", function (e) {
+      var list = [].slice.call(m.querySelectorAll(".cur-menu-item")), i = list.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); list[(i + (e.key === "ArrowDown" ? 1 : list.length - 1)) % list.length].focus(); }
+      else if (e.key === "Home") { e.preventDefault(); list[0].focus(); }
+      else if (e.key === "End") { e.preventDefault(); list[list.length - 1].focus(); }
+      else if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); closeThemeMenu(true); }
+    });
+  }
+  function closeThemeMenu(refocus) {
+    var c = curMenu; if (!c) return; curMenu = null;
+    c.btn.setAttribute("aria-expanded", "false");
+    c.el.classList.remove("is-open");
+    setTimeout(function () { c.el.remove(); }, reduceMotion ? 0 : 140);
+    if (refocus && document.contains(c.btn)) c.btn.focus({ preventScroll: true });
+  }
+  document.addEventListener("pointerdown", function (e) { if (curMenu && !curMenu.el.contains(e.target) && !curMenu.btn.contains(e.target)) closeThemeMenu(false); }, true);
+  window.addEventListener("scroll", function () { if (curMenu) closeThemeMenu(false); }, { passive: true });
+  window.addEventListener("resize", function () { if (curMenu) closeThemeMenu(false); });
 
   // ---- the last card on the table: the next number, and where to follow it ----
   var upcoming = null, upcomingNo = 0;             // the next scheduled topic's day (and number), when there is one
@@ -1345,7 +1383,7 @@
     var m = document.querySelector(".cur-modal");
     if (m && !m.hidden && !m.classList.contains("is-closing") && m.dataset.slug === slug && curTopic) { if (fa) findInRoom(m, fa); return; }
     findAfterOpen = fa;
-    if (curFilter) setFilter(curFilter);           // the card it grows out of must be on the table
+    if (curFilter) setFilter("");                   // the card it grows out of must be on the table
     if (m && !m.hidden) { closeCurModal(); setTimeout(function () { openCurTopic(slug); }, reduceMotion ? 220 : 600); }
     else openCurTopic(slug);
   }
@@ -1718,7 +1756,7 @@
     });
     return frLoading;
   }
-  var I18N_SKIP = ".curation, .cur-modal, .lang-btn, svg";
+  var I18N_SKIP = ".curation, .cur-modal, .cur-sub, .lang-btn, svg";
   var I18N_ATTRS = ["alt", "aria-label", "title"];
   function squash(s) { return s.replace(/\s+/g, " ").trim(); }
   function ownText(el) {
@@ -1831,8 +1869,8 @@
     var rss = t.closest(".cur-next-rss");
     if (rss) { e.preventDefault(); copyFeed(rss); return; }
     if (t.closest(".cur-search-btn")) { openSearch(); return; }
-    var chip = t.closest(".cur-chip");
-    if (chip) { setFilter(chip.getAttribute("data-theme") || ""); return; }
+    var pick = t.closest(".cur-pick");
+    if (pick) { if (curMenu) closeThemeMenu(true); else openThemeMenu(pick); return; }
     var sp = t.closest(".cur-song-play");
     if (sp) { var tune = sp.closest(".cur-tune"); if (tune) songToggle(tune); return; }
     var sh = t.closest(".cur-modal-share");
@@ -1857,7 +1895,8 @@
         || (e.key === "/" && !e.metaKey && !e.ctrlKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !e.target.isContentEditable))) {
       e.preventDefault(); openSearch(); return;
     }
-    if (e.key === "Escape") { if (!closeFocus()) closeCurModal(); return; }
+    if (e.target && e.target.classList && e.target.classList.contains("cur-pick") && e.key === "ArrowDown") { e.preventDefault(); openThemeMenu(e.target); return; }
+    if (e.key === "Escape") { if (curMenu) { closeThemeMenu(true); return; } if (!closeFocus()) closeCurModal(); return; }
     if (focusState && (e.key === "ArrowRight" || e.key === "ArrowLeft")) { e.preventDefault(); stepFocus(e.key === "ArrowRight" ? 1 : -1); return; }
     var z = e.target && e.target.classList && e.target.classList.contains("cur-zoomable");
     if (z && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openFocus(e.target); }
