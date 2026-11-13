@@ -1357,13 +1357,6 @@
   // ---- Curation radio: every topic's soundtrack, one after another, in a small
   // player that stays put while you move between rooms and pages ----
   var radio = null;
-  var RADIO_ICONS = {
-    play: '<svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4c.6-.4.6-1.3 0-1.7l-10-6.4c-.7-.5-1.6 0-1.6.8z"/></svg>'
-        + '<svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',
-    prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="2.2" height="12" rx="1"/><path d="M19 6.9v10.2c0 .8-.9 1.2-1.5.8L9.8 12.8a1 1 0 0 1 0-1.6l7.7-5.1c.6-.4 1.5 0 1.5.8z"/></svg>',
-    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="16.8" y="6" width="2.2" height="12" rx="1"/><path d="M5 6.9v10.2c0 .8.9 1.2 1.5.8l7.7-5.1a1 1 0 0 0 0-1.6L6.5 6.1C5.9 5.7 5 6.1 5 6.9z"/></svg>',
-    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>'
-  };
   function radioTracks() {
     return searchLoad().then(function (docs) {
       return docs.map(function (x) {
@@ -1392,35 +1385,134 @@
       try { if (window.umami && window.umami.track) window.umami.track("radio-play"); } catch (e) {}
     });
   }
+  // the player is a Dynamic Island: a black pill at the top centre (artwork + a waveform in the
+  // artwork's colour) that springs open into the full player on hover / tap, and peeks open
+  // for a moment whenever the song changes
+  var RADIO_ICONS = {
+    play: '<svg class="ic-play" viewBox="0 0 28 28" aria-hidden="true"><path d="M8.5 5.6v16.8c0 1 1.1 1.6 1.9 1.1l13.4-8.4c.8-.5.8-1.7 0-2.2L10.4 4.5c-.8-.5-1.9.1-1.9 1.1z"/></svg>'
+        + '<svg class="ic-pause" viewBox="0 0 28 28" aria-hidden="true"><rect x="7" y="5" width="5" height="18" rx="1.4"/><rect x="16" y="5" width="5" height="18" rx="1.4"/></svg>',
+    prev: '<svg viewBox="0 0 34 24" aria-hidden="true"><path d="M16.5 5.2v13.6c0 1-1.1 1.5-1.9 1L4.3 13c-.7-.5-.7-1.5 0-2l10.3-6.8c.8-.5 1.9 0 1.9 1z"/><path d="M30.5 5.2v13.6c0 1-1.1 1.5-1.9 1L18.3 13c-.7-.5-.7-1.5 0-2l10.3-6.8c.8-.5 1.9 0 1.9 1z"/></svg>',
+    next: '<svg viewBox="0 0 34 24" aria-hidden="true"><path d="M3.5 5.2v13.6c0 1 1.1 1.5 1.9 1L15.7 13c.7-.5.7-1.5 0-2L5.4 4.2c-.8-.5-1.9 0-1.9 1z"/><path d="M17.5 5.2v13.6c0 1 1.1 1.5 1.9 1L29.7 13c.7-.5.7-1.5 0-2L19.4 4.2c-.8-.5-1.9 0-1.9 1z"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M7.5 7.5l9 9M16.5 7.5l-9 9"/></svg>'
+  };
+  // Apple-style springs as CSS linear() curves: a lively one for opening (a touch of overshoot),
+  // a calmer one for closing
+  function bouncyEase(response, damping, dur) {
+    if (!canLinear) return damping < 1 ? "cubic-bezier(0.34, 1.3, 0.5, 1)" : "cubic-bezier(0.25, 0.9, 0.3, 1)";
+    var w0 = 2 * Math.PI / response, wd = w0 * Math.sqrt(1 - damping * damping), pts = [];
+    for (var i = 0; i <= 48; i++) {
+      var t = i / 48 * dur / 1000, v = 1 - Math.exp(-damping * w0 * t) * (Math.cos(wd * t) + (damping * w0 / wd) * Math.sin(wd * t));
+      pts.push(+v.toFixed(4));
+    }
+    pts[pts.length - 1] = 1;
+    return "linear(" + pts.join(", ") + ")";
+  }
+  var islandEasing = null;
+  function islandSprings() {
+    if (islandEasing) return;
+    islandEasing = { open: bouncyEase(0.5, 0.74, 650), close: bouncyEase(0.42, 0.92, 500) };
+    document.documentElement.style.setProperty("--ci-open", islandEasing.open);
+    document.documentElement.style.setProperty("--ci-close", islandEasing.close);
+  }
+  var WAVE = '<span class="ci-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>';
   function radioBuild() {
-    var el = document.createElement("div");
-    el.className = "cur-radio"; el.setAttribute("role", "region"); el.setAttribute("aria-label", "Curation radio");
-    el.innerHTML = '<span class="cur-radio-art"><img alt=""></span>'
-      + '<span class="cur-radio-meta"><span class="cur-radio-kicker"></span><span class="cur-radio-title"></span><button class="cur-radio-from" type="button"></button></span>'
-      + '<span class="cur-radio-ctl"><button class="cur-radio-prev" type="button" aria-label="Previous">' + RADIO_ICONS.prev + "</button>"
-      + '<button class="cur-radio-play" type="button" aria-label="Pause">' + RADIO_ICONS.play + "</button>"
-      + '<button class="cur-radio-next" type="button" aria-label="Next">' + RADIO_ICONS.next + "</button></span>"
-      + '<button class="cur-radio-close" type="button" aria-label="Close the radio">' + RADIO_ICONS.close + "</button>"
-      + '<span class="cur-radio-bar" aria-hidden="true"><span></span></span>';
+    islandSprings();
+    var fr = siteLang() === "fr", el = document.createElement("div");
+    el.className = "cur-island is-born"; el.setAttribute("role", "region"); el.setAttribute("aria-label", fr ? "Radio curation" : "Curation radio");
+    el.innerHTML = '<button class="ci-compact" type="button" aria-expanded="false"><span class="ci-art"><img alt=""></span>' + WAVE + "</button>"
+      + '<div class="ci-expanded">'
+      +   '<div class="ci-top"><button class="ci-art ci-art-lg ci-open" type="button" tabindex="-1"><img alt=""></button>'
+      +     '<button class="ci-meta ci-open" type="button"><span class="ci-title"></span><span class="ci-sub"></span></button>' + WAVE + "</div>"
+      +   '<div class="ci-progress"><span class="ci-time ci-now">0:00</span><span class="ci-track"><span class="ci-fill"></span></span><span class="ci-time ci-left">–:––</span></div>'
+      +   '<div class="ci-ctl"><button class="ci-no ci-open" type="button"></button>'
+      +     '<span class="ci-ctl-mid"><button class="ci-prev" type="button">' + RADIO_ICONS.prev + "</button>"
+      +     '<button class="ci-play" type="button">' + RADIO_ICONS.play + "</button>"
+      +     '<button class="ci-next" type="button">' + RADIO_ICONS.next + "</button></span>"
+      +     '<button class="ci-close" type="button">' + RADIO_ICONS.close + "</button></div>"
+      + "</div>";
     document.body.appendChild(el);
     radio.el = el;
-    el.querySelector(".cur-radio-prev").addEventListener("click", function () { radioLoad(radio.i - 1); });
-    el.querySelector(".cur-radio-next").addEventListener("click", function () { radioLoad(radio.i + 1); });
-    el.querySelector(".cur-radio-play").addEventListener("click", radioToggle);
-    el.querySelector(".cur-radio-close").addEventListener("click", radioClose);
-    el.querySelector(".cur-radio-from").addEventListener("click", function () { radioGoTo(radio.tracks[radio.i].slug); });
-    requestAnimationFrame(function () { el.classList.add("is-in"); });
+    el.querySelector(".ci-prev").addEventListener("click", function () { radioLoad(radio.i - 1); });
+    el.querySelector(".ci-next").addEventListener("click", function () { radioLoad(radio.i + 1); });
+    el.querySelector(".ci-play").addEventListener("click", radioToggle);
+    el.querySelector(".ci-close").addEventListener("click", radioClose);
+    [].forEach.call(el.querySelectorAll(".ci-open"), function (b) { b.addEventListener("click", function () { islandSet(false); radioGoTo(radio.tracks[radio.i].slug); }); });
+    el.querySelector(".ci-compact").addEventListener("click", function () { islandSet(!radio.open); });
+    // pointer devices open it on hover; touch opens it with a tap and closes it with a tap elsewhere
+    var hover = matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (hover) {
+      el.addEventListener("pointerenter", function () { clearTimeout(radio.peekT); clearTimeout(radio.leaveT); radio.hovered = true; islandSet(true); });
+      el.addEventListener("pointerleave", function () { radio.hovered = false; radio.leaveT = setTimeout(function () { if (radio && !el.contains(document.activeElement)) islandSet(false); }, 260); });
+    }
+    el.addEventListener("focusout", function (e) { if (radio && !el.contains(e.relatedTarget) && !radio.hovered) islandSet(false); });
+    document.addEventListener("pointerdown", radio.outside = function (e) { if (radio && radio.open && !el.contains(e.target)) islandSet(false); }, true);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.remove("is-born"); }); });
   }
+  function islandSet(open) {
+    var r = radio; if (!r || !r.el || r.open === open) return;
+    r.open = open;
+    r.el.classList.toggle("is-expanded", open);
+    r.el.querySelector(".ci-compact").setAttribute("aria-expanded", String(open));
+    r.el.querySelector(".ci-expanded").inert = !open;
+  }
+  // a new song: open for a moment, as iOS does, then settle back unless the reader is on it
+  function islandPeek() {
+    var r = radio; if (!r || !r.el || r.open) return;
+    islandSet(true);
+    clearTimeout(r.peekT);
+    r.peekT = setTimeout(function () { if (radio && !radio.hovered && !radio.el.contains(document.activeElement)) islandSet(false); }, 2600);
+  }
+  // the waveform takes the artwork's colour (kept light enough to read on black)
+  function islandTint(src) {
+    var r = radio; if (!r || !r.el || !src) return;
+    var im = new Image(); im.crossOrigin = "anonymous";
+    im.onload = function () {
+      try {
+        var c = document.createElement("canvas"); c.width = c.height = 12;
+        var x = c.getContext("2d"); x.drawImage(im, 0, 0, 12, 12);
+        var d = x.getImageData(0, 0, 12, 12).data, best = null, bs = -1;
+        for (var i = 0; i < d.length; i += 4) {
+          var R = d[i], G = d[i + 1], B = d[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B), s = mx ? (mx - mn) / mx : 0, score = s * (mx / 255);
+          if (score > bs) { bs = score; best = [R, G, B]; }
+        }
+        var tint = "#fff";
+        if (best && bs > 0.18) {
+          var k = Math.max(1, 200 / Math.max(best[0], best[1], best[2]));      // lift dark colours so they read on black
+          tint = "rgb(" + best.map(function (v) { return Math.min(255, Math.round(v * k)); }).join(",") + ")";
+        }
+        if (radio && radio.el) radio.el.style.setProperty("--ci-tint", tint);
+      } catch (e) { if (radio && radio.el) radio.el.style.setProperty("--ci-tint", "#fff"); }
+    };
+    im.src = src;
+  }
+  function mmss(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
   function radioPaint() {
     var r = radio; if (!r || !r.el) return;
     var tr = r.tracks[r.i], el = r.el, fr = siteLang() === "fr";
-    el.querySelector(".cur-radio-kicker").textContent = (fr ? "Radio curation" : "Curation radio") + " · " + (r.i + 1) + "/" + r.tracks.length;
-    el.querySelector(".cur-radio-title").innerHTML = htmlEsc(tr.title) + (tr.artist ? '<span class="cur-radio-by"> · ' + htmlEsc(tr.artist) + "</span>" : "");
-    el.querySelector(".cur-radio-from").textContent = (fr ? "dans " : "from ") + loc(tr.t, "title");
-    var im = el.querySelector(".cur-radio-art img"); if (im.getAttribute("src") !== tr.art) { im.classList.remove("is-in"); im.onload = function () { im.classList.add("is-in"); }; im.src = tr.art; }
-    el.classList.toggle("is-playing", r.playing);
+    el.querySelector(".ci-title").textContent = tr.title;
+    el.querySelector(".ci-sub").textContent = [tr.artist, loc(tr.t, "title")].filter(Boolean).join(" — ");
+    el.querySelector(".ci-no").textContent = curNo(tr.t);
+    el.querySelector(".ci-no").setAttribute("aria-label", (fr ? "Ouvrir " : "Open ") + loc(tr.t, "title"));
+    el.querySelector(".ci-meta").setAttribute("aria-label", (fr ? "Ouvrir " : "Open ") + loc(tr.t, "title"));
+    [].forEach.call(el.querySelectorAll(".ci-art img"), function (im) {
+      if (im.getAttribute("src") === tr.art) return;
+      im.classList.remove("is-in"); im.onload = function () { im.classList.add("is-in"); }; im.src = tr.art;
+    });
+    if (r.tinted !== tr.art) { r.tinted = tr.art; islandTint(tr.art); }
+    el.classList.toggle("is-playing", !!r.playing);              // the button shows the intent
+    el.classList.toggle("is-sounding", r.playing && !r.loading); // the waveform moves only with sound
     el.classList.toggle("is-loading", !!r.loading);
-    el.querySelector(".cur-radio-play").setAttribute("aria-label", r.playing ? (fr ? "Pause" : "Pause") : (fr ? "Lecture" : "Play"));
+    el.querySelector(".ci-play").setAttribute("aria-label", r.playing ? "Pause" : (fr ? "Lecture" : "Play"));
+    el.querySelector(".ci-prev").setAttribute("aria-label", fr ? "Précédent" : "Previous");
+    el.querySelector(".ci-next").setAttribute("aria-label", fr ? "Suivant" : "Next");
+    el.querySelector(".ci-close").setAttribute("aria-label", fr ? "Fermer la radio" : "Close the radio");
+    el.querySelector(".ci-compact").setAttribute("aria-label", (fr ? "Radio curation : " : "Curation radio: ") + tr.title + (tr.artist ? " — " + tr.artist : ""));
+  }
+  function radioTime(now, dur) {
+    var r = radio; if (!r || !r.el) return;
+    r.el.querySelector(".ci-fill").style.width = (dur ? Math.min(100, now / dur * 100) : 0) + "%";
+    r.el.querySelector(".ci-now").textContent = mmss(now);
+    r.el.querySelector(".ci-left").textContent = dur ? "−" + mmss(dur - now) : "–:––";
   }
   function radioCmd(func, args) { try { radio.frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), "*"); } catch (e) {} }
   function radioQuietOthers() {
@@ -1443,8 +1535,9 @@
       radioCmd("loadVideoById", [{ videoId: tr.id, startSeconds: tr.start }]);
     }
     r.playing = true; r.loading = true; r.dur = 0;
-    var bar = r.el.querySelector(".cur-radio-bar span"); if (bar) bar.style.width = "0";
+    radioTime(0, 0);
     radioPaint();
+    setTimeout(islandPeek, r.started ? 0 : 420); r.started = true;
   }
   function radioToggle() {
     var r = radio; if (!r || !r.frame) return;
@@ -1456,7 +1549,9 @@
   function radioClose() {
     var r = radio; if (!r) return; radio = null;
     if (r.frame) r.frame.remove();
-    if (r.el) { r.el.classList.remove("is-in"); setTimeout(function () { r.el.remove(); }, reduceMotion ? 0 : 260); }
+    clearTimeout(r.peekT); clearTimeout(r.leaveT);
+    if (r.outside) document.removeEventListener("pointerdown", r.outside, true);
+    if (r.el) { r.el.classList.remove("is-expanded"); r.el.classList.add("is-born"); setTimeout(function () { r.el.remove(); }, reduceMotion ? 0 : 420); }
   }
   // "from <topic>": open its room — here on the table, or by walking back to it (soft navigation, so the music goes on)
   function radioGoTo(slug) {
@@ -1477,9 +1572,7 @@
     if (info.playerState === 2 && r.playing && !r.loading) { r.playing = false; radioPaint(); }
     if (info.playerState === 0) { radioLoad(r.i + 1); return; }
     if (info.duration) r.dur = info.duration;
-    if (info.currentTime != null && r.dur) {
-      var bar = r.el && r.el.querySelector(".cur-radio-bar span"); if (bar) bar.style.width = Math.min(100, info.currentTime / r.dur * 100) + "%";
-    }
+    if (info.currentTime != null && r.dur) radioTime(info.currentTime, r.dur);
   });
 
   // ---- site language (EN / FR) ----
