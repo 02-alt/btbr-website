@@ -1739,6 +1739,9 @@
     var langs = ["en"];
     if (frTitle || outBlocks.some(function (x) { return x.fr; })) { langs.push("fr"); topic.fr = frTitle ? { title: frTitle } : {}; }
     topic.langs = langs;
+    var mediaFiles = files.slice();
+    await onBranch(token, async function () {
+    files = mediaFiles.slice();
     log("Updating index…");
     // never carry on with an empty index on a failed read: it would wipe the curation page
     var index = await ghJSON("curation/topics/index.json", token, []);
@@ -1788,6 +1791,7 @@
     }
     log("Committing " + files.length + " files…");
     await commitFiles(token, files, when ? 'Curation: schedule "' + topic.title + '" for ' + niceWhen(topic.publishAt) : 'Curation: publish "' + topic.title + '"');
+    });
     editingSlug = slug; editingScheduled = when ? topic.publishAt : null; planAt = null;
     schedCache = null;
     if (when) log("🗓 Scheduled “" + topic.title + "” for " + niceWhen(topic.publishAt) + ". It goes live on its own (within ~10 min of that time).");
@@ -1942,11 +1946,11 @@
     var open = row.nextElementSibling && row.nextElementSibling.classList.contains("topic-themes") ? row.nextElementSibling : null;
     if (open) { open.remove(); return; }
     var list = (t.themes || []).slice(), box = document.createElement("div"); box.className = "topic-themes";
-    box.appendChild(themeEditor(list, function () {}));
+    var ed = themeEditor(list, function () {}); box.appendChild(ed);
     var bar = document.createElement("div"); bar.className = "topic-themes-bar";
     var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "sbtn"; cancel.textContent = "Cancel"; cancel.addEventListener("click", function () { box.remove(); });
     var save = document.createElement("button"); save.type = "button"; save.className = "sbtn primary"; save.textContent = "Save";
-    save.addEventListener("click", function () { saveThemes(t.slug, list, save).then(function (ok) { if (ok) { t.themes = list.slice(); box.remove(); var sub = row.querySelector(".topic-sub"); if (sub) sub.insertAdjacentHTML("beforeend", '<span class="topic-saved"> · themes saved ✓</span>'); renderTopicsListSoon(); } }); });
+    save.addEventListener("click", function () { ed.flush(); saveThemes(t.slug, list, save).then(function (ok) { if (ok) { t.themes = list.slice(); box.remove(); var sub = row.querySelector(".topic-sub"); if (sub) sub.insertAdjacentHTML("beforeend", '<span class="topic-saved"> · themes saved ✓</span>'); renderTopicsListSoon(); } }); });
     var hint = document.createElement("span"); hint.className = "insp-empty"; hint.textContent = "Saved straight to the site — no republish, the date stays.";
     bar.appendChild(hint); bar.appendChild(cancel); bar.appendChild(save); box.appendChild(bar);
     row.after(box);
@@ -2015,29 +2019,18 @@
         if (b.src && b.src.indexOf("/curation/media/") === 0) mediaPaths.push(b.src.replace(/^\//, ""));
         ((b.board && b.board.items) || []).forEach(function (it) { if (it.src && it.src.indexOf("/curation/media/") === 0 && mediaPaths.indexOf(it.src.slice(1)) < 0) mediaPaths.push(it.src.slice(1)); });
       });
-      var index = (await ghJSON("curation/topics/index.json", token, [])).filter(function (x) { return x.slug !== slug; });
-      var sched = await ghJSON(SCHED_PATH, token, []), schedLeft = sched.filter(function (x) { return x.slug !== slug; });
-      var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token);
-      var baseSha = ref.object.sha;
-      var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
-      var treeItems = [{ path: "curation/topics/" + slug + ".json", mode: "100644", type: "blob", sha: null }];
       for (var sp of ["curation/" + slug + "/index.html", "curation/media/" + slug + "/share.jpg"]) {
         var there = await fetch("/" + sp, { method: "HEAD", cache: "no-cache" }).then(function (r) { return r.ok; }, function () { return false; });
         if (there && mediaPaths.indexOf(sp) < 0) mediaPaths.push(sp);
       }
-      mediaPaths.forEach(function (p) { treeItems.push({ path: p, mode: "100644", type: "blob", sha: null }); });
-      var iblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: JSON.stringify(index, null, 2), encoding: "utf-8" }) }, token);
-      treeItems.push({ path: "curation/topics/index.json", mode: "100644", type: "blob", sha: iblob.sha });
-      var fblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: feedXML(index), encoding: "utf-8" }) }, token);
-      treeItems.push({ path: "curation/feed.xml", mode: "100644", type: "blob", sha: fblob.sha });
-      if (schedLeft.length !== sched.length) {
-        var sblob = await gh("/repos/" + REPO + "/git/blobs", { method: "POST", body: JSON.stringify({ content: JSON.stringify(schedLeft, null, 2), encoding: "utf-8" }) }, token);
-        treeItems.push({ path: SCHED_PATH, mode: "100644", type: "blob", sha: sblob.sha });
-        schedCache = schedLeft;
-      }
-      var tree = await gh("/repos/" + REPO + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: treeItems }) }, token);
-      var commit = await gh("/repos/" + REPO + "/git/commits", { method: "POST", body: JSON.stringify({ message: 'Curation: delete "' + slug + '"', tree: tree.sha, parents: [baseSha] }) }, token);
-      await gh("/repos/" + REPO + "/git/refs/heads/" + BRANCH, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }, token);
+      await onBranch(token, async function () {
+        var index = (await ghJSON("curation/topics/index.json", token, [])).filter(function (x) { return x.slug !== slug; });
+        var sched = await ghJSON(SCHED_PATH, token, []), schedLeft = sched.filter(function (x) { return x.slug !== slug; });
+        var files = [{ path: "curation/topics/" + slug + ".json", remove: true }].concat(mediaPaths.map(function (p) { return { path: p, remove: true }; }));
+        files.push({ path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) }, { path: "curation/feed.xml", text: feedXML(index) });
+        if (schedLeft.length !== sched.length) { files.push({ path: SCHED_PATH, text: JSON.stringify(schedLeft, null, 2) }); schedCache = schedLeft; }
+        await commitFiles(token, files, 'Curation: delete "' + slug + '"');
+      });
       renderTopicsList();
     } catch (e) {
       alert("Delete failed: " + (e && e.message || e));
@@ -2109,12 +2102,32 @@
   // a JSON file on the live branch; `fallback` only when it doesn't exist (any other failure stops the caller —
   // carrying on with an empty index would wipe the curation page)
   async function ghJSON(path, token, fallback) {
-    try { var r = await gh("/repos/" + REPO + "/contents/" + path + "?ref=" + BRANCH, { cache: "no-store" }, token); return JSON.parse(b64utf8(r.content)); }
+    try { var r = await gh("/repos/" + REPO + "/contents/" + path + "?ref=" + (pinSha || BRANCH), { cache: "no-store" }, token); return JSON.parse(b64utf8(r.content)); }
     catch (e) { if (/not found/i.test(String(e && e.message))) return fallback; throw e; }
   }
   // files: [{ path, text } | { path, base64 } | { path, remove: true }] — one commit
+  // Studio writes one at a time. Each one reads the files at the branch's latest commit and commits on top
+  // of exactly that commit; if another write got in first (GitHub: "not a fast forward"), it starts over
+  // from the new commit, so nothing is ever written over a stale copy.
+  var writeLock = Promise.resolve(), pinSha = null;
+  function onBranch(token, op) {
+    var run = async function () {
+      for (var n = 0; ; n++) {
+        var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, { cache: "no-store" }, token);
+        pinSha = ref.object.sha;
+        try { return await op(); }
+        catch (e) {
+          if (n >= 4 || !/fast forward|reference (cannot|could not) be updated|update is not/i.test(String(e && e.message))) throw e;
+          await new Promise(function (res) { setTimeout(res, 400 + n * 500); });
+        } finally { pinSha = null; }
+      }
+    };
+    var p = writeLock.then(run, run);
+    writeLock = p.catch(function () {});
+    return p;
+  }
   async function commitFiles(token, files, message) {
-    var ref = await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token), baseSha = ref.object.sha;
+    var baseSha = pinSha || (await gh("/repos/" + REPO + "/git/ref/heads/" + BRANCH, {}, token)).object.sha;
     var baseCommit = await gh("/repos/" + REPO + "/git/commits/" + baseSha, {}, token);
     var items = [];
     for (var i = 0; i < files.length; i++) {
@@ -2182,6 +2195,7 @@
     if (!confirm("Put this scheduled topic live now?")) return;
     if (btn) { btn.disabled = true; btn.textContent = "Going live…"; }
     try {
+      await onBranch(token, async function () {
       var sched = await ghJSON(SCHED_PATH, token, []), s = sched.filter(function (x) { return x.slug === slug; })[0];
       if (!s) throw new Error("It isn’t scheduled any more (it may have just gone live).");
       var index = await ghJSON("curation/topics/index.json", token, []), topic = await ghJSON("curation/topics/" + slug + ".json", token, null);
@@ -2194,6 +2208,7 @@
       ];
       if (topic) { topic.date = today; delete topic.publishAt; files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) }); }
       await commitFiles(token, files, 'Curation: go live "' + (entry.title || slug) + '"');
+      });
       if (editingSlug === slug) editingScheduled = null;
       setTimeout(refreshViews, 400);
     } catch (e) { alert("Couldn’t put it live: " + (e && e.message || e)); if (btn) { btn.disabled = false; btn.textContent = "Go live now"; } }
@@ -2201,14 +2216,17 @@
   async function reschedule(slug, when) {
     var token = needToken(); if (!token) return false;
     try {
+      var at = await onBranch(token, async function () {
       var sched = await ghJSON(SCHED_PATH, token, []), s = sched.filter(function (x) { return x.slug === slug; })[0];
       if (!s) throw new Error("It isn’t scheduled any more.");
       s.publishAt = isoLocal(when); s.entry.date = s.publishAt.slice(0, 10);
       var topic = await ghJSON("curation/topics/" + slug + ".json", token, null), files = [{ path: SCHED_PATH, text: JSON.stringify(sched, null, 2) }];
       if (topic) { topic.publishAt = s.publishAt; topic.date = s.entry.date; files.push({ path: "curation/topics/" + slug + ".json", text: JSON.stringify(topic, null, 2) }); }
       await commitFiles(token, files, 'Curation: reschedule "' + (s.entry.title || slug) + '" for ' + niceWhen(s.publishAt));
-      if (editingSlug === slug) editingScheduled = s.publishAt;
-      schedCache = sched; return true;
+      schedCache = sched; return s.publishAt;
+      });
+      if (editingSlug === slug) editingScheduled = at;
+      return true;
     } catch (e) { alert("Couldn’t reschedule: " + (e && e.message || e)); return false; }
   }
   // the site's copies lag a deploy (~1 min) behind a commit; what Studio just wrote wins meanwhile
@@ -2260,8 +2278,17 @@
         if (v && !list.some(function (y) { return y.toLowerCase() === v.toLowerCase(); })) { list.push(v); if (knownThemes.indexOf(v) < 0) knownThemes.push(v); changed(); paint(); wrap.querySelector(".theme-input").focus(); }
         else inp.value = "";
       });
+      inp.addEventListener("blur", function (e) { if (cleanTheme(inp.value) && !(e.relatedTarget && wrap.contains(e.relatedTarget))) { take(); paint(); } });
       wrap.appendChild(chips); wrap.appendChild(inp);
     }
+    function take() {
+      var inp = wrap.querySelector(".theme-input"), v = inp && cleanTheme(inp.value);
+      if (!v) return false;
+      inp.value = "";
+      if (!list.some(function (y) { return y.toLowerCase() === v.toLowerCase(); })) { list.push(v); if (knownThemes.indexOf(v) < 0) knownThemes.push(v); changed(); }
+      return true;
+    }
+    wrap.flush = function () { if (take()) paint(); };
     paint();
     return wrap;
   }
@@ -2277,6 +2304,7 @@
     var token = needToken(); if (!token) return false;
     if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
     try {
+      await onBranch(token, async function () {
       var index = await ghJSON("curation/topics/index.json", token, []), topic = await ghJSON("curation/topics/" + slug + ".json", token, null);
       var sched = await ghJSON(SCHED_PATH, token, []), files = [];
       var set = function (o) { if (themes.length) o.themes = themes.slice(); else delete o.themes; };
@@ -2286,6 +2314,7 @@
       files.push({ path: "curation/topics/index.json", text: JSON.stringify(index, null, 2) }, { path: "curation/feed.xml", text: feedXML(index) });
       if (sched.some(function (s) { return s.slug === slug; })) files.push({ path: SCHED_PATH, text: JSON.stringify(sched, null, 2) });
       await commitFiles(token, files, 'Curation: themes for "' + ((topic && topic.title) || slug) + '"');
+      });
       if (editingSlug === slug) state.themes = themes.slice();
       return true;
     } catch (e) { alert("Couldn’t save the themes: " + (e && e.message || e)); return false; }

@@ -936,10 +936,8 @@
       + '<span class="cur-song-bar" aria-hidden="true"><span></span></span>';
   }
   function curCardText(t) { return curLabelHTML(t, true); }
-  // the btbr mark, blind-embossed into the label's bottom-left corner
-  var CUR_MARK_SVG = '<svg class="cur-mark" viewBox="-3 -3 272 280" aria-hidden="true" focusable="false"><path d="'
-    + "M0 0h126v10H0zM0 38h10v126H0zM256 148h10v126h-10zM68 132h10v126H68zM10 194h122v10H10zM104 248h126v10H104z"
-    + '"/></svg>';
+  // the hand-drawn +, blind-embossed into the label's bottom-left corner
+  var CUR_MARK_SVG = '<span class="cur-mark" aria-hidden="true"><i></i></span>';
   function curFoot(t) {
     var no = curNo(t), th = curThemes(t);
     return '<div class="cur-foot">' + CUR_MARK_SVG
