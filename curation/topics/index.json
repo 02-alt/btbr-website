@@ -82,7 +82,10 @@
     ],
     "feed": "/curation/media/are-na/board-1-3.png",
     "fr": {},
-    "thumb": "/curation/media/are-na/feed.jpg"
+    "thumb": "/curation/media/are-na/feed.jpg",
+    "themes": [
+      "TECH"
+    ]
   },
   {
     "slug": "phones-personal-journey",
