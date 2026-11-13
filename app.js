@@ -940,10 +940,8 @@
   // the hand-drawn +, blind-embossed into the label's bottom-left corner
   var CUR_MARK_SVG = '<span class="cur-mark" aria-hidden="true"><i></i></span>';
   function curFoot(t) {
-    var no = curNo(t), th = curThemes(t);
-    return '<div class="cur-foot">' + CUR_MARK_SVG
-      + (th.length ? '<span class="cur-stamps">' + th.map(function (x) { return '<span class="cur-stamp">' + htmlEsc(x) + "</span>"; }).join("") + "</span>" : "")
-      + (no ? '<span class="cur-no">' + no + "</span>" : "") + "</div>";
+    var no = curNo(t);
+    return '<div class="cur-foot">' + CUR_MARK_SVG + (no ? '<span class="cur-no">' + no + "</span>" : "") + "</div>";
   }
   function curThemes(t) { return ((t && t.themes) || []).filter(Boolean); }
   function curCard(t) {
