@@ -63,7 +63,10 @@
     ],
     "feed": "/curation/media/cadaqu-s-ux-architecture/board-1-1.png",
     "fr": {},
-    "thumb": "/curation/media/cadaqu-s-ux-architecture/feed.jpg"
+    "thumb": "/curation/media/cadaqu-s-ux-architecture/feed.jpg",
+    "themes": [
+      "ARCHITECTURE"
+    ]
   },
   {
     "slug": "are-na",

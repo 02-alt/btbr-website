@@ -162,5 +162,8 @@
     "en",
     "fr"
   ],
-  "no": 7
+  "no": 7,
+  "themes": [
+    "ARCHITECTURE"
+  ]
 }
