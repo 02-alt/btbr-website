@@ -38,11 +38,12 @@
     music: [["playing", "Now Playing"], ["album", "Album page"]],
     arena: [["grid", "Channel"]],
     book: [["books", "Apple Books"]],
-    bandcamp: [["editorial", "Album page"]],
+    bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
     wiki: [["note", "Notes"]]
   };
-  var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1 };
+  var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
+  S.length = "";
   S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note" }; S.dek = ""; S.stickerY = STICKER_Y;
   try { Object.assign(S.style, JSON.parse(localStorage.getItem("btbr_story_style") || "{}")); } catch (e) {}
   function styleOf() { return S.item ? S.style[S.item.kind] : ""; }
@@ -352,8 +353,9 @@
     $("chromeRow").hidden = !(k === "web" && st === "safari");
     $("shotsRow").hidden = !(k === "app" && (st === "card" || st === "glass"));
     $("bgRow").hidden = $("swatches").hidden = !!OWN_BG[st];
-    $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note");
-    $("tDek").placeholder = st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : "";
+    $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note" || st === "collection");
+    $("lengthField").hidden = st !== "collection";
+    $("tDek").placeholder = st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : st === "collection" ? "New in my collection." : "";
     swatches();
   }
   function fields() { $("tTitle").value = S.title; $("tSub").value = S.sub; $("kicker").value = S.kicker; $("tDek").value = S.dek; }
@@ -609,6 +611,54 @@
       say(x, "Cabin — a Bandcamp player for the Mac", 180, cy + 34, "600 28px " + SYS, "rgba(255,255,255,0.85)");
       say(x, "Free · buildtoberemembered.com", 180, cy + 70, "400 24px " + SYS, "rgba(255,255,255,0.5)");
       return { sticker: Math.min(1700, cy + 190), sign: Math.min(1840, cy + 320), soft: "rgba(255,255,255,0.55)" };
+    },
+    // Bandcamp — Cabin's "New in your collection", said as a story: "Just bought" — the cover glowing in Cabin's dark window, its length, the receipt card
+    collection: function (x) {
+      x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, W, H);
+      var wa = 40, wb = 200, ww = 1000, wh = 1520;
+      x.save(); rr(x, wa, wb, ww, wh, 44); x.clip(); x.fillStyle = "#19191b"; x.fillRect(wa, wb, ww, wh);
+      var ca = 130, cb = 500, cs = 820;
+      if (S.pic) { x.save(); x.filter = "blur(120px) saturate(1.5)"; x.globalAlpha = 0.75; cover(x, S.pic, ca - 60, cb - 40, cs + 120, cs + 120); x.restore(); }
+      x.restore();
+      rr(x, wa + 0.75, wb + 0.75, ww - 1.5, wh - 1.5, 44); x.strokeStyle = "rgba(255,255,255,0.1)"; x.lineWidth = 1.5; x.stroke();
+      [["#ff5f57", 0], ["#febc2e", 32], ["#28c840", 64]].forEach(function (d) { x.beginPath(); x.arc(wa + 44 + d[1], wb + 44, 11, 0, Math.PI * 2); x.fillStyle = d[0]; x.fill(); });
+      var head = !S.kicker.trim() || /^bandcamp\s*·\s*lossless$/i.test(S.kicker.trim()) ? "Just bought" : S.kicker.trim();
+      say(x, "✦  " + one(x, head.toUpperCase(), "700 26px " + SYS, 800), W / 2, 410, "700 26px " + SYS, "rgba(255,255,255,0.75)", "center", 3);
+      say(x, one(x, S.dek.trim() || "New in my collection.", "400 30px " + SYS, 860), W / 2, 456, "400 30px " + SYS, "rgba(255,255,255,0.6)", "center");
+      shadowed(x, function () { rr(x, ca, cb, cs, cs, 36); x.fillStyle = "#000"; x.fill(); }, 2);
+      x.save(); rr(x, ca, cb, cs, cs, 36); x.clip(); x.fillStyle = "#2a2a2c"; x.fillRect(ca, cb, cs, cs); if (S.pic) cover(x, S.pic, ca, cb, cs, cs);
+      // its length, set over the cover's top right as on the sleeve
+      var len = String(S.length || "").trim();
+      if (len) {
+        x.save(); x.shadowColor = "rgba(0,0,0,0.5)"; x.shadowBlur = 8;
+        say(x, "LENGTH " + len, ca + cs - 36, cb + 70, "600 22px " + SYS, "rgba(255,255,255,0.85)", "right", 2);
+        x.restore();
+      }
+      x.restore();
+      // the receipt card
+      var ka = ca + 24, kb = cb + cs - 300, kw = 600, kh = 276;
+      shadowed(x, function () { rr(x, ka, kb, kw, kh, 26); x.fillStyle = "rgba(245,245,247,0.94)"; x.fill(); }, 0.8);
+      rr(x, ka, kb, kw, kh, 26); x.fillStyle = "rgba(245,245,247,0.94)"; x.fill();
+      say(x, one(x, S.title || "…", "700 40px " + SYS, kw - 60), ka + 30, kb + 60, "700 40px " + SYS, "#1d1d1f");
+      say(x, one(x, S.sub, "400 26px " + SYS, kw - 60), ka + 30, kb + 98, "400 26px " + SYS, "#6e6e73");
+      para(x, "Bought straight from " + (S.sub || "the artist") + " — no middle layer.", ka + 30, kb + 142, "400 22px " + SYS, "#3a3a3c", "left", kw - 60, 30, 2);
+      rr(x, ka + 30, kb + 192, 270, 40, 20); x.fillStyle = "rgba(0,0,0,0.07)"; x.fill(); x.strokeStyle = "rgba(0,0,0,0.12)"; x.lineWidth = 1.5; x.stroke();
+      x.beginPath(); x.arc(ka + 52, kb + 212, 9, 0, Math.PI * 2); x.fillStyle = "#3a3a3c"; x.fill();
+      say(x, "Bought on Bandcamp", ka + 72, kb + 220, "600 21px " + SYS, "#1d1d1f");
+      say(x, "▪ Cabin record ▪", ka + 30, kb + 258, "500 19px " + SYS, "#8e8e93");
+      say(x, new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), ka + kw - 30, kb + 258, "500 19px " + SYS, "#8e8e93", "right");
+      // First Listen · Share
+      var by = cb + cs + 50;
+      rr(x, W / 2 - 300, by, 330, 84, 42); x.fillStyle = "#fff"; x.fill(); playTri(x, W / 2 - 248, by + 42, 18, "#000"); say(x, "First Listen", W / 2 - 120, by + 53, "700 32px " + SYS, "#000", "center");
+      glassPane(x, W / 2 + 46, by, 230, 84, 42, "rgba(255,255,255,0.14)");
+      x.strokeStyle = "#fff"; x.lineWidth = 3.5; x.lineJoin = "round"; x.lineCap = "round";
+      x.beginPath(); x.moveTo(W / 2 + 92, by + 36); x.lineTo(W / 2 + 84, by + 36); x.lineTo(W / 2 + 84, by + 62); x.lineTo(W / 2 + 114, by + 62); x.lineTo(W / 2 + 114, by + 36); x.lineTo(W / 2 + 106, by + 36); x.moveTo(W / 2 + 99, by + 48); x.lineTo(W / 2 + 99, by + 22); x.moveTo(W / 2 + 91, by + 30); x.lineTo(W / 2 + 99, by + 22); x.lineTo(W / 2 + 107, by + 30); x.stroke();
+      say(x, "Share", W / 2 + 180, by + 53, "700 32px " + SYS, "#fff", "center");
+      // whose window this is
+      var cy = by + 140;
+      if (cabinImg) { x.save(); rr(x, W / 2 - 230, cy, 56, 56, 13); x.clip(); x.drawImage(cabinImg, W / 2 - 230, cy, 56, 56); x.restore(); }
+      say(x, "Cabin — a Bandcamp player for the Mac", W / 2 - 160, cy + 37, "500 25px " + SYS, "rgba(255,255,255,0.6)");
+      return { sticker: 1630, sign: 1800, soft: "rgba(255,255,255,0.5)" };
     },
     // Wikipedia — an Apple Notes page: the date, a title, a line of yours, the article as its link card
     note: function (x) {
@@ -925,6 +975,7 @@
   $("tSub").addEventListener("input", function () { S.sub = this.value; draw(); });
   $("kicker").addEventListener("input", function () { S.kicker = this.value; S.kickerSet = true; draw(); });
   $("tDek").addEventListener("input", function () { S.dek = this.value; draw(); });
+  $("tLength").addEventListener("input", function () { S.length = this.value; draw(); });
   $("style").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b || !S.item) return;
     S.style[S.item.kind] = b.dataset.v;
