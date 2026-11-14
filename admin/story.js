@@ -40,13 +40,14 @@
     book: [["books", "Apple Books"]],
     bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
     wiki: [["note", "Notes"]],
-    backloggd: [["bl-label", "Label"], ["bl-poster", "Poster"], ["bl-prints", "Prints"], ["bl-hand", "Review"], ["bl-quote", "Quote"]]
+    backloggd: [["bl-label", "Label"], ["bl-poster", "Poster"], ["bl-prints", "Prints"], ["bl-cart", "Cartridge"], ["bl-case", "Case"], ["bl-hand", "Review"], ["bl-quote", "Quote"]]
   };
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
   S.length = "";
   S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note", backloggd: "bl-label" }; S.dek = "";
-  S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, text: "", best: "", platform: "", hours: "", name: "Isaaaaaaaac", note1: "the start", note2: "the best part", steam: "" }; S.stickerY = STICKER_Y;
+  S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, text: "", best: "", platform: "", hours: "", name: "Isaaaaaaaac", note1: "the start", note2: "the best part", steam: "",
+    cart: "grey", box: "clear", show: "avg" }; S.stickerY = STICKER_Y;
   try { Object.assign(S.style, JSON.parse(localStorage.getItem("btbr_story_style") || "{}")); } catch (e) {}
   function styleOf() { return S.item ? S.style[S.item.kind] : ""; }
   var token = 0;                           // the link being loaded; older answers are dropped
@@ -408,7 +409,7 @@
     var n = parseInt(String(hex).slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45;
   }
-  function bgPic() { return S.item && S.item.kind === "app" ? S.app && S.app.icon : S.pic; }
+  function bgPic() { return S.item && S.item.kind === "app" ? S.app && S.app.icon : S.item && S.item.kind === "backloggd" ? S.pic || (S.bl && S.bl.cover) : S.pic; }
   function rr(x, px, py, w, h, r) { x.beginPath(); if (x.roundRect) x.roundRect(px, py, w, h, r); else x.rect(px, py, w, h); }
   function cover(x, im, px, py, w, h, alignTop) {
     var nw = im.naturalWidth, nh = im.naturalHeight, s = Math.max(w / nw, h / nh), dw = nw * s, dh = nh * s;
@@ -1076,7 +1077,73 @@
       return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "rgba(255,255,255,0.5)" };
     }
   };
-  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; OWN_BG[k] = 1; });
+  /* the cartridge and the case: objects on the story's own background (tone or the cover blurred),
+     a colour of your choosing, and the rating you want shown — Backloggd's average, yours, or none */
+  function blGround(x) {
+    var bp = bgPic(), dark;
+    if (S.bg === "blur" && bp) { blurPic(x, bp, "rgba(0,0,0,0.28)", 1.3); dark = true; }
+    else { var t = S.bg === "blur" ? "#e6e4e6" : S.bg; x.fillStyle = t; x.fillRect(0, 0, W, H); dark = toneDark(t); }
+    return { ink: dark ? "#f5f5f7" : "#111", soft: dark ? "rgba(245,245,247,0.62)" : "#8a888b" };
+  }
+  function blRatingText(long) {
+    var g = S.bl.game;
+    if (S.bl.show === "mine") return (long ? "\u2605 " + S.bl.rating + " \u2014 my rating" : String(S.bl.rating));
+    if (S.bl.show === "avg" && g.avg) return long ? "\u2605 " + g.avg + " on Backloggd" : g.avg;
+    return "";
+  }
+  function blKicker(x, y, soft) { var k = S.kicker.trim(); if (k) say(x, one(x, k.toUpperCase(), "400 30px " + SANS, 900), W / 2, y, "400 30px " + SANS, soft, "center", 4); }
+  var CARTS = { grey: ["#d3d1d5", "#b9b7bc", "rgba(255,255,255,0.65)"], black: ["#333336", "#1b1b1d", "rgba(255,255,255,0.12)"], clear: ["rgba(150,120,230,0.62)", "rgba(95,70,180,0.72)", "rgba(255,255,255,0.45)"], white: ["#f6f6f6", "#e2e2e4", "rgba(255,255,255,0.9)"] };
+  var BOXES = { clear: ["rgba(255,255,255,0.55)", "rgba(255,255,255,0.12)"], red: ["#e8332a", "#b81d17"], blue: ["#2f6fd8", "#1a49a3"], black: ["#2a2a2d", "#141416"] };
+  BL["bl-cart"] = function (x) {
+    var c = blGround(x), g = S.bl.game, col = CARTS[S.bl.cart] || CARTS.grey;
+    blKicker(x, 250, c.soft);
+    var a = 190, b = 330, w = 700, h = 860;
+    x.save(); x.shadowColor = "rgba(0,0,0,0.42)"; x.shadowBlur = 90; x.shadowOffsetY = 50; rr(x, a, b, w, h, 34); x.fillStyle = col[1]; x.fill(); x.restore();
+    var gr = x.createLinearGradient(0, b, 0, b + h); gr.addColorStop(0, col[0]); gr.addColorStop(1, col[1]);
+    rr(x, a, b, w, h, 34); x.fillStyle = gr; x.fill();
+    x.fillStyle = col[2]; x.fillRect(a + 30, b + 3, w - 60, 3);                       // the lit top edge
+    x.fillStyle = "rgba(0,0,0,0.08)"; x.fillRect(a, b + 92, w, 3);                     // the ridge
+    for (var i = 0; i < 5; i++) { rr(x, a + w / 2 - 110 + i * 48, b + h - 70, 28, 34, 6); x.fillStyle = "rgba(0,0,0,0.1)"; x.fill(); }   // the grips
+    // the label: the cover, inset, with a fine border
+    x.save(); rr(x, a + 70, b + 130, w - 140, 600, 16); x.clip(); blFit(x, blCover(), a + 70, b + 130, w - 140, 600, 0.5, 0.18); x.restore();
+    rr(x, a + 70, b + 130, w - 140, 600, 16); x.strokeStyle = "rgba(0,0,0,0.18)"; x.lineWidth = 3; x.stroke();
+    var t = S.title || g.title, fs = fitSize(x, t, 400, SANS, 64, 40, W - 160);
+    say(x, t, W / 2, 1290, "400 " + fs + "px " + SANS, c.ink, "center", -1);
+    var line = [S.sub, g.year, blRatingText(true)].filter(Boolean).join(" \u00B7 ");
+    say(x, one(x, line, "400 30px " + SANS, W - 160), W / 2, 1345, "400 30px " + SANS, c.soft, "center");
+    return { sticker: 1470, sign: 1640, soft: c.soft };
+  };
+  BL["bl-case"] = function (x) {
+    var c = blGround(x), g = S.bl.game, col = BOXES[S.bl.box] || BOXES.clear, clear = S.bl.box === "clear";
+    blKicker(x, 250, c.soft);
+    var a = 210, b = 320, w = 660, h = 980;
+    x.save(); x.shadowColor = "rgba(0,0,0,0.4)"; x.shadowBlur = 100; x.shadowOffsetY = 56; rr(x, a, b, w, h, 22); x.fillStyle = clear ? "rgba(255,255,255,0.35)" : col[1]; x.fill(); x.restore();
+    var gr = x.createLinearGradient(a, 0, a + w, 0); gr.addColorStop(0, col[0]); gr.addColorStop(1, col[1]);
+    rr(x, a, b, w, h, 22); x.fillStyle = gr; x.fill();
+    // the insert: the cover under the clear sleeve
+    x.save(); rr(x, a + 50, b + 26, w - 76, h - 52, 6); x.clip(); blFit(x, blCover(), a + 50, b + 26, w - 76, h - 52); x.restore();
+    // the hinge and the sleeve's glare
+    var sp = x.createLinearGradient(a, 0, a + 34, 0); sp.addColorStop(0, "rgba(255,255,255,0.55)"); sp.addColorStop(1, "rgba(255,255,255,0.08)");
+    x.save(); rr(x, a, b, 34, h, 22); x.fillStyle = sp; x.fill(); x.restore();
+    x.save(); rr(x, a, b, w, h, 22); x.clip();
+    var gl = x.createLinearGradient(a, b, a + w, b + h); gl.addColorStop(0.38, "rgba(255,255,255,0)"); gl.addColorStop(0.47, "rgba(255,255,255,0.28)"); gl.addColorStop(0.56, "rgba(255,255,255,0)");
+    x.fillStyle = gl; x.fillRect(a, b, w, h); x.restore();
+    rr(x, a + 0.75, b + 0.75, w - 1.5, h - 1.5, 22); x.strokeStyle = "rgba(255,255,255,0.6)"; x.lineWidth = 1.5; x.stroke();
+    // the price-sticker: the rating, if you want one
+    var rt = blRatingText(false);
+    if (rt) {
+      x.save(); x.translate(a + w - 130, b + 150); x.rotate(12 * Math.PI / 180);
+      x.shadowColor = "rgba(0,0,0,0.25)"; x.shadowBlur = 20; x.shadowOffsetY = 8;
+      x.beginPath(); x.arc(0, 0, 80, 0, Math.PI * 2); x.fillStyle = "#ffd60a"; x.fill(); x.shadowColor = "transparent";
+      say(x, rt, 0, 10, "700 " + (rt.length > 3 ? 50 : 58) + "px " + SANS, "#111", "center", -1);
+      say(x, S.bl.show === "mine" ? "\u2605 mine" : "\u2605 Backloggd", 0, 46, "500 19px " + SANS, "#111", "center");
+      x.restore();
+    }
+    var line = [S.title || g.title, S.sub, S.bl.platform].filter(Boolean).join(" \u00B7 ");
+    say(x, one(x, line, "400 32px " + SANS, W - 160), W / 2, 1380, "400 32px " + SANS, c.ink === "#111" ? "#5d5b5e" : c.soft, "center");
+    return { sticker: 1480, sign: 1650, soft: c.soft };
+  };
+  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (k !== "bl-cart" && k !== "bl-case") OWN_BG[k] = 1; });
   ["bl-label", "bl-poster", "bl-prints", "bl-hand"].forEach(function (k) { NO_KICKER[k] = 1; });
   function blLoad(it, my) {
     note("Reading Backloggd…", false);
@@ -1096,6 +1163,13 @@
     $("blSec").hidden = !on; if (!on) return;
     $("blReview").hidden = !(st === "bl-hand" || st === "bl-quote");
     $("blNotes").hidden = st !== "bl-prints";
+    var obj = st === "bl-cart" || st === "bl-case";
+    $("blLook").hidden = !obj; $("blCartRow").hidden = st !== "bl-cart"; $("blBoxRow").hidden = st !== "bl-case"; $("blPlatRow").hidden = st !== "bl-case";
+    $("blMineRow").hidden = !(obj && S.bl.show === "mine");
+    [["blCart", "cart"], ["blBox", "box"], ["blShow", "show"]].forEach(function (p) { [].forEach.call($(p[0]).children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl[p[1]]); }); });
+    $("blRating2").value = String(S.bl.rating); $("blPlat2").value = S.bl.platform;
+    // the line on top follows the style until you write your own
+    if (!S.kickerSet) { S.kicker = { "bl-cart": "Now playing", "bl-case": "In my collection" }[st] || "My review"; $("kicker").value = S.kicker; }
     $("blRating").value = String(S.bl.rating); $("blText").value = S.bl.text; $("blBest").value = S.bl.best;
     $("blPlatform").value = S.bl.platform; $("blHours").value = S.bl.hours; $("blName").value = S.bl.name;
     $("blNote1").value = S.bl.note1; $("blNote2").value = S.bl.note2; $("blSteam").value = S.bl.steam || "";
@@ -1104,6 +1178,11 @@
     $(p[0]).addEventListener("input", function () { S.bl[p[1]] = this.value; draw(); });
   });
   $("blRating").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
+  $("blRating2").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
+  $("blPlat2").addEventListener("input", function () { S.bl.platform = this.value; draw(); });
+  [["blCart", "cart"], ["blBox", "box"], ["blShow", "show"]].forEach(function (p) {
+    $(p[0]).addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; S.bl[p[1]] = b.dataset.v; blFields(); draw(); });
+  });
   $("blSteam").addEventListener("change", function () {
     var m = /store\.steampowered\.com\/app\/(\d+)/.exec(this.value) || /^(\d{3,8})$/.exec(this.value.trim()); S.bl.steam = this.value;
     if (!m) { S.bl.hero = null; draw(); return; }
