@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-dark.png?v=5" media="(prefers-color-scheme: light)" />
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-p3-light.png?v=5" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
-  <link rel="stylesheet" href="/admin/editor.css?v=33" />
+  <link rel="stylesheet" href="/admin/editor.css?v=34" />
 </head>
 <body class="studio">
   <header class="studio-bar">
@@ -53,6 +53,12 @@
         <h2>Topics <span class="topics-count" id="topicsCount"></span></h2>
         <button class="sbtn primary" id="topicsNew" type="button">New topic</button>
       </div>
+      <form class="story-bar" id="storyBar" autocomplete="off">
+        <svg class="story-bar-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7.6 5.3l1-1a2.3 2.3 0 0 1 3.2 3.2l-1 1M8.4 10.7l-1 1a2.3 2.3 0 0 1-3.2-3.2l1-1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <input id="storyUrl" type="text" inputmode="url" placeholder="Paste a link to make a story — YouTube, App Store, a website" aria-label="A link to make a story from" spellcheck="false" />
+        <kbd class="story-bar-kbd" aria-hidden="true">⌘V</kbd>
+        <button class="sbtn primary" id="storyGo" type="submit" hidden>Make story</button>
+      </form>
       <div class="topics-list" id="topicsList"></div>
     </section>
 
@@ -108,6 +114,6 @@
   <script src="/assets/macwin.js?v=4"></script>
   <script src="/assets/sharecard.js?v=2"></script>
   <script src="/assets/prints.js?v=2"></script>
-  <script src="/admin/editor.js?v=48"></script>
+  <script src="/admin/editor.js?v=49"></script>
 </body>
 </html>

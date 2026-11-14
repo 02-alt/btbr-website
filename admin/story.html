@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Story — Curation Studio</title>
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="theme-color" content="#f5f5f7" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5" />
+  <style>
+    :root { --blue: #0071e3; --ink: #1d1d1f; --ink2: #6e6e73; --ink3: #86868b; --hair: rgba(0,0,0,0.08); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { min-height: 100vh; color: var(--ink); background: radial-gradient(1200px 700px at 50% 0, #fff, #ececf0) fixed;
+      font: 13px/1.38 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; letter-spacing: -0.003em;
+      -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
+
+    /* ---- top bar ---- */
+    .top { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 20px;
+      background: rgba(245,245,247,0.72); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
+    .back { color: var(--blue); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
+    .back::before { content: ""; width: 8px; height: 8px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-right: 2px; }
+    .title { font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .title span { color: var(--ink3); font-weight: 500; }
+    .spacer { margin-left: auto; }
+    .tbtn { border: 0; border-radius: 99px; padding: 7px 16px; font-size: 13px; font-weight: 600; white-space: nowrap; transition: transform 0.1s ease, opacity 0.15s ease, background 0.15s ease; }
+    .tbtn.primary { background: var(--blue); color: #fff; }
+    .tbtn.quiet { background: rgba(0,0,0,0.06); }
+    .tbtn.quiet:hover { background: rgba(0,0,0,0.09); }
+    .tbtn:active { transform: scale(0.97); }
+    .tbtn:disabled { opacity: 0.5; cursor: default; }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; max-width: min(560px, calc(100vw - 32px)); margin: 0;
+      padding: 12px 16px; border-radius: 14px; background: rgba(30,30,32,0.94); color: #fff; font-size: 13px; line-height: 1.4;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.25); animation: toast-in 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+    @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+    button:focus-visible, a:focus-visible, .lnk:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    /* ---- stage: link · phone · look ---- */
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 36px; padding: 8px 32px 28px; }
+    .panel { width: 340px; max-height: calc(100vh - 76px); overflow-y: auto; scrollbar-width: none;
+      background: rgba(255,255,255,0.72); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border-radius: 22px; padding: 20px 20px 24px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.08), 0 20px 50px -20px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; gap: 20px; position: sticky; top: 60px; }
+    .panel::-webkit-scrollbar { display: none; }
+    .panel.left { justify-self: end; }
+    .panel.right { justify-self: start; }
+    .panel section { display: flex; flex-direction: column; gap: 8px; }
+    .panel h3 { margin: 0; font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
+    .panel h3 .val { text-transform: none; letter-spacing: 0; color: var(--ink2); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rule { height: 1px; background: var(--hair); margin: 0 -20px; flex: none; }
+    .note { font-size: 11px; color: var(--ink3); margin: 0; }
+    .note.warn { color: #d70015; }
+
+    /* the topic's links */
+    .links { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .lnk { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; transition: background 0.15s ease; }
+    .lnk:hover { background: rgba(0,0,0,0.04); }
+    .lnk[aria-selected="true"] { background: rgba(0,113,227,0.1); }
+    .lnk .ic { width: 34px; height: 34px; border-radius: 8px; flex: none; display: grid; place-items: center; color: #fff; overflow: hidden; background: #8e8e93; }
+    .lnk .ic.yt { background: #1d1d1f; }
+    .lnk .ic.app { background: linear-gradient(#1ec8ff, #0a6cff); }
+    .lnk .ic.web { background: #e8e8ed; color: var(--ink2); }
+    .lnk .ic.home { background: #fff; color: var(--ink); box-shadow: 0 0 0 0.5px rgba(0,0,0,0.15); }
+    .lnk .ic svg { width: 16px; height: 16px; }
+    .lnk .ic img { width: 100%; height: 100%; object-fit: cover; }
+    .lnk .ic .mk { width: 20px; height: 20px; background: currentColor; -webkit-mask: url(/assets/mark-plus.png?v=1) center / contain no-repeat; mask: url(/assets/mark-plus.png?v=1) center / contain no-repeat; }
+    .lnk .tx { min-width: 0; flex: 1; }
+    .lnk .tx b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lnk .tx small { display: block; font-size: 11px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field > span { font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; }
+    .field input { width: 100%; border: 0; border-radius: 10px; background: rgba(0,0,0,0.05); padding: 9px 11px; outline: none; font-size: 14px; color: var(--ink); }
+    .field input:focus { background: #fff; box-shadow: 0 0 0 3px rgba(0,113,227,0.3); }
+    .urlrow { display: flex; gap: 6px; }
+    .urlrow input { flex: 1; min-width: 0; }
+
+    .thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .thumb { position: relative; width: 66px; height: 42px; padding: 0; border: 0; border-radius: 7px; overflow: hidden; background: #eee; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); transition: transform 0.1s ease; }
+    .thumb:active { transform: scale(0.95); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--blue); }
+    .thumb small { position: absolute; left: 4px; bottom: 3px; font-size: 10px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+    .drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 12px; border-radius: 12px; border: 1.5px dashed rgba(0,0,0,0.15); text-align: center; color: var(--ink2); transition: background 0.15s ease, border-color 0.15s ease; }
+    .drop.over { background: rgba(0,113,227,0.06); border-color: var(--blue); }
+    .drop b { font-weight: 600; color: var(--ink); }
+    .drop img { max-width: 100%; max-height: 120px; border-radius: 6px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); }
+    .link { border: 0; background: none; padding: 0; color: var(--blue); font-size: 13px; font-weight: 500; }
+    .link.danger { color: #d70015; }
+    .acts { display: flex; gap: 14px; justify-content: center; }
+
+    /* ---- the phone ---- */
+    .phone { width: 380px; flex: none; border-radius: 54px; background: #111; padding: 11px; position: sticky; top: 60px;
+      box-shadow: 0 30px 80px -20px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.2); }
+    .screen { position: relative; aspect-ratio: 9 / 16; border-radius: 44px; overflow: hidden; background: #e6e4e6; }
+    .screen canvas { display: block; width: 100%; height: 100%; }
+    .island { position: absolute; top: 1.6%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.6%; border-radius: 99px; background: #000; }
+    /* where Instagram's link sticker goes: shown here, never in the picture */
+    .sticker { position: absolute; left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px;
+      border-radius: 8px; background: #fff; color: #3478f6; font: 700 11px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0.01em; text-transform: uppercase;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18); opacity: 0.55; outline: 1.5px dashed rgba(255,255,255,0.9); outline-offset: 4px; pointer-events: none; white-space: nowrap; }
+    .sticker svg { width: 12px; height: 12px; }
+    .screen-hint { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+    .screen-hint span { padding: 8px 12px; border-radius: 10px; background: rgba(0,0,0,0.62); color: #fff; font-size: 12px; text-align: center; line-height: 1.35; }
+    .screen.over { outline: 3px solid var(--blue); outline-offset: -3px; }
+    .under { padding: 12px 6px 4px; color: rgba(255,255,255,0.6); font-size: 11.5px; text-align: center; }
+
+    /* ---- look ---- */
+    .row { display: flex; align-items: center; justify-content: space-between; min-height: 30px; font-size: 13px; gap: 12px; }
+    .seg { display: flex; padding: 2px; border-radius: 9px; background: rgba(0,0,0,0.06); }
+    .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; color: var(--ink2); white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+    .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06); }
+    .switch { appearance: none; -webkit-appearance: none; width: 38px; height: 23px; border-radius: 12px; background: #e3e3e8; position: relative; margin: 0; cursor: pointer; transition: background 0.2s ease; flex: none; }
+    .switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform 0.25s cubic-bezier(0.3, 1.3, 0.5, 1); }
+    .switch:checked { background: #34c759; }
+    .switch:checked::after { transform: translateX(15px); }
+    .swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+    .sw { width: 23px; height: 23px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2); transition: transform 0.1s ease; background-size: cover; background-position: center; }
+    .sw:hover { transform: scale(1.08); }
+    .sw[aria-pressed="true"] { box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2), 0 0 0 2px #fff, 0 0 0 4px var(--blue); }
+    .sw.blur { filter: blur(0.4px) saturate(1.3); }
+    .btn { width: 100%; height: 40px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 600; background: rgba(0,0,0,0.06); transition: transform 0.1s ease, background 0.15s ease; }
+    .btn:hover { background: rgba(0,0,0,0.09); }
+    .btn:active { transform: scale(0.98); }
+
+    @media (max-width: 1240px) {
+      .stage { grid-template-columns: auto auto; justify-content: center; }
+      .panel.left { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; width: auto; position: static; max-height: none; }
+    }
+    @media (max-width: 800px) {
+      .stage { display: flex; flex-direction: column; align-items: stretch; padding: 0 12px 24px; gap: 16px; }
+      .phone { width: min(380px, 100%); align-self: center; position: static; order: -1; }
+      .top { gap: 8px; padding: 0 12px; }
+      .tbtn.quiet { display: none; }
+      .panel { width: auto !important; position: static; max-height: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { .switch::after, .toast { transition: none; animation: none; } }
+    @media (prefers-reduced-transparency: reduce) { .panel { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="back" href="/admin/">Studio</a>
+    <div class="title">Story<span id="ofTopic"></span></div>
+    <span class="spacer"></span>
+    <button class="tbtn quiet" id="copyTop" type="button" disabled>Copy link</button>
+    <button class="tbtn primary" id="save" type="button" disabled title="PNG · 1080 × 1920, ready for Stories">Save picture</button>
+  </header>
+  <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
+
+  <main class="stage">
+    <aside class="panel left" aria-label="Link">
+      <section id="fromTopic" hidden>
+        <h3>From <span class="val" id="topicTitle"></span></h3>
+        <ol class="links" id="links" role="listbox" aria-label="The topic’s links"></ol>
+      </section>
+      <section>
+        <h3 id="urlHead">A link</h3>
+        <form class="urlrow field" id="urlForm" autocomplete="off">
+          <input type="text" id="url" inputmode="url" placeholder="Paste a link — YouTube, App Store, a website" aria-label="Link" spellcheck="false" />
+        </form>
+        <p class="note" id="urlNote">Press ⌘V anywhere on this page to paste one.</p>
+      </section>
+      <div class="rule"></div>
+      <section id="picSec" hidden>
+        <h3>Picture <span class="val" id="picVal"></span></h3>
+        <div class="thumbs" id="stills" hidden></div>
+        <div class="drop" id="drop">
+          <img id="dropImg" alt="" hidden />
+          <b id="dropTitle">Drop a screenshot here</b>
+          <span id="dropText">or take one with ⌘⇧⌃4 and press ⌘V</span>
+          <span class="acts"><button class="link" id="choose" type="button">Choose…</button><button class="link danger" id="rmPic" type="button" hidden>Remove</button></span>
+          <input type="file" id="file" accept="image/*" hidden />
+        </div>
+      </section>
+      <section id="wordsSec" hidden>
+        <h3>Words</h3>
+        <label class="field"><span id="titleLbl">Title</span><input type="text" id="tTitle" /></label>
+        <label class="field"><span id="subLbl">Under it</span><input type="text" id="tSub" /></label>
+      </section>
+    </aside>
+
+    <div class="phone" id="phone">
+      <div class="screen" id="screen">
+        <canvas id="view" width="1080" height="1920" aria-label="Story preview"></canvas>
+        <div class="island"></div>
+        <span class="sticker" id="sticker" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 9.5l3-3M7.6 5.3l1-1a2.3 2.3 0 0 1 3.2 3.2l-1 1M8.4 10.7l-1 1a2.3 2.3 0 0 1-3.2-3.2l1-1"/></svg><span id="stickerHost"></span></span>
+        <div class="screen-hint" id="hint"><span id="hintText">Paste a link to begin</span></div>
+      </div>
+      <p class="under">The dotted sticker shows where Instagram’s link goes — it isn’t in the picture.</p>
+    </div>
+
+    <aside class="panel right" aria-label="Look">
+      <section>
+        <h3>Look</h3>
+        <div class="row"><span>Background</span></div>
+        <div class="swatches" id="swatches"></div>
+        <label class="field" style="margin-top:6px"><span>Line on top</span><input type="text" id="kicker" placeholder="Nothing on top" /></label>
+        <div class="row" id="chromeRow" hidden><span>Window</span><div class="seg" id="chrome"><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>
+        <div class="row" id="shotsRow" hidden><span>Screenshots</span><input class="switch" type="checkbox" role="switch" id="shots" checked /></div>
+        <div class="row"><span>Signature</span><input class="switch" type="checkbox" role="switch" id="sign" checked /></div>
+      </section>
+      <div class="rule"></div>
+      <section>
+        <h3>In Instagram</h3>
+        <p class="note" style="font-size:12px;color:var(--ink2)">Share the picture as a story, add a <b>Link</b> sticker and paste the link. Saving copies the link for you.</p>
+        <button class="btn" id="copyLink" type="button" disabled>Copy link</button>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/assets/macwin.js?v=4"></script>
+  <script src="/admin/story.js?v=3"></script>
+</body>
+</html>

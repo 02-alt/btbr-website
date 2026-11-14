@@ -1906,6 +1906,114 @@
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); if (!m) return "";
     return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
+  var SITE_URL = "https://buildtoberemembered.com";
+  var ICO = {
+    post: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2" width="9" height="11.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 15h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    reel: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="1.5" width="8" height="13" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 6.2v3.6L9.8 8z" fill="currentColor"/></svg>',
+    story: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="1.5" width="8" height="13" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.6 9.4 9.4 6.6M7.6 6.1l.6-.6a1.4 1.4 0 0 1 2 2l-.6.6M8.4 9.9l-.6.6a1.4 1.4 0 0 1-2-2l.6-.6" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+    more: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/></svg>',
+    edit: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.8 2.7l2.5 2.5-7.6 7.6-3.2.7.7-3.2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    site: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>',
+    link: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7.6 5.3l1-1a2.3 2.3 0 0 1 3.2 3.2l-1 1M8.4 10.7l-1 1a2.3 2.3 0 0 1-3.2-3.2l1-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    tag: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5v4l6 6 5-5-6-6h-4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/></svg>',
+    trash: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.3 4.5V3h3.4v1.5M4.3 4.5l.6 9h6.2l.6-9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+  var FORMATS = [
+    { name: "Post", hint: "4:5 carousel", ico: "post", href: function (s) { return "/admin/instagram.html?t=" + encodeURIComponent(s); } },
+    { name: "Reel", hint: "9:16 video", ico: "reel", href: function (s) { return "/admin/reel.html?t=" + encodeURIComponent(s); } },
+    { name: "Story", hint: "9:16 with a link", ico: "story", href: function (s) { return "/admin/story.html?t=" + encodeURIComponent(s); } }
+  ];
+  function openTab(href) { var w = window.open(href, "_blank"); if (w) { try { w.opener = null; } catch (e) {} } return !!w; }
+
+  /* a Mac menu for a topic row: ⋯ shows the quieter actions; right-click shows everything */
+  var menuEl = null, menuFrom = null;
+  function closeMenu(refocus) {
+    if (!menuEl) return;
+    menuEl.remove(); menuEl = null;
+    document.removeEventListener("mousedown", menuOutside, true);
+    if (menuFrom) { menuFrom.setAttribute("aria-expanded", "false"); if (refocus) menuFrom.focus(); }
+    menuFrom = null;
+  }
+  function menuOutside(e) { if (menuEl && !menuEl.contains(e.target)) closeMenu(false); }
+  function rowMenu(t, sub, full, px, py, from, row) {
+    var again = menuFrom && menuFrom === from; closeMenu(false); if (again) return;
+    var items = [];
+    if (full) {
+      items.push({ ico: "edit", label: "Edit", run: function () { editTopic(t.slug); } }, "-");
+      FORMATS.forEach(function (f) { items.push({ ico: f.ico, label: f.name, hint: f.hint, run: function () { openTab(f.href(t.slug)); } }); });
+      items.push("-");
+    }
+    items.push({ ico: "site", label: "Open on site", run: function () { openTab("/curation/" + t.slug + "/"); } });
+    items.push({ ico: "link", label: "Copy link", run: function () {
+      var was = sub.textContent;
+      navigator.clipboard.writeText(SITE_URL + "/curation/" + t.slug + "/").then(function () { sub.textContent = "Link copied"; }, function () { sub.textContent = SITE_URL + "/curation/" + t.slug + "/"; });
+      setTimeout(function () { sub.textContent = was; }, 1600);
+    } });
+    items.push({ ico: "tag", label: "Themes\u2026", run: function () { toggleRowThemes(row, t); } });
+    items.push("-", { ico: "trash", label: "Delete\u2026", danger: true, run: function () { sub.dataset.label = sub.textContent; deleteTopic(t.slug, sub, t.title); } });
+    var m = document.createElement("div"); m.className = "row-menu"; m.setAttribute("role", "menu");
+    items.forEach(function (it) {
+      if (it === "-") { var hr = document.createElement("div"); hr.className = "row-menu-sep"; hr.setAttribute("role", "separator"); m.appendChild(hr); return; }
+      var b = document.createElement("button"); b.type = "button"; b.className = "row-menu-item" + (it.danger ? " is-danger" : ""); b.setAttribute("role", "menuitem"); b.tabIndex = -1;
+      b.innerHTML = ICO[it.ico] + "<span></span>" + (it.hint ? "<small></small>" : "");
+      b.querySelector("span").textContent = it.label; if (it.hint) b.querySelector("small").textContent = it.hint;
+      b.addEventListener("click", function () { closeMenu(false); it.run(); });
+      b.addEventListener("mouseenter", function () { b.focus(); });
+      m.appendChild(b);
+    });
+    m.addEventListener("keydown", function (e) {
+      var all = [].slice.call(m.querySelectorAll(".row-menu-item")), i = all.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); all[(i + (e.key === "ArrowDown" ? 1 : all.length - 1)) % all.length].focus(); }
+      else if (e.key === "Home" || e.key === "End") { e.preventDefault(); all[e.key === "Home" ? 0 : all.length - 1].focus(); }
+      else if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); closeMenu(true); }
+    });
+    document.body.appendChild(m);
+    var r = m.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+    var left = from ? px - r.width : px, top = py;
+    if (left + r.width > vw - 8) left = vw - 8 - r.width; if (left < 8) left = 8;
+    if (top + r.height > vh - 8) top = from ? from.getBoundingClientRect().top - 6 - r.height : vh - 8 - r.height;
+    m.style.left = left + "px"; m.style.top = Math.max(8, top) + "px";
+    menuEl = m; menuFrom = from;
+    if (from) from.setAttribute("aria-expanded", "true");
+    m.querySelector(".row-menu-item").focus();
+    setTimeout(function () { document.addEventListener("mousedown", menuOutside, true); }, 0);
+  }
+  window.addEventListener("resize", function () { closeMenu(false); });
+  document.addEventListener("scroll", function () { closeMenu(false); }, true);
+
+  /* the paste-a-link bar: any link → a story of it */
+  function asLink(v) {
+    v = String(v || "").trim();
+    if (!v || /\s/.test(v)) return "";
+    if (!/^https?:\/\//i.test(v)) { if (/^[\w-]+(\.[\w-]+)+(\/|$)/.test(v)) v = "https://" + v; else return ""; }
+    try { return new URL(v).href; } catch (e) { return ""; }
+  }
+  function storyFromLink(v) {
+    var u = asLink(v), inp = document.getElementById("storyUrl"), go = document.getElementById("storyGo");
+    if (!u) return false;
+    if (openTab("/admin/story.html?u=" + encodeURIComponent(u))) { if (inp) inp.value = ""; if (go) go.hidden = true; return true; }
+    if (inp) inp.value = u; if (go) go.hidden = false;   // a blocked pop-up: one more click opens it
+    return false;
+  }
+  (function () {
+    var form = document.getElementById("storyBar"), inp = document.getElementById("storyUrl"), go = document.getElementById("storyGo");
+    if (!form) return;
+    inp.addEventListener("input", function () { go.hidden = !asLink(inp.value); });
+    inp.addEventListener("paste", function (e) {
+      var v = e.clipboardData && e.clipboardData.getData("text/plain");
+      if (asLink(v)) { e.preventDefault(); inp.value = v.trim(); go.hidden = false; storyFromLink(v); }
+    });
+    form.addEventListener("submit", function (e) { e.preventDefault(); if (!storyFromLink(inp.value)) inp.focus(); });
+    // ⌘V anywhere on the Topics screen does the same
+    document.addEventListener("paste", function (e) {
+      if (!document.body.classList.contains("view-topics")) return;
+      if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
+      var v = e.clipboardData && e.clipboardData.getData("text/plain");
+      if (!asLink(v)) return;
+      e.preventDefault(); inp.value = v.trim(); go.hidden = false; storyFromLink(v);
+    });
+  })();
+
   function renderTopicsList() {
     var listEl = document.getElementById("topicsList"); if (!listEl) return;
     listEl.innerHTML = '<p class="topics-loading">Loading…</p>';
@@ -1928,14 +2036,21 @@
         var stat = document.createElement("div"); stat.className = "topic-stat";
         meta.appendChild(ti); meta.appendChild(sub);
         var acts = document.createElement("div"); acts.className = "topic-acts";
+        // the three Instagram formats as one control; the rest behind ⋯ (and right-click)
+        var seg = document.createElement("div"); seg.className = "topic-seg"; seg.setAttribute("role", "group"); seg.setAttribute("aria-label", "Make for Instagram");
+        FORMATS.forEach(function (f) {
+          var a = document.createElement("a"); a.href = f.href(t.slug); a.target = "_blank"; a.rel = "noopener"; a.title = f.name + " \u2014 " + f.hint;
+          a.innerHTML = ICO[f.ico] + "<span>" + f.name + "</span>";
+          seg.appendChild(a);
+        });
+        var more = document.createElement("button"); more.type = "button"; more.className = "topic-more"; more.innerHTML = ICO.more;
+        more.setAttribute("aria-label", "More for \u201C" + (t.title || "Untitled") + "\u201D"); more.setAttribute("aria-haspopup", "menu"); more.setAttribute("aria-expanded", "false");
+        more.addEventListener("click", function () { var r = more.getBoundingClientRect(); rowMenu(t, sub, false, r.right, r.bottom + 6, more, row); });
+        row.addEventListener("contextmenu", function (e) { e.preventDefault(); rowMenu(t, sub, true, e.clientX, e.clientY, null, row); });
         if (t.publishAt) {
-          var gl = document.createElement("button"); gl.type = "button"; gl.textContent = "Go live now"; gl.addEventListener("click", function () { goLiveNow(t.slug, gl); }); acts.appendChild(gl);
+          var gl = document.createElement("button"); gl.type = "button"; gl.className = "topic-golive"; gl.textContent = "Go live now"; gl.addEventListener("click", function () { goLiveNow(t.slug, gl); }); acts.appendChild(gl);
         }
-        var th = document.createElement("button"); th.type = "button"; th.textContent = "Themes"; th.addEventListener("click", function () { toggleRowThemes(row, t); });
-        var ig = document.createElement("a"); ig.href = "/admin/instagram.html?t=" + encodeURIComponent(t.slug); ig.target = "_blank"; ig.rel = "noopener"; ig.textContent = "Instagram";
-        var rl = document.createElement("a"); rl.href = "/admin/reel.html?t=" + encodeURIComponent(t.slug); rl.target = "_blank"; rl.rel = "noopener"; rl.textContent = "Reel";
-        var dl = document.createElement("button"); dl.type = "button"; dl.className = "del"; dl.textContent = "Delete"; dl.addEventListener("click", function () { deleteTopic(t.slug, dl, t.title); });
-        acts.appendChild(th); acts.appendChild(ig); acts.appendChild(rl); acts.appendChild(dl);
+        acts.appendChild(seg); acts.appendChild(more);
         row.appendChild(thumb); row.appendChild(meta); row.appendChild(stat); row.appendChild(acts); listEl.appendChild(row);
       });
       topicRowStats(listEl);
@@ -2034,7 +2149,7 @@
       renderTopicsList();
     } catch (e) {
       alert("Delete failed: " + (e && e.message || e));
-      if (btn) { btn.disabled = false; btn.textContent = "Delete"; }
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || "Delete"; }
     }
   }
   (function () {
