@@ -63,6 +63,7 @@
     .lnk .ic.yt { background: #1d1d1f; }
     .lnk .ic.app { background: linear-gradient(#1ec8ff, #0a6cff); }
     .lnk .ic.web { background: #e8e8ed; color: var(--ink2); }
+    .lnk .ic.music { background: linear-gradient(#fb5c74, #fa233b); }
     .lnk .ic.home { background: #fff; color: var(--ink); box-shadow: 0 0 0 0.5px rgba(0,0,0,0.15); }
     .lnk .ic svg { width: 16px; height: 16px; }
     .lnk .ic img { width: 100%; height: 100%; object-fit: cover; }
@@ -160,7 +161,7 @@
       <section>
         <h3 id="urlHead">A link</h3>
         <form class="urlrow field" id="urlForm" autocomplete="off">
-          <input type="text" id="url" inputmode="url" placeholder="Paste a link — YouTube, App Store, a website" aria-label="Link" spellcheck="false" />
+          <input type="text" id="url" inputmode="url" placeholder="Paste a link — YouTube, Apple Music, Are.na, a book, an app, a website" aria-label="Link" spellcheck="false" />
         </form>
         <p class="note" id="urlNote">Press ⌘V anywhere on this page to paste one.</p>
       </section>
@@ -180,6 +181,7 @@
         <h3>Words</h3>
         <label class="field"><span id="titleLbl">Title</span><input type="text" id="tTitle" /></label>
         <label class="field"><span id="subLbl">Under it</span><input type="text" id="tSub" /></label>
+        <label class="field" id="dekField" hidden><span>A line about it</span><input type="text" id="tDek" /></label>
       </section>
     </aside>
 
@@ -196,9 +198,10 @@
     <aside class="panel right" aria-label="Look">
       <section>
         <h3>Look</h3>
-        <div class="row"><span>Background</span></div>
+        <div class="row" id="styleRow" hidden><span>Style</span><div class="seg" id="style"></div></div>
+        <div class="row" id="bgRow"><span>Background</span></div>
         <div class="swatches" id="swatches"></div>
-        <label class="field" style="margin-top:6px"><span>Line on top</span><input type="text" id="kicker" placeholder="Nothing on top" /></label>
+        <label class="field" style="margin-top:6px"><span id="kickerLbl">Line on top</span><input type="text" id="kicker" placeholder="Nothing on top" /></label>
         <div class="row" id="chromeRow" hidden><span>Window</span><div class="seg" id="chrome"><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>
         <div class="row" id="shotsRow" hidden><span>Screenshots</span><input class="switch" type="checkbox" role="switch" id="shots" checked /></div>
         <div class="row"><span>Signature</span><input class="switch" type="checkbox" role="switch" id="sign" checked /></div>
@@ -213,6 +216,6 @@
   </main>
 
   <script src="/assets/macwin.js?v=4"></script>
-  <script src="/admin/story.js?v=3"></script>
+  <script src="/admin/story.js?v=6"></script>
 </body>
 </html>
