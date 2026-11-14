@@ -1889,7 +1889,7 @@
   })();
 
   /* ---------- Topics tab: list, edit, delete ---------- */
-  var VIEWS = { topics: "topicsView", calendar: "calView", stats: "statsView", stories: "storiesView" };
+  var VIEWS = { topics: "topicsView", calendar: "calView", stats: "statsView" };
   function switchTab(tab) {
     if (translating && tab !== "write") setTranslating(false);
     Object.keys(VIEWS).forEach(function (k) {
@@ -1901,7 +1901,6 @@
     if (tab === "topics") renderTopicsList();
     if (tab === "calendar") renderCalendar();
     if (tab === "stats") renderStats();
-    if (tab === "stories" && window.BtbrStories) window.BtbrStories.show();
   }
   function niceDate(d) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); if (!m) return "";

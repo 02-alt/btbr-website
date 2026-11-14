@@ -39,12 +39,14 @@
     arena: [["grid", "Channel"]],
     book: [["books", "Apple Books"]],
     bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
-    wiki: [["note", "Notes"]]
+    wiki: [["note", "Notes"]],
+    backloggd: [["bl-label", "Label"], ["bl-poster", "Poster"], ["bl-prints", "Prints"], ["bl-hand", "Review"], ["bl-quote", "Quote"]]
   };
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
   S.length = "";
-  S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note" }; S.dek = ""; S.stickerY = STICKER_Y;
+  S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note", backloggd: "bl-label" }; S.dek = "";
+  S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, text: "", best: "", platform: "", hours: "", name: "Isaaaaaaaac", note1: "the start", note2: "the best part", steam: "" }; S.stickerY = STICKER_Y;
   try { Object.assign(S.style, JSON.parse(localStorage.getItem("btbr_story_style") || "{}")); } catch (e) {}
   function styleOf() { return S.item ? S.style[S.item.kind] : ""; }
   var token = 0;                           // the link being loaded; older answers are dropped
@@ -162,12 +164,14 @@
       var lang = (/^([a-z-]+)\.(?:m\.)?wikipedia\.org$/.exec(u.hostname) || [])[1] || "en";
       return { kind: "wiki", lang: lang, page: m[1], url: href, host: lang + ".wikipedia.org" };
     }
+    if (host === "backloggd.com" && (m = /^\/games\/([^\/?#]+)/.exec(u.pathname))) return { kind: "backloggd", slug: m[1], url: "https://backloggd.com/games/" + m[1] + "/", host: "backloggd.com" };
     var own = host === SITE || u.origin === location.origin;
     return { kind: "web", url: own ? "https://" + SITE + u.pathname + u.search + u.hash : href, host: own ? SITE : host, own: own, path: own ? u.pathname + u.search : "" };
   }
-  function kindName(it) { return { youtube: "YouTube", app: "App Store", music: "Apple Music", arena: "Are.na", book: "Book", bandcamp: "Bandcamp", wiki: "Wikipedia" }[it.kind] || (it.own ? "This site" : "Website"); }
+  function kindName(it) { return { youtube: "YouTube", app: "App Store", music: "Apple Music", arena: "Are.na", book: "Book", bandcamp: "Bandcamp", wiki: "Wikipedia", backloggd: "Backloggd" }[it.kind] || (it.own ? "This site" : "Website"); }
   function defaultKicker(it) {
     if (it.own && /^\/curation\/[^\/]+/.test(it.path)) return "New in the curation";
+    if (it.kind === "backloggd") return "My review";
     if (topic && it.kind !== "bandcamp" && it.kind !== "wiki") return "From \u201C" + topic.title + "\u201D";
     return { youtube: "Now watching", app: "Worth downloading", music: "Now playing", arena: "", book: "Reading", bandcamp: "Bandcamp \u00B7 Lossless", wiki: "Worth reading" }[it.kind] != null
       ? { youtube: "Now watching", app: "Worth downloading", music: "Now playing", arena: "", book: "Reading", bandcamp: "Bandcamp \u00B7 Lossless", wiki: "Worth reading" }[it.kind] : "Worth a look";
@@ -251,6 +255,9 @@
         note((b.apple ? "Apple Books" : "Open Library") + (b.year ? " · " + b.year : ""), false);
         return loadImg(b.art).then(function (im) { if (my === token) S.pic = im; });
       });
+    } else if (it.kind === "backloggd") {
+      S.bl.game = { genres: [], platforms: [] }; S.bl.cover = S.bl.shot = S.bl.hero = null; S.bl.steam = "";
+      p = blLoad(it, my);
     } else if (it.own) {
       p = ownPage(it.path).then(function (o) {
         if (my !== token) return;
@@ -324,21 +331,21 @@
   /* ---------- the side panels follow the link ---------- */
   function panels() {
     var it = S.item, k = it && it.kind;
-    $("picSec").hidden = !it || !(k === "youtube" || k === "web" || k === "bandcamp" || k === "wiki");
+    $("picSec").hidden = !it || !(k === "youtube" || k === "web" || k === "bandcamp" || k === "wiki" || k === "backloggd");
     $("wordsSec").hidden = !it;
     $("chromeRow").hidden = k !== "web";
     $("shotsRow").hidden = k !== "app";
     $("stills").hidden = k !== "youtube";
     var has = !!(S.picSrc || (k === "web" && S.pic));
-    var mine = k === "web" || k === "bandcamp";
+    var mine = k === "web" || k === "bandcamp" || k === "backloggd";
     $("dropImg").hidden = !(mine && S.pic);
     if (mine && S.pic) $("dropImg").src = S.picSrc || S.pic.src;
-    $("dropTitle").textContent = k === "youtube" || k === "wiki" ? "Use your own picture" : has || (mine && S.pic) ? "Drop another to replace it" : k === "bandcamp" ? "Drop the album cover here" : "Drop a screenshot here";
-    $("dropText").textContent = k === "youtube" || k === "wiki" ? "drop one here, or press ⌘V" : k === "bandcamp" ? "or on Bandcamp right-click the cover, Copy Image, and press ⌘V here" : "or take one with ⌘⇧⌃4 and press ⌘V";
+    $("dropTitle").textContent = k === "backloggd" ? (S.picSrc ? "Drop another to replace it" : "Drop a screenshot of the game") : k === "youtube" || k === "wiki" ? "Use your own picture" : has || (mine && S.pic) ? "Drop another to replace it" : k === "bandcamp" ? "Drop the album cover here" : "Drop a screenshot here";
+    $("dropText").textContent = k === "backloggd" ? "for the prints and the poster — Backloggd only gives one" : k === "youtube" || k === "wiki" ? "drop one here, or press ⌘V" : k === "bandcamp" ? "or on Bandcamp right-click the cover, Copy Image, and press ⌘V here" : "or take one with ⌘⇧⌃4 and press ⌘V";
     $("rmPic").hidden = !(mine && S.pic) && !(k === "youtube" && S.own);
     $("picVal").textContent = k === "youtube" ? (S.own ? "Your own" : ["Cover", "\u00BC in", "Halfway", "\u00BE in"][S.still]) : "";
-    $("titleLbl").textContent = { app: "Name", arena: "Channel", bandcamp: "Album" }[k] || "Title";
-    $("subLbl").textContent = { app: "Maker", music: "Artist", arena: "By", book: "Author", bandcamp: "Artist" }[k] || "Under it";
+    $("titleLbl").textContent = { app: "Name", arena: "Channel", bandcamp: "Album", backloggd: "Game" }[k] || "Title";
+    $("subLbl").textContent = { app: "Maker", music: "Artist", arena: "By", book: "Author", bandcamp: "Artist", backloggd: "Studio" }[k] || "Under it";
     $("kickerLbl").textContent = k === "wiki" ? "Note title" : "Line on top";
     $("tSub").placeholder = it ? it.host : "";
     $("tTitle").placeholder = k === "web" ? "Optional — the page’s name" : "";
@@ -353,9 +360,10 @@
     $("chromeRow").hidden = !(k === "web" && st === "safari");
     $("shotsRow").hidden = !(k === "app" && (st === "card" || st === "glass"));
     $("bgRow").hidden = $("swatches").hidden = !!OWN_BG[st];
-    $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note" || st === "collection");
+    $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note" || st === "collection" || st === "bl-label" || st === "bl-poster");
     $("lengthField").hidden = st !== "collection";
-    $("tDek").placeholder = st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : st === "collection" ? "New in my collection." : "";
+    blFields();
+    $("tDek").placeholder = /^bl-/.test(st) ? "a fallen kingdom of bugs, and you in the dark of it" : st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : st === "collection" ? "New in my collection." : "";
     swatches();
   }
   function fields() { $("tTitle").value = S.title; $("tSub").value = S.sub; $("kicker").value = S.kicker; $("tDek").value = S.dek; }
@@ -883,6 +891,224 @@
       return { sticker: Math.min(1690, end + 120), sign: Math.min(1820, end + 270), soft: "rgba(255,255,255,0.75)" };
     }
   };
+  /* ---------- Backloggd: a game, or your review of it ----------
+     A game page answers cross-origin requests, so it's read straight from here: title, studio, year,
+     a line from the description, genres, platforms, the average, plays, time to finish, the cover and
+     the page's one picture. Reviews sit behind a bot check — those words, stars and hours are yours to type. */
+  function blParse(html) {
+    var d = new DOMParser().parseFromString(html, "text/html");
+    var q1 = function (s) { return d.querySelector(s); }, all = function (s) { return [].slice.call(d.querySelectorAll(s)); };
+    var txt = function (e) { return e ? e.textContent.replace(/\s+/g, " ").trim() : ""; };
+    var abs = function (u) { return !u ? "" : u.indexOf("//") === 0 ? "https:" + u : u; };
+    var uniq = function (a) { return a.filter(function (x, i) { return x && a.indexOf(x) === i; }); };
+    var g = {};
+    g.title = (q1("#game-page-meta") && q1("#game-page-meta").getAttribute("data-name")) || txt(q1("h1"));
+    if (!g.title) return null;
+    g.dev = txt(q1('a[href^="/company/"]'));
+    g.year = txt(q1("a.game-year")) || ((q1('meta[property="og:title"]') || {}).content || "").replace(/^.*\((\d{4})\).*$/, "$1");
+    g.desc = ((q1('meta[name="description"]') || {}).content || "").trim();
+    g.genres = uniq(all('a.game-details-value[href*="genre:"]').map(txt));
+    g.platforms = uniq(all("a.game-page-platform").map(txt));
+    g.avg = txt(q1("#game-rating h1") || q1(".game-rating h1"));
+    all("a.d-flex").forEach(function (a) { if (/^plays$/i.test(txt(a.querySelector(".log-counter-label")))) g.plays = txt(a.querySelector(".log-counter-stat")); });
+    all("p.label").forEach(function (p) {
+      var row = p.closest(".row"), v = (p.parentNode && p.parentNode.querySelector(".stat-value.element-revealed")) || (row && row.querySelector(".stat-value.element-revealed"));
+      var h = txt(v).replace(/h$/, "").trim(), lab = txt(p).toLowerCase();
+      if (lab === "to finish" && !g.finishH) g.finishH = h;
+    });
+    var cv = all("img").map(function (i) { return i.getAttribute("src") || i.getAttribute("data-src") || ""; }).filter(function (s) { return /t_cover_big/.test(s); })[0] || "";
+    g.cover = abs(cv.replace(/t_cover_big(_2x)?/, "t_cover_big_2x"));
+    var bg = q1("#game-cover-art img"); g.shot = abs(bg && (bg.getAttribute("data-src") || bg.getAttribute("src")) || "");
+    return g;
+  }
+  function blLine(desc) {
+    var s = String(desc || "").replace(/\s+/g, " ").trim(); if (!s) return "";
+    var cut = s.split(/(?<=[.!?])\s/)[0], m = /^(.{25,90}?)(,| in which | where | that | with an? )/i.exec(cut); if (m) cut = m[1];
+    if (cut.length > 100) cut = cut.slice(0, 97).replace(/\s+\S*$/, "") + "…";
+    return cut.replace(/[.]$/, "").replace(/^(A|An|The) /, function (w) { return w.toLowerCase(); });
+  }
+  function blPlatforms(list) {
+    var map = [[/windows|pc/i, "PC"], [/mac/i, "Mac"], [/linux/i, "Linux"], [/switch/i, "Switch"], [/playstation|ps\d/i, "PlayStation"], [/xbox/i, "Xbox"], [/ios|iphone|ipad/i, "iPhone"], [/android/i, "Android"]], out = [];
+    (list || []).forEach(function (p) { for (var i = 0; i < map.length; i++) if (map[i][0].test(p)) { if (out.indexOf(map[i][1]) < 0) out.push(map[i][1]); return; } if (out.indexOf(p) < 0) out.push(p); });
+    return out;
+  }
+  function blHand(s) { return String(s || "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-"); }
+  // a picture into a box, cropped, aimed at (px, py) in 0–1
+  function blFit(x, im, a, b, w, h, px, py) {
+    if (!im) { x.fillStyle = "#cfcdd0"; x.fillRect(a, b, w, h); return; }
+    var s = Math.max(w / im.naturalWidth, h / im.naturalHeight), sw = w / s, sh = h / s;
+    x.drawImage(im, (im.naturalWidth - sw) * (px == null ? 0.5 : px), (im.naturalHeight - sh) * (py == null ? 0.5 : py), sw, sh, a, b, w, h);
+  }
+  function blWrap(x, text, maxW) {
+    var out = [];
+    String(text || "").split("\n").forEach(function (p) { var line = ""; p.split(/\s+/).forEach(function (w) { if (!w) return; var t = line ? line + " " + w : w; if (line && x.measureText(t).width > maxW) { out.push(line); line = w; } else line = t; }); out.push(line); });
+    return out;
+  }
+  function blStar(x, cx, cy, r) { x.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? r * 0.45 : r; x[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2); } x.closePath(); }
+  function blStars(x, rating, a, b, size, on, off) {
+    var r = size / 2, gap = size * 0.16;
+    for (var i = 0; i < 5; i++) {
+      var cx = a + r + i * (size + gap), cy = b + r, f = Math.max(0, Math.min(1, rating - i));
+      x.fillStyle = off; blStar(x, cx, cy, r); x.fill();
+      if (f > 0) { x.save(); x.beginPath(); x.rect(cx - r, cy - r, size * f, size); x.clip(); x.fillStyle = on; blStar(x, cx, cy, r); x.fill(); x.restore(); }
+    }
+  }
+  function blPaper(x, a, b, w, h) {
+    x.save(); x.shadowColor = "rgba(40,30,40,0.18)"; x.shadowBlur = 70; x.shadowOffsetY = 34; x.fillStyle = "#fff"; x.fillRect(a, b, w, h); x.restore();
+    x.save(); x.shadowColor = "rgba(40,30,40,0.06)"; x.shadowBlur = 6; x.shadowOffsetY = 2; x.fillStyle = "#fff"; x.fillRect(a, b, w, h); x.restore();
+  }
+  // a polaroid: the picture, a note in Isaac's hand, a strip of tape → its height
+  function blPrint(x, im, a, b, w, ar, rot, note, ns, px, py) {
+    var pad = Math.round(w * 0.048), iw = w - 2 * pad, ih = Math.round(iw / ar), nh = Math.round((ns || 52) * 1.9), h = pad + ih + nh;
+    x.save(); x.translate(a + w / 2, b + h / 2); x.rotate(rot * Math.PI / 180); x.translate(-w / 2, -h / 2);
+    x.save(); x.shadowColor = "rgba(0,0,0,0.3)"; x.shadowBlur = 60; x.shadowOffsetY = 30; x.fillStyle = "#fdfcf9"; x.fillRect(0, 0, w, h); x.restore();
+    blFit(x, im, pad, pad, iw, ih, px, py);
+    if (note) { x.font = "400 " + (ns || 52) + 'px "My Hand", "Bradley Hand", cursive'; x.fillStyle = "#1f1d20"; x.textAlign = "left"; x.textBaseline = "alphabetic"; var t = blHand(note); while (x.measureText(t).width > iw && t.length > 3) t = t.slice(0, -2); x.fillText(t, pad + 6, pad + ih + nh * 0.62); }
+    x.save(); x.translate(w / 2, 0); x.rotate(-0.035); x.fillStyle = "rgba(235,228,205,0.86)"; var tw = Math.min(180, w * 0.4); x.fillRect(-tw / 2, -24, tw, 48); x.restore();
+    x.restore();
+    return h;
+  }
+  function blMeta() {
+    var g = S.bl.game, out = [];
+    if (g.avg) out.push(g.avg + " ★ on Backloggd"); if (g.plays) out.push(g.plays + " played"); if (g.finishH) out.push("~" + g.finishH + " h to finish");
+    return out;
+  }
+  function blCover() { return S.bl.cover; }
+  function blShot() { return S.pic || S.bl.shot || S.bl.cover; }
+  var HAND = '"My Hand", "Bradley Hand", cursive';
+  var BL = {
+    // the cover hung in a museum frame, the white label under it
+    "bl-label": function (x) {
+      var g = S.bl.game;
+      x.fillStyle = "#e6e4e6"; x.fillRect(0, 0, W, H);
+      var fw = 600, fx = (W - fw) / 2, fy = 250, inner = fw - 52 - 120, ih = Math.round(inner * 4 / 3), fh = 52 + 120 + ih;
+      x.save(); x.translate(fx + fw / 2, fy + fh / 2); x.rotate(-0.6 * Math.PI / 180); x.translate(-fw / 2, -fh / 2);
+      x.save(); x.shadowColor = "rgba(30,20,30,0.45)"; x.shadowBlur = 90; x.shadowOffsetY = 50; x.fillStyle = "#141414"; x.fillRect(0, 0, fw, fh); x.restore();
+      x.fillStyle = "#faf9f6"; x.fillRect(26, 26, fw - 52, fh - 52);
+      x.save(); x.shadowColor = "rgba(0,0,0,0.25)"; x.shadowBlur = 4; x.shadowOffsetY = 1; blFit(x, blCover(), 26 + 60, 26 + 60, inner, ih); x.restore();
+      x.restore();
+      var lx = 70, lw = W - 140, ly = fy + fh + 64;
+      x.font = "400 58px " + SANS; if ("letterSpacing" in x) x.letterSpacing = "-1.4px";
+      var tl = blWrap(x, [S.sub && S.sub + ",", (S.title || g.title) + ",", [S.dek, g.year].filter(Boolean).join(", ")].filter(Boolean).join("\n"), lw - 100).slice(0, 5);
+      var meta = blMeta(), lh = 64, lhgt = 44 + tl.length * lh + (meta.length ? 66 : 0) + 30;
+      blPaper(x, lx, ly, lw, lhgt);
+      x.fillStyle = "#111"; x.textAlign = "left"; x.textBaseline = "top";
+      tl.forEach(function (l, i) { x.fillText(l, lx + 50, ly + 44 + i * lh); });
+      if ("letterSpacing" in x) x.letterSpacing = "0px";
+      if (meta.length) { x.font = "400 27px " + SANS; x.fillStyle = "#8a888b"; x.fillText(meta.join("   ·   "), lx + 50, ly + 44 + tl.length * lh + 24); }
+      x.textBaseline = "alphabetic";
+      return { sticker: Math.min(1700, ly + lhgt + 110), sign: Math.min(1840, ly + lhgt + 250), soft: "#8a888b" };
+    },
+    // the game's art, its name large, one line, three pictures
+    "bl-poster": function (x) {
+      var g = S.bl.game;
+      x.fillStyle = "#0b0b0d"; x.fillRect(0, 0, W, H);
+      blFit(x, S.bl.hero || blCover(), 0, 0, W, 1060, 0.6, 0.08);
+      var gr = x.createLinearGradient(0, 0, 0, 1080); gr.addColorStop(0, "rgba(11,11,13,0)"); gr.addColorStop(0.55, "rgba(11,11,13,0.1)"); gr.addColorStop(0.85, "rgba(11,11,13,0.88)"); gr.addColorStop(1, "#0b0b0d");
+      x.fillStyle = gr; x.fillRect(0, 0, W, 1080);
+      say(x, [S.sub, g.year].filter(Boolean).join(" · ").toUpperCase(), 80, 990, "400 30px " + SANS, "#9a9aa0", "left", 4);
+      var t = S.title || g.title, fs = fitSize(x, t, 700, SANS, 128, 72, W - 160);
+      say(x, t, 80, 990 + fs * 1.05, "700 " + fs + "px " + SANS, "#fff", "left", -4);
+      var y = 990 + fs * 1.05 + 70;
+      if (S.dek.trim()) y = para(x, S.dek.trim().charAt(0).toUpperCase() + S.dek.trim().slice(1) + ".", 80, y, "400 38px " + SANS, "#c9c9cf", "left", W - 160, 50, 2) + 50;
+      var tw = (W - 160 - 40) / 3, ty = Math.max(y, 1250);
+      [blShot(), S.bl.hero || blCover(), blCover()].forEach(function (im, i) { x.save(); rr(x, 80 + i * (tw + 20), ty, tw, tw * 9 / 16, 12); x.clip(); blFit(x, im, 80 + i * (tw + 20), ty, tw, tw * 9 / 16); x.restore(); });
+      var end = ty + tw * 9 / 16;
+      if (g.avg) say(x, "★ " + g.avg + " on Backloggd", 80, end + 70, "400 28px " + SANS, "#7d7d84");
+      return { sticker: Math.min(1700, end + 170), sign: Math.min(1840, end + 310), soft: "rgba(255,255,255,0.5)" };
+    },
+    // two pictures and the cover as taped prints, notes in your hand
+    "bl-prints": function (x) {
+      var g = S.bl.game;
+      x.fillStyle = "#e6e4e6"; x.fillRect(0, 0, W, H);
+      blPrint(x, blShot(), 70, 230, 480, 4 / 3, -3, S.bl.note1, 50);
+      blPrint(x, S.bl.hero && S.bl.hero !== blCover() ? S.bl.hero : blShot(), 530, 520, 480, 4 / 3, 2.6, S.bl.note2, 50, 0.7);
+      var ch = blPrint(x, blCover(), 100, 880, 340, 3 / 4, -1.4, S.title || g.title, 42);
+      x.textAlign = "left"; x.textBaseline = "top"; x.font = "400 50px " + SANS; x.fillStyle = "#111";
+      var tl = blWrap(x, [S.sub && S.sub + ",", g.year && g.year + "."].filter(Boolean).join("\n"), W - 590);
+      tl.forEach(function (l, i) { x.fillText(l, 520, 1150 + i * 56); });
+      var y = 1150 + tl.length * 56 + 22; x.font = "400 27px " + SANS; x.fillStyle = "#8a888b";
+      [g.genres.slice(0, 3).join(" · "), blPlatforms(g.platforms).join(", ")].filter(Boolean).forEach(function (t) { blWrap(x, t, W - 590).slice(0, 3).forEach(function (l) { x.fillText(l, 520, y); y += 36; }); });
+      x.textBaseline = "alphabetic";
+      var end = Math.max(880 + ch, y);
+      return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "#8a888b" };
+    },
+    // your review, written in your hand, the stars under it
+    "bl-hand": function (x) {
+      var g = S.bl.game, rv = S.bl;
+      x.fillStyle = "#e6e4e6"; x.fillRect(0, 0, W, H);
+      var ph = blPrint(x, blCover(), 350, 230, 380, 3 / 4, -2.5, [S.title || g.title, g.year].filter(Boolean).join(", "), 40);
+      var q = '"' + blHand(rv.text || "Your review, in your hand.") + '"', size = 84, top = 230 + ph + 70;
+      x.font = "400 " + size + "px " + HAND;
+      while (blWrap(x, q, W - 180).length * size * 1.08 > 440 && size > 46) { size -= 4; x.font = "400 " + size + "px " + HAND; }
+      x.fillStyle = "#1f1d20"; x.textAlign = "left"; x.textBaseline = "top";
+      var ql = blWrap(x, q, W - 180); ql.forEach(function (l, i) { x.fillText(l, 90, top + i * size * 1.08); });
+      var sy = top + ql.length * size * 1.08 + 40;
+      blStars(x, rv.rating, 90, sy, 76, "#111", "rgba(0,0,0,0.16)");
+      x.font = "400 30px " + SANS; x.fillStyle = "#8a888b"; x.fillText("— " + [rv.name, "on Backloggd"].filter(Boolean).join(", "), 90, sy + 116);
+      x.textBaseline = "alphabetic";
+      var end = sy + 150;
+      return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "#8a888b" };
+    },
+    // your best line, large, over the game's art
+    "bl-quote": function (x) {
+      var g = S.bl.game, rv = S.bl;
+      x.fillStyle = "#0b0b0d"; x.fillRect(0, 0, W, H);
+      x.save(); x.globalAlpha = 0.4; blFit(x, S.bl.hero || blCover(), 0, 0, W, H, 0.6, 0.35); x.restore();
+      var gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "rgba(11,11,13,0.2)"); gr.addColorStop(0.45, "rgba(11,11,13,0.6)"); gr.addColorStop(0.75, "#0b0b0d"); gr.addColorStop(1, "#0b0b0d");
+      x.fillStyle = gr; x.fillRect(0, 0, W, H);
+      var k = S.kicker.trim(); if (k) say(x, one(x, k.toUpperCase(), "400 30px " + SANS, 920), 80, 290, "400 30px " + SANS, "#b9b9c0", "left", 4);
+      var q = "“" + String(rv.best || rv.text || "Your best line.").replace(/^["“]|["”]$/g, "") + "”", size = 96;
+      x.font = "700 " + size + "px " + SANS;
+      while (blWrap(x, q, W - 160).length * size * 1.04 > 560 && size > 54) { size -= 4; x.font = "700 " + size + "px " + SANS; }
+      var ql = blWrap(x, q, W - 160); ql.forEach(function (l, i) { say(x, l, 80, 350 + size + i * size * 1.04, "700 " + size + "px " + SANS, "#fff", "left", -3); });
+      var sy = 350 + size + (ql.length - 1) * size * 1.04 + 70;
+      blStars(x, rv.rating, 80, sy, 72, "#fff", "rgba(255,255,255,0.22)");
+      var by = sy + 170;
+      x.fillStyle = "rgba(255,255,255,0.18)"; x.fillRect(80, by - 40, W - 160, 1.5);
+      x.save(); x.shadowColor = "rgba(0,0,0,0.5)"; x.shadowBlur = 40; x.shadowOffsetY = 20; rr(x, 80, by, 170, 227, 12); x.fillStyle = "#000"; x.fill(); x.restore();
+      x.save(); rr(x, 80, by, 170, 227, 12); x.clip(); blFit(x, blCover(), 80, by, 170, 227); x.restore();
+      say(x, one(x, S.title || g.title, "400 44px " + SANS, W - 360), 284, by + 70, "400 44px " + SANS, "#fff");
+      var played = [rv.platform && "played on " + rv.platform, rv.hours && rv.hours + " h"].filter(Boolean).join(" · ");
+      say(x, one(x, [S.sub, g.year].filter(Boolean).join(" · "), "400 30px " + SANS, W - 360), 284, by + 122, "400 30px " + SANS, "#9a9aa0");
+      if (played) say(x, one(x, played, "400 30px " + SANS, W - 360), 284, by + 164, "400 30px " + SANS, "#9a9aa0");
+      var end = by + 227;
+      return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "rgba(255,255,255,0.5)" };
+    }
+  };
+  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; OWN_BG[k] = 1; });
+  ["bl-label", "bl-poster", "bl-prints", "bl-hand"].forEach(function (k) { NO_KICKER[k] = 1; });
+  function blLoad(it, my) {
+    note("Reading Backloggd…", false);
+    return fetch("https://backloggd.com/games/" + it.slug + "/", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).then(function (html) {
+      if (my !== token) return;
+      if (/not a bot|Anubis/i.test(html)) { note("Backloggd asked for a bot check — open the game page once in this browser, then paste the link again.", true); return; }
+      var g = blParse(html); if (!g) { note("That doesn’t look like a Backloggd game page.", true); return; }
+      S.bl.game = g; S.title = g.title; S.sub = g.dev; S.dek = blLine(g.desc);
+      if (!S.bl.platform) S.bl.platform = blPlatforms(g.platforms)[0] || "";
+      note("Backloggd · " + [g.year, g.avg && g.avg + " ★"].filter(Boolean).join(" · "), false);
+      return Promise.all([loadImg(g.cover), loadImg(g.shot)]).then(function (a) { if (my !== token) return; S.bl.cover = a[0]; S.bl.shot = a[1]; S.bl.hero = null; });
+    }).catch(function () { if (my === token) note("Couldn’t read that Backloggd page.", true); });
+  }
+  // the review fields and the prints' notes
+  function blFields() {
+    var on = !!(S.item && S.item.kind === "backloggd"), st = styleOf();
+    $("blSec").hidden = !on; if (!on) return;
+    $("blReview").hidden = !(st === "bl-hand" || st === "bl-quote");
+    $("blNotes").hidden = st !== "bl-prints";
+    $("blRating").value = String(S.bl.rating); $("blText").value = S.bl.text; $("blBest").value = S.bl.best;
+    $("blPlatform").value = S.bl.platform; $("blHours").value = S.bl.hours; $("blName").value = S.bl.name;
+    $("blNote1").value = S.bl.note1; $("blNote2").value = S.bl.note2; $("blSteam").value = S.bl.steam || "";
+  }
+  [["blText", "text"], ["blBest", "best"], ["blPlatform", "platform"], ["blHours", "hours"], ["blName", "name"], ["blNote1", "note1"], ["blNote2", "note2"]].forEach(function (p) {
+    $(p[0]).addEventListener("input", function () { S.bl[p[1]] = this.value; draw(); });
+  });
+  $("blRating").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
+  $("blSteam").addEventListener("change", function () {
+    var m = /store\.steampowered\.com\/app\/(\d+)/.exec(this.value) || /^(\d{3,8})$/.exec(this.value.trim()); S.bl.steam = this.value;
+    if (!m) { S.bl.hero = null; draw(); return; }
+    var my = token; loadImg("https://cdn.cloudflare.steamstatic.com/steam/apps/" + m[1] + "/library_hero.jpg").then(function (im) { if (my === token) { S.bl.hero = im; draw(); } });
+  });
   function signAt(x, y, soft) {
     if (!S.sign) return;
     var mh = 48, label = "builtoberemembered";
