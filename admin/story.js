@@ -1215,8 +1215,9 @@
     var c = blGround(x), l = blYearList(), a = 134, w = W - 268, b = 400, p = 48, rh = 128, top = b + 160, h = 160 + l.length * rh + 24;
     blTop(x, c);
     x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 56); x.fillStyle = "#fff"; x.fill(); x.restore();
-    say(x, S.bl.label.toUpperCase(), a + p, b + 72, "700 26px " + SANS, blTint().accent, "left", 0.5);
-    say(x, "BACKLOGGD", a + w - p, b + 72, "600 22px " + SANS, "#a1a1a6", "right", 1.5);
+    var lab = S.bl.label.trim();   // your label, Backloggd on the right — or, with none, Backloggd in its place
+    say(x, (lab || "Backloggd").toUpperCase(), a + p, b + 72, "700 26px " + SANS, blTint().accent, "left", 0.5);
+    if (lab) say(x, "BACKLOGGD", a + w - p, b + 72, "600 22px " + SANS, "#a1a1a6", "right", 1.5);
     say(x, "Top games", a + p, b + 134, "700 60px " + SANS, "#1d1d1f", "left", -1.2);
     x.fillStyle = "#e5e5ea"; x.fillRect(a + p, top, w - 2 * p, 1.5);
     l.forEach(function (g, i) {
@@ -1235,8 +1236,9 @@
   BL["bl-replay"] = function (x) {
     var l = blYearList(), gr = x.createLinearGradient(W * 0.35, 0, W * 0.65, H), tn = blTint().stops;
     gr.addColorStop(0, tn[0]); gr.addColorStop(0.55, tn[1]); gr.addColorStop(1, tn[2]); x.fillStyle = gr; x.fillRect(0, 0, W, H);
-    say(x, S.bl.label.toUpperCase(), 80, 280, "700 30px " + SANS, "rgba(255,255,255,0.62)", "left", 0.5);
-    say(x, "BACKLOGGD", W - 80, 280, "600 26px " + SANS, "rgba(255,255,255,0.42)", "right", 1.5);
+    var lab = S.bl.label.trim();
+    say(x, (lab || "Backloggd").toUpperCase(), 80, 280, "700 30px " + SANS, "rgba(255,255,255,0.62)", "left", 0.5);
+    if (lab) say(x, "BACKLOGGD", W - 80, 280, "600 26px " + SANS, "rgba(255,255,255,0.42)", "right", 1.5);
     var k = S.kicker.trim() || "My year in games"; x.font = "700 112px " + SANS;
     var tl = lines(x, k, W - 160, 2);
     if (tl.length === 2) {   // two lines of even length read better than a long one and an orphan
@@ -1276,7 +1278,7 @@
       var m = blGameMeta(g); if (m) say(x, one(x, m, "400 24px " + SANS, cw), px, py + 324, "400 24px " + SANS, c.soft);
       end = py + 330;
     });
-    var e2 = blUnder(x, c, end + 110, blYearLine(), S.bl.label);   // under it, the year — not the game
+    var e2 = blUnder(x, c, end + 110, blYearLine(), S.bl.label.trim() || (blMonthly() ? MONTHS[S.bl.month] + " " : "") + new Date().getFullYear());   // under it, the year — not the game
     return { sticker: Math.min(1700, e2 + 110), sign: Math.min(1840, e2 + 250), soft: c.soft };
   };
   // My top 5: number one large, the other four in a row beneath it
@@ -1422,8 +1424,7 @@
     $("blDone").hidden = !BL_DONE.test(st); $("blYear").hidden = !BL_YEAR.test(st); $("blQuote").hidden = !BL_QUOTE.test(st);
     $("blRating3").value = String(S.bl.rating); $("blHours3").value = S.bl.hours; $("blPlat3").value = S.bl.platform; $("blPlat3").closest(".field").hidden = st !== "bl-win";
     if (!S.bl.time) { var d = new Date(); S.bl.time = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); S.bl.date = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""); }
-    var yy = "\u2019" + String(new Date().getFullYear()).slice(2);
-    if (!S.bl.labelSet) S.bl.label = blMonthly() ? "Remembered \u00B7 " + MONTHS[S.bl.month] : "Remembered " + yy;   // follows the period until you write your own
+    if (!S.bl.labelSet) S.bl.label = "";   // no label unless you write one
     [].forEach.call($("blPeriod").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl.period); });
     [].forEach.call($("blTint").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl.tint); });
     $("blTintRow").hidden = !(st === "bl-replay" || st === "bl-top");
@@ -1457,7 +1458,7 @@
       var mine = slot.ask = {};
       fetch("https://backloggd.com/games/" + m[1] + "/", { cache: "no-cache" }).then(function (r) { return r.text(); }).then(function (html) {
         var g = blParse(html); if (!g || slot.ask !== mine) return;
-        slot.game = g; row.querySelector(".yname").textContent = g.title;
+        slot.game = g; row.querySelector(".yname").textContent = g.title; draw();   // the name now, the cover when it comes
         return loadImg(g.cover).then(function (im) { if (slot.ask === mine) { slot.cover = im; draw(); } });
       }).catch(function () { row.querySelector(".yname").textContent = "Couldn\u2019t read that page"; });
     });
