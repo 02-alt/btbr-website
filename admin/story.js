@@ -40,7 +40,7 @@
     book: [["books", "Apple Books"]],
     bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
     wiki: [["note", "Notes"]],
-    backloggd: [["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-phone", "iPhone"], ["bl-notifs", "Notifications"], ["bl-lock", "Lock Screen"], ["bl-top", "Top games"], ["bl-replay", "Replay"], ["bl-grid", "Grid"], ["bl-appstore", "Review"], ["bl-messages", "Messages"], ["bl-books", "Books"]]
+    backloggd: [["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-phone", "iPhone"], ["bl-notifs", "Notifications"], ["bl-lock", "Lock Screen"], ["bl-top", "Top games"], ["bl-replay", "Replay"], ["bl-grid", "Grid"], ["bl-podium", "Top 5"], ["bl-appstore", "Review"], ["bl-messages", "Messages"], ["bl-books", "Books"]]
   };
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
@@ -1181,8 +1181,8 @@
   /* My year in games: the game you pasted first, then up to four more by their Backloggd links */
   function blH(v) { return String(v || "").trim().replace(/\s*h(ours?)?$/i, ""); }
   function blYearList() {
-    var out = [{ title: S.title || S.bl.game.title, dev: S.sub, cover: blCover(), art: blArt(), hours: blH(S.bl.hours), rating: S.bl.rating }];
-    S.bl.year.forEach(function (y) { if (y.game) out.push({ title: y.game.title, dev: y.game.dev, cover: y.cover, art: y.cover, hours: blH(y.hours), rating: y.rating || 0 }); });
+    var out = [{ title: S.title || S.bl.game.title, dev: S.sub, year: S.bl.game.year, cover: blCover(), art: blArt(), hours: blH(S.bl.hours), rating: S.bl.rating }];
+    S.bl.year.forEach(function (y) { if (y.game) out.push({ title: y.game.title, dev: y.game.dev, year: y.game.year, cover: y.cover, art: y.cover, hours: blH(y.hours), rating: y.rating || 0 }); });
     return out;
   }
   function blYearLine() {
@@ -1276,6 +1276,35 @@
     });
     var e2 = blUnder(x, c, end + 110, blYearLine(), S.bl.label);   // under it, the year — not the game
     return { sticker: Math.min(1700, e2 + 110), sign: Math.min(1840, e2 + 250), soft: c.soft };
+  };
+  // My top 5: number one large, the other four in a row beneath it
+  BL["bl-podium"] = function (x) {
+    var c = blGround(x), l = blYearList(), f = l[0], cw0 = 420, ch0 = 560, b = 400;
+    blTop(x, c);
+    function box(im, px, py, pw, ph, r) {
+      x.save(); x.shadowColor = "rgba(0,0,0,0.12)"; x.shadowBlur = 6; x.shadowOffsetY = 2; rr(x, px, py, pw, ph, r); x.fillStyle = "#000"; x.fill(); x.restore();
+      x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 50; x.shadowOffsetY = 24; rr(x, px, py, pw, ph, r); x.fillStyle = "#000"; x.fill(); x.restore();
+      x.save(); rr(x, px, py, pw, ph, r); x.clip(); blFit(x, im, px, py, pw, ph); x.restore();
+    }
+    box(f.cover, (W - cw0) / 2, b, cw0, ch0, 22);
+    var t = "1 · " + (f.title || ""), fs = fitSize(x, t, 700, SANS, 46, 32, W - 160);
+    say(x, t, W / 2, b + ch0 + 84, "700 " + fs + "px " + SANS, c.ink, "center", -0.7);
+    var sub = [f.dev, f.year].filter(Boolean).join(" · ");
+    if (sub) say(x, one(x, sub, "400 32px " + SANS, W - 160), W / 2, b + ch0 + 132, "400 32px " + SANS, c.soft, "center");
+    var rest = l.slice(1, 5), end = b + ch0 + 132;
+    if (rest.length) {
+      var gap = 24, cw = (W - 220 - 3 * gap) / 4, ch = Math.round(cw * 4 / 3), ry = b + ch0 + 190, a = (W - (rest.length * cw + (rest.length - 1) * gap)) / 2;
+      // one size for all four names; a subtitle after a colon goes
+      var names = rest.map(function (g, i) { return (i + 2) + " · " + String(g.title || "").split(/:\s/)[0]; });
+      var nf = Math.min.apply(null, names.map(function (n) { return fitSize(x, n, 600, SANS, 24, 18, cw); }));
+      rest.forEach(function (g, i) {
+        var px = a + i * (cw + gap); box(g.cover, px, ry, cw, ch, 14);
+        var nt = names[i];
+        say(x, one(x, nt, "600 " + nf + "px " + SANS, cw), px, ry + ch + 38, "600 " + nf + "px " + SANS, c.ink);
+      });
+      end = ry + ch + 38;
+    }
+    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
   };
   /* the quote: your review the Apple way — an App Store review, a Messages thread, a page in Books */
   var SERIF = '"New York", "Iowan Old Style", "Palatino", Georgia, serif';
@@ -1389,7 +1418,7 @@
     }).catch(function () { if (my === token) note("Couldn’t read that Backloggd page.", true); });
   }
   // what each kind of story asks for: the figures, the moment you finished, your year
-  var BL_NOW = /^bl-(tvcard|tv|win|launch|glass)$/, BL_DONE = /^bl-(phone|notifs|lock)$/, BL_YEAR = /^bl-(top|replay|grid)$/, BL_QUOTE = /^bl-(appstore|messages|books)$/;
+  var BL_NOW = /^bl-(tvcard|tv|win|launch|glass)$/, BL_DONE = /^bl-(phone|notifs|lock)$/, BL_YEAR = /^bl-(top|replay|grid|podium)$/, BL_QUOTE = /^bl-(appstore|messages|books)$/;
   var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   function blMonthly() { return S.bl.period === "month"; }
   function blFields() {
@@ -1404,6 +1433,7 @@
     [].forEach.call($("blPeriod").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl.period); });
     [].forEach.call($("blTint").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl.tint); });
     $("blTintRow").hidden = !(st === "bl-replay" || st === "bl-top");
+    $("blYearHead").hidden = st === "bl-podium"; $("blYearH").textContent = st === "bl-podium" ? "Your top 5" : "Your year";
     $("blMonth").value = String(S.bl.month); $("blMonthRow").hidden = !blMonthly();
     $("blRTitle").value = S.bl.rtitle; $("blText").value = S.bl.text; $("blBest").value = S.bl.best; $("blName").value = S.bl.name; $("blDay").value = S.bl.day; $("blAsk").value = S.bl.ask; $("blTime2").value = S.bl.time;
     $("blRTitleRow").hidden = st !== "bl-appstore"; $("blAskRow").hidden = st !== "bl-messages";
@@ -1411,7 +1441,7 @@
     $("blLabel").value = S.bl.label; $("blGames").value = S.bl.games; $("blTotal").value = S.bl.total;
     $("blFirst").textContent = "1 \u00B7 " + (S.title || S.bl.game.title || "this game") + " — its hours and rating are in the figures above";
     // the line on top follows the style until you write your own
-    if (!S.kickerSet) { S.kicker = BL_DONE.test(st) ? "Just finished" : BL_YEAR.test(st) ? (blMonthly() ? "My " + MONTHS[S.bl.month] + " in games" : "My year in games") : st === "bl-messages" ? "Asked about it" : BL_QUOTE.test(st) ? "My review" : "Now playing"; $("kicker").value = S.kicker; }
+    if (!S.kickerSet) { S.kicker = BL_DONE.test(st) ? "Just finished" : st === "bl-podium" ? "My top 5" : BL_YEAR.test(st) ? (blMonthly() ? "My " + MONTHS[S.bl.month] + " in games" : "My year in games") : st === "bl-messages" ? "Asked about it" : BL_QUOTE.test(st) ? "My review" : "Now playing"; $("kicker").value = S.kicker; }
     $("blSteam").value = S.bl.steam || "";
   }
   [["blHours3", "hours"], ["blPlat3", "platform"], ["blTime", "time"], ["blDate", "date"], ["blNext", "next"], ["blGames", "games"], ["blTotal", "total"],
