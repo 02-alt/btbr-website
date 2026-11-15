@@ -364,7 +364,7 @@
     $("shotsRow").hidden = !(k === "app" && (st === "card" || st === "glass"));
     $("bgRow").hidden = $("swatches").hidden = !!OWN_BG[st];
     $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note" || st === "collection" || st === "bl-tvcard");
-    $("lengthField").hidden = st !== "collection";
+    $("lengthField").hidden = !(st === "collection" || (k === "youtube" && st === "tv"));
     blFields();
     $("tDek").placeholder = /^bl-/.test(st) ? "A fallen kingdom of bugs, and you in the dark of it" : st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : st === "collection" ? "New in my collection." : "";
     swatches();
@@ -780,11 +780,12 @@
       if (S.kicker.trim()) say(x, S.kicker.trim().toUpperCase(), 80, 1010, "600 26px " + SYS, "rgba(255,255,255,0.55)", "left", 3);
       var y = para(x, S.title || "YouTube", 80, 1090, "700 64px " + SYS, "#fff", "left", 920, 74, 3);
       if (S.sub.trim()) say(x, one(x, S.sub.trim(), "500 30px " + SYS, 920), 80, y + 64, "500 30px " + SYS, "rgba(255,255,255,0.6)");
+      // no Play button — nobody can press it in a story; a quiet line instead: how long, and where
       var by = y + 112;
-      rr(x, 80, by, 300, 92, 20); x.fillStyle = "#fff"; x.fill(); playTri(x, 146, by + 46, 22, "#000"); say(x, "Play", 248, by + 58, "600 36px " + SYS, "#000", "center");
-      rr(x, 400, by, 92, 92, 46); x.fillStyle = "rgba(255,255,255,0.18)"; x.fill();
-      x.fillStyle = "#fff"; x.fillRect(446 - 16, by + 44, 32, 4); x.fillRect(444, by + 30, 4, 32);
-      var st = Math.min(1680, Math.max(1560, by + 240));
+      x.fillStyle = "rgba(255,255,255,0.16)"; x.fillRect(80, by, W - 160, 1.5);
+      var meta = [String(S.length || "").trim(), "youtube.com"].filter(Boolean).join(" \u00B7 ");
+      say(x, meta, 80, by + 58, "500 30px " + SYS, "rgba(255,255,255,0.55)");
+      var st = Math.min(1680, Math.max(1560, by + 200));
       return { sticker: st, soft: "rgba(255,255,255,0.5)" };
     },
     // Y2 — QuickTime with a Liquid Glass control bar, on the still blurred
