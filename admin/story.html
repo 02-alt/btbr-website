@@ -199,6 +199,11 @@
           <label class="field" id="blPlatRow" style="margin-top:8px"><span>Platform</span><input type="text" id="blPlat2" placeholder="Switch" /></label>
           <p class="note" style="font-size:12px;color:var(--ink2);margin-top:8px">The background is in Look, on the right: a tone, or the cover blurred.</p>
         </div>
+        <div id="blStats" hidden>
+          <h3>The figures</h3>
+          <div style="display:flex;gap:8px"><label class="field" style="flex:1"><span>My rating</span><select id="blRating3" style="border:0;border-radius:10px;background:rgba(0,0,0,0.05);padding:9px 11px;font-size:14px"><option value="5">★★★★★ 5</option><option value="4.5">★★★★½ 4.5</option><option value="4">★★★★ 4</option><option value="3.5">★★★½ 3.5</option><option value="3">★★★ 3</option><option value="2.5">★★½ 2.5</option><option value="2">★★ 2</option><option value="1.5">★½ 1.5</option><option value="1">★ 1</option><option value="0.5">½ 0.5</option><option value="0">None</option></select></label><label class="field" style="width:90px"><span>Hours</span><input type="text" id="blHours3" inputmode="numeric" placeholder="41" /></label></div>
+          <p class="note" style="font-size:12px;color:var(--ink2);margin-top:8px">Backloggd's average comes from the page. Leave hours empty to leave them out.</p>
+        </div>
         <div id="blNotes">
           <h3>Notes on the prints</h3>
           <label class="field"><span>First</span><input type="text" id="blNote1" /></label>
@@ -248,6 +253,6 @@
   </main>
 
   <script src="/assets/macwin.js?v=4"></script>
-  <script src="/admin/story.js?v=10"></script>
+  <script src="/admin/story.js?v=11"></script>
 </body>
 </html>
