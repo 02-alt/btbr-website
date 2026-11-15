@@ -40,7 +40,7 @@
     book: [["books", "Apple Books"]],
     bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
     wiki: [["note", "Notes"]],
-    backloggd: [["bl-label", "Label"], ["bl-poster", "Poster"], ["bl-prints", "Prints"], ["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-cart", "Cartridge"], ["bl-case", "Case"], ["bl-hand", "Review"], ["bl-quote", "Quote"]]
+    backloggd: [["bl-label", "Label"], ["bl-poster", "Poster"], ["bl-prints", "Prints"], ["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-cart", "Cartridge"], ["bl-case", "Case"], ["bl-hand", "Review"], ["bl-quote", "Quote"]]
   };
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
@@ -1152,14 +1152,15 @@
     if (g.avg) c.push([g.avg, "On Backloggd"]);
     return c;
   }
-  function blStatRow(x, a, b, w, ink, soft, line) {   // → the row's bottom
+  function blStatRow(x, a, b, w, ink, soft, line, left) {   // → the row's bottom
     var c = blStatCols(); if (!c.length) return b;
     x.fillStyle = line; x.fillRect(a, b, w, 1.5);
     var cw = w / c.length;
     c.forEach(function (s, i) {
-      if (i) { x.fillStyle = line; x.fillRect(a + i * cw, b + 26, 1.5, 80); }
-      say(x, s[0], a + cw * (i + 0.5), b + 66, "700 40px " + SANS, ink, "center", -0.5);
-      say(x, s[1], a + cw * (i + 0.5), b + 100, "400 24px " + SANS, soft, "center");
+      var cx = left ? a + i * cw : a + cw * (i + 0.5), al = left ? "left" : "center";
+      if (i && !left) { x.fillStyle = line; x.fillRect(a + i * cw, b + 26, 1.5, 80); }
+      say(x, s[0], cx, b + 66, "700 40px " + SANS, ink, al, -0.5);
+      say(x, s[1], cx, b + 100, "400 24px " + SANS, soft, al);
     });
     return b + 116;
   }
@@ -1201,7 +1202,95 @@
     if (meta) { end += 60; say(x, meta, 80, end, "400 28px " + SANS, "rgba(255,255,255,0.5)"); }
     return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 270), soft: "rgba(255,255,255,0.5)" };
   };
-  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (k !== "bl-cart" && k !== "bl-case" && k !== "bl-tvcard") OWN_BG[k] = 1; });
+  /* the game in a Mac window — three ways to say how it's going, none of them a progress bar */
+  function blWin(x, a, b, w, h, fill) {
+    x.save(); x.shadowColor = "rgba(0,0,0,0.12)"; x.shadowBlur = 6; x.shadowOffsetY = 2; rr(x, a, b, w, h, 28); x.fillStyle = fill; x.fill(); x.restore();
+    x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 28); x.fillStyle = fill; x.fill(); x.restore();
+  }
+  function blLights(x, a, b) { ["#ff5f57", "#febc2e", "#28c840"].forEach(function (c, i) { x.beginPath(); x.arc(a + 37 + i * 34, b + 35, 11, 0, Math.PI * 2); x.fillStyle = c; x.fill(); }); }
+  function blUnder(x, c, y, line) {   // the name under the window, and one quiet line
+    var t = S.title || S.bl.game.title, fs = fitSize(x, t, 700, SANS, 46, 34, W - 160);
+    say(x, t, W / 2, y, "700 " + fs + "px " + SANS, c.ink, "center", -0.7);
+    if (line) say(x, one(x, line, "400 32px " + SANS, W - 160), W / 2, y + 52, "400 32px " + SANS, c.soft, "center");
+    return y + 52;
+  }
+  function blTop(x, c) { var k = S.kicker.trim(); if (k) say(x, one(x, k, "500 40px " + SANS, W - 200), W / 2, 326, "500 40px " + SANS, c.soft, "center", 0.5); }
+  function blHoursTxt() { var h = String(S.bl.hours || "").trim().replace(/\s*h(ours?)?$/i, ""); return h ? h + " h" : ""; }
+  // a pane of frosted glass over the window's art: the art again, blurred, tinted, a fine light edge
+  function blFrost(x, a, b, w, h, r, art) {
+    x.save(); rr(x, a, b, w, h, r); x.clip();
+    x.filter = "blur(36px) saturate(1.7)"; art(); x.filter = "none";
+    x.fillStyle = "rgba(30,30,34,0.5)"; x.fillRect(a, b, w, h); x.restore();
+    rr(x, a + 0.75, b + 0.75, w - 1.5, h - 1.5, r); x.strokeStyle = "rgba(255,255,255,0.18)"; x.lineWidth = 1.5; x.stroke();
+  }
+  // A · the art fills the window; the name on it, the figures along its foot
+  BL["bl-win"] = function (x) {
+    var c = blGround(x), g = S.bl.game, a = 80, b = 470, w = W - 160, h = 680;
+    blTop(x, c); blWin(x, a, b, w, h, "#000");
+    x.save(); rr(x, a, b, w, h, 28); x.clip();
+    blFit(x, blArt(), a, b, w, h, 0.62, 0.25);
+    var gl = x.createLinearGradient(a, 0, a + w, 0); gl.addColorStop(0, "rgba(0,0,0,0.78)"); gl.addColorStop(0.62, "rgba(0,0,0,0.05)"); x.fillStyle = gl; x.fillRect(a, b, w, h);
+    var gb = x.createLinearGradient(0, b + h - 300, 0, b + h); gb.addColorStop(0, "rgba(0,0,0,0)"); gb.addColorStop(1, "rgba(0,0,0,0.7)"); x.fillStyle = gb; x.fillRect(a, b + h - 300, w, 300);
+    x.restore(); blLights(x, a, b);
+    var t = S.title || g.title, fs = fitSize(x, t, 700, SANS, 68, 44, w - 96);
+    say(x, t, a + 48, b + 262, "700 " + fs + "px " + SANS, "#fff", "left", -1.4);
+    say(x, one(x, [S.sub, g.year, g.genres[0]].filter(Boolean).join(" \u00B7 "), "400 26px " + SANS, w - 96), a + 48, b + 312, "400 26px " + SANS, "rgba(255,255,255,0.72)");
+    blStatRow(x, a + 48, b + h - 156, w - 96, "#fff", "rgba(255,255,255,0.6)", "rgba(255,255,255,0.22)", true);
+    var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub, S.bl.platform].filter(Boolean).join(" \u00B7 "));
+    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+  };
+  // B · a game's page in a launcher: the art across the top, the box standing on it, the stars beside
+  BL["bl-launch"] = function (x) {
+    var c = blGround(x), g = S.bl.game, a = 80, b = 470, w = W - 160, h = 700, base = "#121214";
+    blTop(x, c); blWin(x, a, b, w, h, base);
+    x.save(); rr(x, a, b, w, h, 28); x.clip();
+    blFit(x, blArt(), a, b, w, 420, 0.62, 0.25);
+    var gb = x.createLinearGradient(0, b + 220, 0, b + 420); gb.addColorStop(0, "rgba(18,18,20,0)"); gb.addColorStop(1, base); x.fillStyle = gb; x.fillRect(a, b + 220, w, 201);
+    x.restore(); blLights(x, a, b);
+    var ca = a + 48, cb = b + 250, cw = 250, ch = 333;
+    x.save(); x.shadowColor = "rgba(0,0,0,0.6)"; x.shadowBlur = 50; x.shadowOffsetY = 24; rr(x, ca, cb, cw, ch, 14); x.fillStyle = "#000"; x.fill(); x.restore();
+    x.save(); rr(x, ca, cb, cw, ch, 14); x.clip(); blFit(x, blCover(), ca, cb, cw, ch); x.restore();
+    rr(x, ca + 0.75, cb + 0.75, cw - 1.5, ch - 1.5, 14); x.strokeStyle = "rgba(255,255,255,0.12)"; x.lineWidth = 1.5; x.stroke();
+    var tx = a + 336, tw = w - 336 - 40, t = S.title || g.title, fs = fitSize(x, t, 700, SANS, 58, 36, tw);
+    say(x, t, tx, b + 492, "700 " + fs + "px " + SANS, "#fff", "left", -1.2);
+    say(x, one(x, [S.sub, g.year, g.genres[0]].filter(Boolean).join(" \u00B7 "), "400 25px " + SANS, tw), tx, b + 534, "400 25px " + SANS, "rgba(255,255,255,0.6)");
+    var sx = tx, hrs = blHoursTxt();
+    if (S.bl.rating) { blStars(x, S.bl.rating, tx, b + 566, 34, "#fff", "rgba(255,255,255,0.25)"); sx = tx + 5 * 34 + 4 * 34 * 0.16 + 22; }
+    if (hrs) {
+      if (sx > tx) { say(x, "\u00B7", sx, b + 594, "400 26px " + SANS, "rgba(255,255,255,0.35)"); sx += 26; }
+      say(x, hrs.replace(/ h$/, " hours"), sx, b + 594, "400 26px " + SANS, "rgba(255,255,255,0.85)");
+    }
+    var end = blUnder(x, c, b + h + 104, ["Backloggd", g.avg && "\u2605 " + g.avg + " average"].filter(Boolean).join(" \u00B7 "));
+    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+  };
+  // C · a glass card floating on the art: the cover, the name, your stars — nothing to press
+  BL["bl-glass"] = function (x) {
+    var c = blGround(x), g = S.bl.game, a = 80, b = 470, w = W - 160, h = 680;
+    var art = function () { blFit(x, blArt(), a, b, w, h, 0.62, 0.25); };
+    blTop(x, c); blWin(x, a, b, w, h, "#000");
+    x.save(); rr(x, a, b, w, h, 28); x.clip(); art();
+    var gb = x.createLinearGradient(0, b + h * 0.45, 0, b + h); gb.addColorStop(0, "rgba(0,0,0,0)"); gb.addColorStop(1, "rgba(0,0,0,0.35)"); x.fillStyle = gb; x.fillRect(a, b, w, h);
+    var hrs = blHoursTxt();
+    if (hrs) {
+      var lab = hrs + " played"; x.font = "600 24px " + SANS; var pw = x.measureText(lab).width + 44, pa = a + w - 28 - pw;
+      blFrost(x, pa, b + 22, pw, 48, 24, art); say(x, lab, pa + pw / 2, b + 54, "600 24px " + SANS, "#fff", "center");
+    }
+    var ga = a + 36, gw = w - 72, gh = 162, gt = b + h - 36 - gh;
+    blFrost(x, ga, gt, gw, gh, 40, art);
+    x.restore(); blLights(x, a, b);
+    x.save(); rr(x, ga + 22, gt + 22, 118, 118, 20); x.clip(); blFit(x, blCover(), ga + 22, gt + 22, 118, 118, 0.5, 0.3); x.restore();
+    var sw = S.bl.rating ? 5 * 34 + 4 * 34 * 0.16 : 0, tx = ga + 22 + 118 + 26, tw = gw - (tx - ga) - (sw ? sw + 40 : 24);
+    var t = S.title || g.title, fs = fitSize(x, t, 700, SANS, 40, 28, tw);
+    say(x, t, tx, gt + 76, "700 " + fs + "px " + SANS, "#fff", "left", -0.4);
+    say(x, one(x, [S.sub, g.year].filter(Boolean).join(" \u00B7 "), "400 24px " + SANS, tw), tx, gt + 112, "400 24px " + SANS, "rgba(255,255,255,0.65)");
+    if (sw) {
+      blStars(x, S.bl.rating, ga + gw - 34 - sw, gt + 50, 34, "#fff", "rgba(255,255,255,0.25)");
+      say(x, "my rating", ga + gw - 34, gt + 116, "400 22px " + SANS, "rgba(255,255,255,0.6)", "right");
+    }
+    var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub, hrs].filter(Boolean).join(" \u00B7 "));
+    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+  };
+  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (k !== "bl-cart" && k !== "bl-case" && k !== "bl-tvcard" && k !== "bl-win" && k !== "bl-launch" && k !== "bl-glass") OWN_BG[k] = 1; });
   ["bl-label", "bl-poster", "bl-prints", "bl-hand"].forEach(function (k) { NO_KICKER[k] = 1; });
   function blLoad(it, my) {
     note("Reading Backloggd…", false);
@@ -1226,10 +1315,10 @@
     $("blMineRow").hidden = !(obj && S.bl.show === "mine");
     [["blCart", "cart"], ["blBox", "box"], ["blShow", "show"]].forEach(function (p) { [].forEach.call($(p[0]).children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl[p[1]]); }); });
     $("blRating2").value = String(S.bl.rating); $("blPlat2").value = S.bl.platform;
-    var tv = st === "bl-tvcard" || st === "bl-tv"; $("blStats").hidden = !tv;
+    var tv = /^bl-(tvcard|tv|win|launch|glass)$/.test(st); $("blStats").hidden = !tv;
     $("blRating3").value = String(S.bl.rating); $("blHours3").value = S.bl.hours;
     // the line on top follows the style until you write your own
-    if (!S.kickerSet) { S.kicker = { "bl-cart": "Now playing", "bl-case": "In my collection", "bl-tvcard": "Now playing", "bl-tv": "Now playing" }[st] || "My review"; $("kicker").value = S.kicker; }
+    if (!S.kickerSet) { S.kicker = { "bl-cart": "Now playing", "bl-case": "In my collection", "bl-tvcard": "Now playing", "bl-tv": "Now playing", "bl-win": "Now playing", "bl-launch": "Now playing", "bl-glass": "Now playing" }[st] || "My review"; $("kicker").value = S.kicker; }
     $("blRating").value = String(S.bl.rating); $("blText").value = S.bl.text; $("blBest").value = S.bl.best;
     $("blPlatform").value = S.bl.platform; $("blHours").value = S.bl.hours; $("blName").value = S.bl.name;
     $("blNote1").value = S.bl.note1; $("blNote2").value = S.bl.note2; $("blSteam").value = S.bl.steam || "";
