@@ -13,7 +13,7 @@
   var SYS = 'system-ui, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
   var SITE = "buildtoberemembered.com";
   var TOP = 400, BOTTOM = 1340;            // the object fits between these; Instagram's bar is above, the sticker below
-  var STICKER_Y = 1470, SIGN_Y = 1640;
+  var STICKER_Y = 1470, SIGN_Y = 1818;   // the signature sits at the same height on every story, at the foot
   var TONES = [["#e6e4e6", "Grey"], ["#e9e4dc", "Sand"], ["#dcd8d2", "Stone"], ["#dfe2e5", "Mist"], ["#ffffff", "White"],
     ["#2c2b2d", "Graphite"], ["#26292c", "Slate"], ["#332c27", "Umber"], ["#221d1a", "Espresso"]];
   // the btbr mark: the hand-drawn + (the curation cards' mark), tinted to the story's quiet ink
@@ -621,7 +621,7 @@
       if (cabinImg) { x.save(); rr(x, 80, cy, 76, 76, 17); x.clip(); x.drawImage(cabinImg, 80, cy, 76, 76); x.restore(); }
       say(x, "Cabin — a Bandcamp player for the Mac", 180, cy + 34, "600 28px " + SYS, "rgba(255,255,255,0.85)");
       say(x, "Free · buildtoberemembered.com", 180, cy + 70, "400 24px " + SYS, "rgba(255,255,255,0.5)");
-      return { sticker: Math.min(1700, cy + 190), sign: Math.min(1840, cy + 320), soft: "rgba(255,255,255,0.55)" };
+      return { sticker: Math.min(1700, cy + 190), soft: "rgba(255,255,255,0.55)" };
     },
     // Bandcamp — Cabin's "New in your collection", said as a story: "Just bought" — the cover glowing in Cabin's dark window, its length, the receipt card
     collection: function (x) {
@@ -669,7 +669,7 @@
       var cy = by + 140;
       if (cabinImg) { x.save(); rr(x, W / 2 - 230, cy, 56, 56, 13); x.clip(); x.drawImage(cabinImg, W / 2 - 230, cy, 56, 56); x.restore(); }
       say(x, "Cabin — a Bandcamp player for the Mac", W / 2 - 160, cy + 37, "500 25px " + SYS, "rgba(255,255,255,0.6)");
-      return { sticker: 1630, sign: 1800, soft: "rgba(255,255,255,0.5)" };
+      return { sticker: 1630, soft: "rgba(255,255,255,0.5)" };
     },
     // Wikipedia — an Apple Notes page: the date, a title, a line of yours, the article as its link card
     note: function (x) {
@@ -686,7 +686,7 @@
       say(x, one(x, S.title, "600 34px " + SYS, w - 64), a + 32, b + ih + 66, "600 34px " + SYS, "#1d1d1f");
       say(x, one(x, S.sub || S.item.host, "400 26px " + SYS, w - 64), a + 32, b + ih + 116, "400 26px " + SYS, "#8e8e93");
       var end = b + ch;
-      return { sticker: Math.min(1700, end + 150), sign: Math.min(1840, end + 300), soft: "#8e8e93" };
+      return { sticker: Math.min(1700, end + 150), soft: "#8e8e93" };
     },
     // M1 — Apple Music's Now Playing: the cover big over its own colours, the scrubber, the controls
     playing: function (x) {
@@ -707,7 +707,7 @@
         var cx = W / 2 + d * 220;
         [0, 1].forEach(function (k) { var o = cx + d * (k ? 2 : -38); x.beginPath(); x.moveTo(o, cy - 26); x.lineTo(o + d * 36, cy); x.lineTo(o, cy + 26); x.closePath(); x.fill(); });
       });
-      return { sticker: 1630, sign: 1770, soft: "rgba(255,255,255,0.6)" };
+      return { sticker: 1630, soft: "rgba(255,255,255,0.6)" };
     },
     // M2 — the album's page in the Music app
     album: function (x) {
@@ -733,7 +733,7 @@
         say(x, one(x, t.name, (on ? "600" : "400") + " 34px " + SYS, 760), 180, y, (on ? "600" : "400") + " 34px " + SYS, "#000");
         x.fillStyle = "rgba(0,0,0,0.08)"; x.fillRect(180, y + 32, 790, 1.5);
       });
-      return { sticker: 1640, sign: 1780, soft: "#8e8e93" };
+      return { sticker: 1640, soft: "#8e8e93" };
     },
     // R1 — an Are.na channel: who, what, how many, and a grid of its blocks
     grid: function (x) {
@@ -749,10 +749,10 @@
         else { x.font = "400 " + (small ? 24 : 40) + "px Arial, Helvetica, sans-serif"; var ls = lines(x, it.text || it.title, s - (small ? 44 : 100), small ? 7 : 12); x.fillStyle = "#333"; x.textAlign = "left"; x.textBaseline = "alphabetic"; ls.forEach(function (l, i) { x.fillText(l, a + (small ? 22 : 50), b + (small ? 48 : 90) + i * (small ? 32 : 54)); }); }
         if (small && it.title) say(x, one(x, it.title, "400 22px Arial, Helvetica, sans-serif", s), a + s / 2, b + s + 34, "400 22px Arial, Helvetica, sans-serif", "#999", "center");
       }
-      if (A.block) { block(A.items[0] || {}, 110, 470, 860, false); return { sticker: 1520, sign: 1680, soft: "#999" }; }
+      if (A.block) { block(A.items[0] || {}, 110, 470, 860, false); return { sticker: 1520, soft: "#999" }; }
       var s = 290, gap = 35;
       A.items.slice(0, 9).forEach(function (it, i) { block(it, 70 + (i % 3) * (s + gap), 460 + ((i / 3) | 0) * (s + 70), s, true); });
-      return { sticker: 1600, sign: 1760, soft: "#999" };
+      return { sticker: 1600, soft: "#999" };
     },
     // L1 — Apple Books: the cover with its soft shadow, title, author, Get and Sample
     books: function (x) {
@@ -770,7 +770,7 @@
         pillBtn(x, 150, py, 370, 86, "#0071e3", p, "600 34px " + SYS, "#fff"); pillBtn(x, 560, py, 370, 86, "#f2f2f7", "Sample", "600 34px " + SYS, "#0071e3");
       } else if (B.pub) say(x, one(x, B.pub, "400 30px " + SYS, 900), W / 2, py + 40, "400 30px " + SYS, "#8e8e93", "center");
       var st = Math.min(1720, Math.max(1600, py + 220));
-      return { sticker: st, sign: Math.min(1850, st + 140), soft: "#8e8e93" };
+      return { sticker: st, soft: "#8e8e93" };
     },
     // Y1 — Apple TV: the still runs into black, a big title, ▶ Play
     tv: function (x) {
@@ -785,7 +785,7 @@
       rr(x, 400, by, 92, 92, 46); x.fillStyle = "rgba(255,255,255,0.18)"; x.fill();
       x.fillStyle = "#fff"; x.fillRect(446 - 16, by + 44, 32, 4); x.fillRect(444, by + 30, 4, 32);
       var st = Math.min(1680, Math.max(1560, by + 240));
-      return { sticker: st, sign: Math.min(1810, st + 150), soft: "rgba(255,255,255,0.5)" };
+      return { sticker: st, soft: "rgba(255,255,255,0.5)" };
     },
     // Y2 — QuickTime with a Liquid Glass control bar, on the still blurred
     quicktime: function (x) {
@@ -801,7 +801,7 @@
       if (S.kicker.trim()) say(x, one(x, S.kicker.trim(), "500 40px " + SANS, W - 200), W / 2, 440, "500 40px " + SANS, "rgba(255,255,255,0.75)", "center");
       var y = para(x, S.title, W / 2, 1250, "700 48px " + SYS, "#fff", "center", 900, 58, 2);
       if (S.sub.trim()) say(x, one(x, S.sub.trim(), "400 32px " + SYS, 900), W / 2, (S.title ? y : 1190) + 56, "400 32px " + SYS, "rgba(255,255,255,0.65)", "center");
-      return { sticker: 1560, sign: 1720, soft: "rgba(255,255,255,0.55)" };
+      return { sticker: 1560, soft: "rgba(255,255,255,0.55)" };
     },
     // Y4 — Keynote stage: black, the still glowing, a floor reflection, one white line
     keynote: function (x) {
@@ -818,7 +818,7 @@
       var fs = fitSize(x, k, 700, SYS, 72, 44, W - 160); say(x, k, W / 2, 420, "700 " + fs + "px " + SYS, "#f5f5f7", "center", -1);
       para(x, S.title, W / 2, 482, "500 34px " + SYS, "#86868b", "center", 860, 44, 2);
       if (S.sub.trim()) say(x, one(x, S.sub.trim(), "500 30px " + SYS, 900), W / 2, 1500, "500 30px " + SYS, "#86868b", "center");
-      return { sticker: 1630, sign: 1790, soft: "#6e6e73" };
+      return { sticker: 1630, soft: "#6e6e73" };
     },
     // W3 — the page on an iPad
     ipad: function (x) {
@@ -838,7 +838,7 @@
       if (S.pic) { var pw = w - 52, ph = pw * S.pic.naturalHeight / S.pic.naturalWidth; x.drawImage(S.pic, a + 26, b + 98, pw, ph); }
       else say(x, one(x, S.item.host, "700 54px " + SYS, w - 160), a + w / 2, b + h / 2, "700 54px " + SYS, "#1d1d1f", "center");
       x.restore();
-      return { sticker: 1650, sign: 1800, soft: soft };
+      return { sticker: 1650, soft: soft };
     },
     // W5 — an apple.com-style opener: a huge name, one line, blue links, the picture
     hero: function (x) {
@@ -855,7 +855,7 @@
       x.save(); rr(x, 60, pb, 960, ph, 30); x.clip(); x.fillStyle = "#f5f5f7"; x.fillRect(60, pb, 960, ph);
       if (S.pic) { var r = S.pic.naturalHeight / S.pic.naturalWidth; if (r > ph / 960) x.drawImage(S.pic, 60, pb, 960, 960 * r); else cover(x, S.pic, 60, pb, 960, ph); }
       x.restore();
-      return { sticker: Math.min(1700, pb + ph + 120), sign: Math.min(1830, pb + ph + 270), soft: "#86868b" };
+      return { sticker: Math.min(1700, pb + ph + 120), soft: "#86868b" };
     },
     // A2 — the icon big on white, the name, a line, Get
     icon: function (x) {
@@ -870,7 +870,7 @@
       var p = priceLabel(); x.font = "600 34px " + SYS; var pw = Math.max(220, x.measureText(p).width + 90);
       pillBtn(x, W / 2 - pw / 2, 1390, pw, 80, "#0071e3", p, "600 34px " + SYS, "#fff");
       say(x, storeLine(), W / 2, 1530, "400 28px " + SYS, "#86868b", "center");
-      return { sticker: 1650, sign: 1800, soft: "#86868b" };
+      return { sticker: 1650, soft: "#86868b" };
     },
     // A4 — one Liquid Glass card over the icon's colours
     glass: function (x) {
@@ -891,7 +891,7 @@
         x.save(); rr(x, sx, sy, sw, sh, land ? 24 : 34); x.clip(); cover(x, im, sx, sy, sw, sh, true); x.restore();
       });
       var end = b + h;
-      return { sticker: Math.min(1690, end + 120), sign: Math.min(1820, end + 270), soft: "rgba(255,255,255,0.75)" };
+      return { sticker: Math.min(1690, end + 120), soft: "rgba(255,255,255,0.75)" };
     }
   };
   /* ---------- Backloggd: a game, or your review of it ----------
@@ -1004,7 +1004,7 @@
     say(x, sub, a + p, sy, "400 28px " + SANS, "#6e6e73");
     if (blStatCols().length) blStatRow(x, a + p, rowTop, w - 2 * p, "#1d1d1f", "#86868b", "#e5e5ea");
     dl.forEach(function (l, i) { say(x, l, a + p, rowEnd + 26 + 28 + i * 39, "400 28px " + SANS, "#6e6e73"); });
-    return { sticker: Math.min(1700, bottom + 110), sign: Math.min(1840, bottom + 250), soft: c.soft };
+    return { sticker: Math.min(1700, bottom + 110), soft: c.soft };
   };
   // the art full-bleed, fading to black; the name large, the studio, the figures
   BL["bl-tv"] = function (x) {
@@ -1022,7 +1022,7 @@
     var end = blStatRow(x, 80, y + 44, W - 160, "#fff", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.16)");
     var meta = [g.genres[0], g.year].filter(Boolean).join(" \u00B7 ");
     if (meta) { end += 60; say(x, meta, 80, end, "400 28px " + SANS, "rgba(255,255,255,0.5)"); }
-    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 270), soft: "rgba(255,255,255,0.5)" };
+    return { sticker: Math.min(1700, end + 130), soft: "rgba(255,255,255,0.5)" };
   };
   /* the game in a Mac window — three ways to say how it's going, none of them a progress bar */
   function blWin(x, a, b, w, h, fill) {
@@ -1059,7 +1059,7 @@
     say(x, one(x, [S.sub, g.year, g.genres[0]].filter(Boolean).join(" \u00B7 "), "400 26px " + SANS, w - 96), a + 48, b + 312, "400 26px " + SANS, "rgba(255,255,255,0.72)");
     blStatRow(x, a + 48, b + h - 156, w - 96, "#fff", "rgba(255,255,255,0.6)", "rgba(255,255,255,0.22)", true);
     var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub, S.bl.platform].filter(Boolean).join(" \u00B7 "));
-    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+    return { sticker: Math.min(1700, end + 130), soft: c.soft };
   };
   // B · a game's page in a launcher: the art across the top, the box standing on it, the stars beside
   BL["bl-launch"] = function (x) {
@@ -1083,7 +1083,7 @@
       say(x, hrs.replace(/ h$/, " hours"), sx, b + 594, "400 26px " + SANS, "rgba(255,255,255,0.85)");
     }
     var end = blUnder(x, c, b + h + 104, ["Backloggd", g.avg && "\u2605 " + g.avg + " average"].filter(Boolean).join(" \u00B7 "));
-    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+    return { sticker: Math.min(1700, end + 130), soft: c.soft };
   };
   // C · a glass card floating on the art: the cover, the name, your stars — nothing to press
   BL["bl-glass"] = function (x) {
@@ -1110,7 +1110,7 @@
       say(x, "my rating", ga + gw - 34, gt + 116, "400 22px " + SANS, "rgba(255,255,255,0.6)", "right");
     }
     var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub, hrs].filter(Boolean).join(" \u00B7 "));
-    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+    return { sticker: Math.min(1700, end + 130), soft: c.soft };
   };
   /* Just finished: the moment told by Backloggd's notifications — on a Lock Screen in an iPhone,
      as a stack on the story's background, or a whole Lock Screen */
@@ -1160,7 +1160,7 @@
     var y = sb + 520; blNotes().forEach(function (n) { y += blNotif(x, sa + 14, y, sw - 28, 0.48, true, n) + 8; });
     x.restore();
     var end = blUnder(x, c, b + h + 104, blDoneLine());
-    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+    return { sticker: Math.min(1700, end + 110), soft: c.soft };
   };
   // the notifications alone, on the story's background
   BL["bl-notifs"] = function (x) {
@@ -1168,7 +1168,7 @@
     blTop(x, c);
     blNotes().forEach(function (n) { y += blNotif(x, 110, y, W - 220, 0.98, false, n) + 22; });
     var end = blUnder(x, c, Math.max(y + 140, 1190), ["Backloggd", S.sub].filter(Boolean).join(" · "));
-    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+    return { sticker: Math.min(1700, end + 130), soft: c.soft };
   };
   // the whole story as the Lock Screen
   BL["bl-lock"] = function (x) {
@@ -1176,7 +1176,7 @@
     say(x, S.bl.date, W / 2, 300, "600 40px " + SANS, "rgba(255,255,255,0.85)", "center");
     say(x, S.bl.time, W / 2, 530, "600 250px " + SANS, "#fff", "center", -7);
     var y = 860; blNotes().forEach(function (n) { y += blNotif(x, 50, y, W - 100, 1, true, n) + 16; });
-    return { sticker: Math.min(1700, Math.max(y + 110, 1480)), sign: 1810, soft: "rgba(255,255,255,0.6)" };
+    return { sticker: Math.min(1700, Math.max(y + 110, 1480)), soft: "rgba(255,255,255,0.6)" };
   };
   /* My year in games: the game you pasted first, then up to four more by their Backloggd links */
   function blH(v) { return String(v || "").trim().replace(/\s*h(ours?)?$/i, ""); }
@@ -1230,7 +1230,7 @@
       if (i < l.length - 1) { x.fillStyle = "#f0f0f3"; x.fillRect(a + p, y + rh, w - 2 * p, 1.5); }
     });
     var end = b + h;
-    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+    return { sticker: Math.min(1700, end + 110), soft: c.soft };
   };
   // Replay: full-bleed red to orange, the year large, the games down the page
   BL["bl-replay"] = function (x) {
@@ -1256,7 +1256,7 @@
       say(x, one(x, g.title || "", "700 46px " + SANS, tw), 340, y + cs / 2 - 4, "700 46px " + SANS, "#fff", "left", -0.6);
       var m = blGameMeta(g, true); if (m) say(x, m, 340, y + cs / 2 + 38, "400 28px " + SANS, "rgba(255,255,255,0.85)");
     });
-    return { sticker: 1700, sign: 1818, soft: "rgba(255,255,255,0.8)" };
+    return { sticker: 1700, soft: "rgba(255,255,255,0.8)" };
   };
   // the first game wide, the next two beside each other
   BL["bl-grid"] = function (x) {
@@ -1279,7 +1279,7 @@
       end = py + 330;
     });
     var e2 = blUnder(x, c, end + 110, blYearLine(), S.bl.label.trim() || (blMonthly() ? MONTHS[S.bl.month] + " " : "") + new Date().getFullYear());   // under it, the year — not the game
-    return { sticker: Math.min(1700, e2 + 110), sign: Math.min(1840, e2 + 250), soft: c.soft };
+    return { sticker: Math.min(1700, e2 + 110), soft: c.soft };
   };
   // My top 5: number one large, the other four in a row beneath it
   BL["bl-podium"] = function (x) {
@@ -1309,7 +1309,7 @@
       end = ry + ch + 38;
     }
     end += 76; say(x, "on Backloggd", W / 2, end, "400 30px " + SANS, c.soft, "center");
-    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+    return { sticker: Math.min(1700, end + 110), soft: c.soft };
   };
   /* the quote: your review the Apple way — a Memory, an App Store review, a page in Books */
   var SERIF = '"New York", "Iowan Old Style", "Palatino", Georgia, serif';
@@ -1343,7 +1343,7 @@
     var sub = ["Backloggd", S.sub, blHoursTxt() && blHoursTxt().replace(/ h$/, " hours") + (S.bl.platform ? " on " + S.bl.platform : "")].filter(Boolean).join(" · ");
     if (sub) say(x, one(x, sub, "400 24px " + SANS, iw - 130), a + px + 118, cy + 78, "400 24px " + SANS, "#86868b");
     var end = b + h;
-    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+    return { sticker: Math.min(1700, end + 110), soft: c.soft };
   };
   // Memory: the game's art, your best line as its title — the way Photos sets a memory
   BL["bl-memory"] = function (x) {
@@ -1362,7 +1362,7 @@
     say(x, one(x, meta, "600 28px " + SANS, iw), a + px, my, "600 28px " + SANS, "rgba(255,255,255,0.75)", "left", 1.2);
     var end = b + h + 76;
     say(x, one(x, [S.bl.name, "on Backloggd"].filter(Boolean).join(" "), "400 30px " + SANS, W - 160), W / 2, end, "400 30px " + SANS, c.soft, "center");
-    return { sticker: Math.min(1700, end + 100), sign: Math.min(1840, end + 240), soft: c.soft };
+    return { sticker: Math.min(1700, end + 100), soft: c.soft };
   };
   // Books: the whole review as a page, the best line highlighted
   BL["bl-books"] = function (x) {
@@ -1397,7 +1397,7 @@
     say(x, [blStarStr(S.bl.rating), blHoursTxt() && blHoursTxt().replace(/ h$/, " hours")].filter(Boolean).join(" · "), a + px, fy, "400 24px " + SANS, "#a29d93");
     say(x, one(x, S.bl.name + " on Backloggd", "400 24px " + SANS, iw / 2), a + w - px, fy, "400 24px " + SANS, "#a29d93", "right");
     var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub].filter(Boolean).join(" · "));
-    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+    return { sticker: Math.min(1700, end + 110), soft: c.soft };
   };
   var BL_OWN = { "bl-tv": 1, "bl-lock": 1, "bl-replay": 1 };   // the rest sit on the story's background
   Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (BL_OWN[k]) OWN_BG[k] = 1; });
@@ -1484,7 +1484,7 @@
     x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H);
     S.stickerY = STICKER_Y;
     var full = S.item && FULL[styleOf()];
-    if (full) { var r = full(x); S.stickerY = r.sticker; signAt(x, r.sign, r.soft); return; }
+    if (full) { var r = full(x); S.stickerY = Math.min(r.sticker, 1700); signAt(x, SIGN_Y, r.soft); return; }
     var dark, bp = bgPic();
     if (S.bg === "blur" && bp) {
       x.fillStyle = "#222"; x.fillRect(0, 0, W, H);
