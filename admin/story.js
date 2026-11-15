@@ -47,7 +47,7 @@
   S.length = "";
   S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note", backloggd: "bl-tvcard" }; S.dek = "";
   S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, hours: "", platform: "", steam: "",
-    time: "", date: "", next: "", label: "", games: "", total: "", year: [{}, {}, {}, {}], period: "year", month: new Date().getMonth(), labelSet: false,
+    time: "", date: "", next: "", label: "", games: "", total: "", year: [{}, {}, {}, {}], period: "year", tint: "cover", month: new Date().getMonth(), labelSet: false,
     rtitle: "", text: "", best: "", name: "Isaaaaaaaac", day: "", ask: "" }; S.stickerY = STICKER_Y;
   try { Object.assign(S.style, JSON.parse(localStorage.getItem("btbr_story_style") || "{}")); } catch (e) {}
   Object.keys(S.style).forEach(function (k) { if (STYLES[k] && !STYLES[k].some(function (o) { return o[0] === S.style[k]; })) S.style[k] = STYLES[k][0][0]; });   // a style that's gone
@@ -1190,12 +1190,32 @@
     return ["Backloggd", games && games + " games", total && total + " hours"].filter(Boolean).join(" · ");
   }
   function blGameMeta(g, long) { return [g.hours && g.hours + (long ? " hours" : " h"), blStarStr(g.rating)].filter(Boolean).join(" · "); }
+  /* the year's colour: Graphite, or drawn from the #1 game's cover — its strongest hue, light at the top to near-black */
+  var hueMemo = new WeakMap();
+  function blHue(im) {
+    if (!im) return null; if (hueMemo.has(im)) return hueMemo.get(im);
+    var c = document.createElement("canvas"); c.width = c.height = 24; var x = c.getContext("2d"), d;
+    try { x.drawImage(im, 0, 0, 24, 24); d = x.getImageData(0, 0, 24, 24).data; } catch (e) { hueMemo.set(im, null); return null; }
+    var sx = 0, sy = 0, ws = 0;   // a mean of hues on the colour wheel, weighted by how vivid each pixel is
+    for (var i = 0; i < d.length; i += 4) {
+      var r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), ch = mx - mn; if (!ch) continue;
+      var h = mx === r ? ((g - b) / ch) % 6 : mx === g ? (b - r) / ch + 2 : (r - g) / ch + 4, w = ch * mx;
+      sx += Math.cos(h * Math.PI / 3) * w; sy += Math.sin(h * Math.PI / 3) * w; ws += w;
+    }
+    var out = ws ? { h: Math.round((Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360), s: Math.min(68, Math.max(30, Math.round(Math.hypot(sx, sy) / ws * 140))) } : null;
+    hueMemo.set(im, out); return out;
+  }
+  function blTint() {   // → { stops, accent }
+    var hu = S.bl.tint === "cover" && blHue(blCover());
+    if (!hu) return { stops: ["#3a3a3c", "#1c1c1e", "#0e0e0f"], accent: "#6e6e73" };
+    return { stops: ["hsl(" + hu.h + "," + hu.s + "%,56%)", "hsl(" + hu.h + "," + hu.s + "%,32%)", "hsl(" + hu.h + "," + hu.s + "%,14%)"], accent: "hsl(" + hu.h + "," + Math.min(75, hu.s + 10) + "%,46%)" };
+  }
   // the top games as a white card
   BL["bl-top"] = function (x) {
     var c = blGround(x), l = blYearList(), a = 134, w = W - 268, b = 400, p = 48, rh = 128, top = b + 160, h = 160 + l.length * rh + 24;
     blTop(x, c);
     x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 56); x.fillStyle = "#fff"; x.fill(); x.restore();
-    say(x, S.bl.label.toUpperCase(), a + p, b + 72, "700 26px " + SANS, "#fa2d48", "left", 0.5);
+    say(x, S.bl.label.toUpperCase(), a + p, b + 72, "700 26px " + SANS, blTint().accent, "left", 0.5);
     say(x, "Top games", a + p, b + 134, "700 60px " + SANS, "#1d1d1f", "left", -1.2);
     x.fillStyle = "#e5e5ea"; x.fillRect(a + p, top, w - 2 * p, 1.5);
     l.forEach(function (g, i) {
@@ -1212,9 +1232,9 @@
   };
   // Replay: full-bleed red to orange, the year large, the games down the page
   BL["bl-replay"] = function (x) {
-    var l = blYearList(), gr = x.createLinearGradient(W * 0.35, 0, W * 0.65, H);
-    gr.addColorStop(0, "#fa2d48"); gr.addColorStop(0.5, "#ff6a3d"); gr.addColorStop(1, "#ffae3a"); x.fillStyle = gr; x.fillRect(0, 0, W, H);
-    say(x, S.bl.label.toUpperCase(), 80, 280, "700 30px " + SANS, "rgba(255,255,255,0.85)", "left", 0.5);
+    var l = blYearList(), gr = x.createLinearGradient(W * 0.35, 0, W * 0.65, H), tn = blTint().stops;
+    gr.addColorStop(0, tn[0]); gr.addColorStop(0.55, tn[1]); gr.addColorStop(1, tn[2]); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    say(x, S.bl.label.toUpperCase(), 80, 280, "700 30px " + SANS, "rgba(255,255,255,0.62)", "left", 0.5);
     var k = S.kicker.trim() || "My year in games"; x.font = "700 112px " + SANS;
     var tl = lines(x, k, W - 160, 2);
     if (tl.length === 2) {   // two lines of even length read better than a long one and an orphan
@@ -1382,6 +1402,8 @@
     var yy = "\u2019" + String(new Date().getFullYear()).slice(2);
     if (!S.bl.labelSet) S.bl.label = blMonthly() ? MONTHS[S.bl.month] + " " + yy : "Replay " + yy;   // follows the period until you write your own
     [].forEach.call($("blPeriod").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl.period); });
+    [].forEach.call($("blTint").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl.tint); });
+    $("blTintRow").hidden = !(st === "bl-replay" || st === "bl-top");
     $("blMonth").value = String(S.bl.month); $("blMonthRow").hidden = !blMonthly();
     $("blRTitle").value = S.bl.rtitle; $("blText").value = S.bl.text; $("blBest").value = S.bl.best; $("blName").value = S.bl.name; $("blDay").value = S.bl.day; $("blAsk").value = S.bl.ask; $("blTime2").value = S.bl.time;
     $("blRTitleRow").hidden = st !== "bl-appstore"; $("blAskRow").hidden = st !== "bl-messages";
@@ -1398,6 +1420,7 @@
   });
   $("blLabel").addEventListener("input", function () { S.bl.label = this.value; S.bl.labelSet = !!this.value.trim(); draw(); });
   $("blPeriod").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; S.bl.period = b.dataset.v; blFields(); draw(); });
+  $("blTint").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; S.bl.tint = b.dataset.v; blFields(); draw(); });
   $("blMonth").addEventListener("change", function () { S.bl.month = +this.value; blFields(); draw(); });
   $("blRating3").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
   // the other four games of the year: a Backloggd link each, read like the first, with your hours and rating
