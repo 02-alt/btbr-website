@@ -215,10 +215,9 @@
         <div id="blQuote" hidden>
           <h3>Your review</h3>
           <label class="field" id="blRTitleRow"><span>Title</span><input type="text" id="blRTitle" placeholder="Leave empty to use the best line" /></label>
-          <label class="field" id="blAskRow"><span>Their question</span><input type="text" id="blAsk" placeholder="so… was it worth it?" /></label>
-          <label class="field" style="margin-top:8px"><span>Review</span><textarea id="blText" rows="4" placeholder="A few sentences, as on Backloggd"></textarea></label>
-          <label class="field" style="margin-top:8px"><span>Best line</span><input type="text" id="blBest" placeholder="Leave empty to use the last sentence" /></label>
-          <div style="display:flex;gap:8px;margin-top:8px"><label class="field" style="flex:1"><span>Signed</span><input type="text" id="blName" /></label><label class="field" style="width:100px"><span>Day</span><input type="text" id="blDay" placeholder="14 Nov" /></label><label class="field" id="blTimeOnly" style="width:90px"><span>Time</span><input type="text" id="blTime2" /></label></div>
+          <label class="field" id="blTextRow" style="margin-top:8px"><span>Review</span><textarea id="blText" rows="4" placeholder="A few sentences, as on Backloggd"></textarea></label>
+          <label class="field" style="margin-top:8px"><span id="blBestLbl">Best line</span><input type="text" id="blBest" placeholder="Leave empty to use the review’s last sentence" /></label>
+          <div style="display:flex;gap:8px;margin-top:8px"><label class="field" style="flex:1"><span>Signed</span><input type="text" id="blName" /></label><label class="field" style="width:100px"><span>Day</span><input type="text" id="blDay" placeholder="14 Nov" /></label></div>
         </div>
         <label class="field" style="margin-top:12px"><span>Steam link (optional)</span><input type="text" id="blSteam" placeholder="store.steampowered.com/app/… — for the big art" /></label>
       </section>
@@ -255,6 +254,6 @@
   </main>
 
   <script src="/assets/macwin.js?v=4"></script>
-  <script src="/admin/story.js?v=17"></script>
+  <script src="/admin/story.js?v=18"></script>
 </body>
 </html>

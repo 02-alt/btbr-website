@@ -40,7 +40,7 @@
     book: [["books", "Apple Books"]],
     bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
     wiki: [["note", "Notes"]],
-    backloggd: [["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-phone", "iPhone"], ["bl-notifs", "Notifications"], ["bl-lock", "Lock Screen"], ["bl-top", "Top games"], ["bl-replay", "Replay"], ["bl-grid", "Grid"], ["bl-podium", "Top 5"], ["bl-appstore", "Review"], ["bl-messages", "Messages"], ["bl-books", "Books"]]
+    backloggd: [["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-phone", "iPhone"], ["bl-notifs", "Notifications"], ["bl-lock", "Lock Screen"], ["bl-top", "Top games"], ["bl-replay", "Replay"], ["bl-grid", "Grid"], ["bl-podium", "Top 5"], ["bl-memory", "Memory"], ["bl-appstore", "Review"], ["bl-books", "Books"]]
   };
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
@@ -48,7 +48,7 @@
   S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note", backloggd: "bl-tvcard" }; S.dek = "";
   S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, hours: "", platform: "", steam: "",
     time: "", date: "", next: "", label: "", games: "", total: "", year: [{}, {}, {}, {}], period: "year", tint: "cover", month: new Date().getMonth(), labelSet: false,
-    rtitle: "", text: "", best: "", name: "Isaaaaaaaac", day: "", ask: "" }; S.stickerY = STICKER_Y;
+    rtitle: "", text: "", best: "", name: "Isaaaaaaaac", day: "" }; S.stickerY = STICKER_Y;
   try { Object.assign(S.style, JSON.parse(localStorage.getItem("btbr_story_style") || "{}")); } catch (e) {}
   Object.keys(S.style).forEach(function (k) { if (STYLES[k] && !STYLES[k].some(function (o) { return o[0] === S.style[k]; })) S.style[k] = STYLES[k][0][0]; });   // a style that's gone
   function styleOf() { return S.item ? S.style[S.item.kind] : ""; }
@@ -1309,7 +1309,7 @@
     end += 76; say(x, "on Backloggd", W / 2, end, "400 30px " + SANS, c.soft, "center");
     return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
   };
-  /* the quote: your review the Apple way — an App Store review, a Messages thread, a page in Books */
+  /* the quote: your review the Apple way — a Memory, an App Store review, a page in Books */
   var SERIF = '"New York", "Iowan Old Style", "Palatino", Georgia, serif';
   function blText() { return String(S.bl.text || "").trim() || "Every bench feels earned. I got lost for hours in the dark of it and never once wanted the map to be easier. The hardest parts are the ones I’ll remember."; }
   function blBest() {   // the best line: yours, or the review's last sentence
@@ -1343,32 +1343,24 @@
     var end = b + h;
     return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
   };
-  // Messages: a friend asks, you answer with your best line, the stars, and the game as a link
-  function blBubble(x, a, b, w, h, fill) { rr(x, a, b, w, h, Math.min(46, h / 2)); x.fillStyle = fill; x.fill(); }
-  BL["bl-messages"] = function (x) {
-    var g = S.bl.game, L = 60, R = W - 60, maxW = 700, pad = 34, fs = 38, lh = 49;
-    x.fillStyle = "#f2f2f7"; x.fillRect(0, 0, W, H);
-    var k = S.kicker.trim(); if (k) say(x, one(x, k, "500 40px " + SANS, W - 200), W / 2, 326, "500 40px " + SANS, "#6e6e73", "center", 0.5);
-    say(x, "Today " + S.bl.time, W / 2, 440, "400 24px " + SANS, "#8e8e93", "center");
-    var y = 474;
-    function bubble(text, out) {
-      x.font = "400 " + fs + "px " + SANS; var ls = blWrap(x, text, maxW - 2 * pad).slice(0, 6), tw = Math.max.apply(null, ls.map(function (l) { return x.measureText(l).width; }));
-      var bw = tw + 2 * pad, bh = ls.length * lh + 2 * 26 - (lh - fs) + 4, ba = out ? R - bw : L;
-      blBubble(x, ba, y, bw, bh, out ? "#0a84ff" : "#fff");
-      ls.forEach(function (l, i) { say(x, l, ba + pad, y + 26 + fs * 0.86 + i * lh, "400 " + fs + "px " + SANS, out ? "#fff" : "#1d1d1f"); });
-      y += bh + 14;
-    }
-    bubble(S.bl.ask.trim() || "so… was " + (S.title || g.title) + " worth it?", false);
-    y += 22; bubble(blBest(), true);
-    if (S.bl.rating) { var sw = 5 * 42 + 4 * 42 * 0.16, bw = sw + 64; blBubble(x, R - bw, y, bw, 82, "#0a84ff"); blStars(x, S.bl.rating, R - bw + 32, y + 20, 42, "#fff", "rgba(255,255,255,0.35)"); y += 82 + 14; }
-    var cw = 560, ca = R - cw, ih = 300, ch = ih + 104;
-    x.save(); x.shadowColor = "rgba(0,0,0,0.14)"; x.shadowBlur = 50; x.shadowOffsetY = 20; rr(x, ca, y, cw, ch, 40); x.fillStyle = "#e9e9eb"; x.fill(); x.restore();
-    x.save(); rr(x, ca, y, cw, ch, 40); x.clip(); blFit(x, blArt(), ca, y, cw, ih, 0.62, 0.25); x.restore();
-    say(x, one(x, S.title || g.title, "600 30px " + SANS, cw - 60), ca + 30, y + ih + 50, "600 30px " + SANS, "#1d1d1f");
-    say(x, "backloggd.com", ca + 30, y + ih + 82, "400 24px " + SANS, "#6e6e73");
-    y += ch + 36;
-    say(x, "Read " + S.bl.time, R - 14, y, "400 22px " + SANS, "#8e8e93", "right");
-    return { sticker: Math.min(1700, y + 110), sign: Math.min(1840, y + 250), soft: "#8e8e93" };
+  // Memory: the game's art, your best line as its title — the way Photos sets a memory
+  BL["bl-memory"] = function (x) {
+    var c = blGround(x), g = S.bl.game, a = 110, w = W - 220, b = 420, h = 1060, px = 56, iw = w - 2 * px;
+    blTop(x, c);
+    x.save(); x.shadowColor = "rgba(0,0,0,0.12)"; x.shadowBlur = 6; x.shadowOffsetY = 2; rr(x, a, b, w, h, 44); x.fillStyle = "#000"; x.fill(); x.restore();
+    x.save(); x.shadowColor = "rgba(0,0,0,0.24)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 44); x.fillStyle = "#000"; x.fill(); x.restore();
+    x.save(); rr(x, a, b, w, h, 44); x.clip();
+    blFit(x, blArt(), a, b, w, h, 0.62, 0.3);
+    var gr = x.createLinearGradient(0, b + h * 0.35, 0, b + h); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,0.78)"); x.fillStyle = gr; x.fillRect(a, b, w, h);
+    x.restore();
+    var q = blBest(), fl = blFitLines(x, q, 600, SERIF, 64, 42, iw, 460, 1.12), ls = fl[0].slice(0, 6), fs = fl[1], lh = fs * 1.12;
+    var my = b + h - 60, ty = my - 52 - (ls.length - 1) * lh;
+    ls.forEach(function (l, i) { say(x, l, a + px, ty + i * lh, "600 " + fs + "px " + SERIF, "#fff", "left", -0.3); });
+    var meta = [(S.title || g.title || "").toUpperCase(), blHoursTxt() && blHoursTxt().replace(/ h$/, " HOURS"), blStarStr(S.bl.rating)].filter(Boolean).join(" · ");
+    say(x, one(x, meta, "600 28px " + SANS, iw), a + px, my, "600 28px " + SANS, "rgba(255,255,255,0.75)", "left", 1.2);
+    var end = b + h + 76;
+    say(x, one(x, [S.bl.name, "on Backloggd"].filter(Boolean).join(" "), "400 30px " + SANS, W - 160), W / 2, end, "400 30px " + SANS, c.soft, "center");
+    return { sticker: Math.min(1700, end + 100), sign: Math.min(1840, end + 240), soft: c.soft };
   };
   // Books: the whole review as a page, the best line highlighted
   BL["bl-books"] = function (x) {
@@ -1405,7 +1397,7 @@
     var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub].filter(Boolean).join(" · "));
     return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
   };
-  var BL_OWN = { "bl-tv": 1, "bl-lock": 1, "bl-replay": 1, "bl-messages": 1 };   // the rest sit on the story's background
+  var BL_OWN = { "bl-tv": 1, "bl-lock": 1, "bl-replay": 1 };   // the rest sit on the story's background
   Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (BL_OWN[k]) OWN_BG[k] = 1; });
   NO_KICKER["bl-lock"] = 1;
   function blLoad(it, my) {
@@ -1421,14 +1413,13 @@
     }).catch(function () { if (my === token) note("Couldn’t read that Backloggd page.", true); });
   }
   // what each kind of story asks for: the figures, the moment you finished, your year
-  var BL_NOW = /^bl-(tvcard|tv|win|launch|glass)$/, BL_DONE = /^bl-(phone|notifs|lock)$/, BL_YEAR = /^bl-(top|replay|grid|podium)$/, BL_QUOTE = /^bl-(appstore|messages|books)$/;
+  var BL_NOW = /^bl-(tvcard|tv|win|launch|glass)$/, BL_DONE = /^bl-(phone|notifs|lock)$/, BL_YEAR = /^bl-(top|replay|grid|podium)$/, BL_QUOTE = /^bl-(memory|appstore|books)$/;
   var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   function blMonthly() { return S.bl.period === "month"; }
   function blFields() {
     var on = !!(S.item && S.item.kind === "backloggd"), st = styleOf();
     $("blSec").hidden = !on; if (!on) return;
     $("blDone").hidden = !BL_DONE.test(st); $("blYear").hidden = !BL_YEAR.test(st); $("blQuote").hidden = !BL_QUOTE.test(st);
-    $("blTimeOnly").hidden = st !== "bl-messages";
     $("blRating3").value = String(S.bl.rating); $("blHours3").value = S.bl.hours; $("blPlat3").value = S.bl.platform; $("blPlat3").closest(".field").hidden = st !== "bl-win";
     if (!S.bl.time) { var d = new Date(); S.bl.time = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); S.bl.date = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""); }
     var yy = "\u2019" + String(new Date().getFullYear()).slice(2);
@@ -1438,17 +1429,18 @@
     $("blTintRow").hidden = !(st === "bl-replay" || st === "bl-top");
     $("blYearHead").hidden = st === "bl-podium"; $("blYearH").textContent = st === "bl-podium" ? "Your top 5" : "Your year";
     $("blMonth").value = String(S.bl.month); $("blMonthRow").hidden = !blMonthly();
-    $("blRTitle").value = S.bl.rtitle; $("blText").value = S.bl.text; $("blBest").value = S.bl.best; $("blName").value = S.bl.name; $("blDay").value = S.bl.day; $("blAsk").value = S.bl.ask; $("blTime2").value = S.bl.time;
-    $("blRTitleRow").hidden = st !== "bl-appstore"; $("blAskRow").hidden = st !== "bl-messages";
+    $("blRTitle").value = S.bl.rtitle; $("blText").value = S.bl.text; $("blBest").value = S.bl.best; $("blName").value = S.bl.name; $("blDay").value = S.bl.day;
+    $("blRTitleRow").hidden = st !== "bl-appstore";
+    $("blTextRow").hidden = st === "bl-memory"; $("blBestLbl").textContent = st === "bl-memory" ? "Your line" : "Best line";
     $("blTime").value = S.bl.time; $("blDate").value = S.bl.date; $("blNext").value = S.bl.next;
     $("blLabel").value = S.bl.label; $("blGames").value = S.bl.games; $("blTotal").value = S.bl.total;
     $("blFirst").textContent = "1 \u00B7 " + (S.title || S.bl.game.title || "this game") + " — its hours and rating are in the figures above";
     // the line on top follows the style until you write your own
-    if (!S.kickerSet) { S.kicker = BL_DONE.test(st) ? "Just finished" : st === "bl-podium" ? "My top 5" : BL_YEAR.test(st) ? (blMonthly() ? "My " + MONTHS[S.bl.month] + " in games" : "My year in games") : st === "bl-messages" ? "Asked about it" : BL_QUOTE.test(st) ? "My review" : "Now playing"; $("kicker").value = S.kicker; }
+    if (!S.kickerSet) { S.kicker = BL_DONE.test(st) ? "Just finished" : st === "bl-podium" ? "My top 5" : BL_YEAR.test(st) ? (blMonthly() ? "My " + MONTHS[S.bl.month] + " in games" : "My year in games") : BL_QUOTE.test(st) ? "My review" : "Now playing"; $("kicker").value = S.kicker; }
     $("blSteam").value = S.bl.steam || "";
   }
   [["blHours3", "hours"], ["blPlat3", "platform"], ["blTime", "time"], ["blDate", "date"], ["blNext", "next"], ["blGames", "games"], ["blTotal", "total"],
-   ["blRTitle", "rtitle"], ["blText", "text"], ["blBest", "best"], ["blName", "name"], ["blDay", "day"], ["blAsk", "ask"], ["blTime2", "time"]].forEach(function (p) {
+   ["blRTitle", "rtitle"], ["blText", "text"], ["blBest", "best"], ["blName", "name"], ["blDay", "day"]].forEach(function (p) {
     $(p[0]).addEventListener("input", function () { S.bl[p[1]] = this.value; draw(); });
   });
   $("blLabel").addEventListener("input", function () { S.bl.label = this.value; S.bl.labelSet = !!this.value.trim(); draw(); });
