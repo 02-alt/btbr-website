@@ -573,7 +573,6 @@
     var g = x.createLinearGradient(0, b, 0, b + h); g.addColorStop(0, "rgba(255,255,255,0.55)"); g.addColorStop(0.5, "rgba(255,255,255,0.08)"); g.addColorStop(1, "rgba(255,255,255,0.25)");
     x.lineWidth = 2.5; x.strokeStyle = g; rr(x, a + 1, b + 1, w - 2, h - 2, r - 1); x.stroke(); x.restore();
   }
-  function playTri(x, cx, cy, r, fill) { x.beginPath(); x.moveTo(cx - r * 0.42, cy - r * 0.62); x.lineTo(cx + r * 0.62, cy); x.lineTo(cx - r * 0.42, cy + r * 0.62); x.closePath(); x.fillStyle = fill; x.fill(); }
   function say(x, t, px, py, font, fill, align, ls) {
     x.font = font; x.fillStyle = fill; x.textAlign = align || "left"; x.textBaseline = "alphabetic";
     if ("letterSpacing" in x) x.letterSpacing = (ls || 0) + "px"; x.fillText(t, px, py); if ("letterSpacing" in x) x.letterSpacing = "0px";
@@ -613,11 +612,9 @@
       say(x, one(x, S.sub, "500 44px " + SYS, 920), 80, 1306, "500 44px " + SYS, "rgba(255,255,255,0.75)");
       if (S.dek.trim()) say(x, one(x, S.dek.trim(), "500 28px " + SYS, 920), 80, 1360, "500 28px " + SYS, "rgba(255,255,255,0.5)");
       var by = S.dek.trim() ? 1410 : 1370;
-      rr(x, 80, by, 420, 92, 46); x.fillStyle = "#fff"; x.fill(); playTri(x, 150, by + 46, 20, bg);
-      say(x, "Play in Cabin", 310, by + 58, "600 34px " + SYS, bg, "center");
-      glassPane(x, 520, by, 200, 92, 46, "rgba(255,255,255,0.18)"); say(x, "Buy", 620, by + 58, "600 34px " + SYS, "#fff", "center");
-      // the Cabin line: its icon, what it is
-      var cy = by + 150;
+      // no Play or Buy — nobody can press them in a story; the Cabin line, under a hairline
+      x.fillStyle = "rgba(255,255,255,0.16)"; x.fillRect(80, by + 10, W - 160, 1.5);
+      var cy = by + 50;
       if (cabinImg) { x.save(); rr(x, 80, cy, 76, 76, 17); x.clip(); x.drawImage(cabinImg, 80, cy, 76, 76); x.restore(); }
       say(x, "Cabin — a Bandcamp player for the Mac", 180, cy + 34, "600 28px " + SYS, "rgba(255,255,255,0.85)");
       say(x, "Free · buildtoberemembered.com", 180, cy + 70, "400 24px " + SYS, "rgba(255,255,255,0.5)");
@@ -658,15 +655,9 @@
       say(x, "Bought on Bandcamp", ka + 72, kb + 220, "600 21px " + SYS, "#1d1d1f");
       say(x, "▪ Cabin record ▪", ka + 30, kb + 258, "500 19px " + SYS, "#8e8e93");
       say(x, new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), ka + kw - 30, kb + 258, "500 19px " + SYS, "#8e8e93", "right");
-      // First Listen · Share
-      var by = cb + cs + 50;
-      rr(x, W / 2 - 300, by, 330, 84, 42); x.fillStyle = "#fff"; x.fill(); playTri(x, W / 2 - 248, by + 42, 18, "#000"); say(x, "First Listen", W / 2 - 120, by + 53, "700 32px " + SYS, "#000", "center");
-      glassPane(x, W / 2 + 46, by, 230, 84, 42, "rgba(255,255,255,0.14)");
-      x.strokeStyle = "#fff"; x.lineWidth = 3.5; x.lineJoin = "round"; x.lineCap = "round";
-      x.beginPath(); x.moveTo(W / 2 + 92, by + 36); x.lineTo(W / 2 + 84, by + 36); x.lineTo(W / 2 + 84, by + 62); x.lineTo(W / 2 + 114, by + 62); x.lineTo(W / 2 + 114, by + 36); x.lineTo(W / 2 + 106, by + 36); x.moveTo(W / 2 + 99, by + 48); x.lineTo(W / 2 + 99, by + 22); x.moveTo(W / 2 + 91, by + 30); x.lineTo(W / 2 + 99, by + 22); x.lineTo(W / 2 + 107, by + 30); x.stroke();
-      say(x, "Share", W / 2 + 180, by + 53, "700 32px " + SYS, "#fff", "center");
+      var by = cb + cs + 50;   // no First Listen or Share buttons — nobody can press them in a story
       // whose window this is
-      var cy = by + 140;
+      var cy = by + 10;
       if (cabinImg) { x.save(); rr(x, W / 2 - 230, cy, 56, 56, 13); x.clip(); x.drawImage(cabinImg, W / 2 - 230, cy, 56, 56); x.restore(); }
       say(x, "Cabin — a Bandcamp player for the Mac", W / 2 - 160, cy + 37, "500 25px " + SYS, "rgba(255,255,255,0.6)");
       return { sticker: 1630, soft: "rgba(255,255,255,0.5)" };
@@ -721,14 +712,10 @@
       say(x, one(x, al, "700 52px " + SYS, 900), W / 2, 920, "700 52px " + SYS, "#000", "center");
       say(x, one(x, S.sub, "500 46px " + SYS, 900), W / 2, 976, "500 46px " + SYS, "#fa2d48", "center");
       say(x, [m.genre, m.year, m.count ? m.count + " songs" : ""].filter(Boolean).join(" · ").toUpperCase(), W / 2, 1024, "600 24px " + SYS, "#8e8e93", "center", 1);
-      [[110, "Play"], [560, "Shuffle"]].forEach(function (p, i) {
-        rr(x, p[0], 1066, 410, 90, 18); x.fillStyle = "#f2f2f7"; x.fill();
-        if (!i) playTri(x, p[0] + 150, 1111, 22, "#fa2d48");
-        say(x, p[1], p[0] + (i ? 205 : 230), 1123, "600 34px " + SYS, "#fa2d48", "center");
-      });
+      x.fillStyle = "rgba(0,0,0,0.08)"; x.fillRect(110, 1070, W - 220, 1.5);   // no Play or Shuffle — nobody can press them in a story
       var rows = m.tracks.slice(0), start = m.at > 2 ? m.at - 1 : 0;
       rows.slice(start, start + 4).forEach(function (t, i) {
-        var y = 1236 + i * 92, on = start + i === m.at;
+        var y = 1150 + i * 92, on = start + i === m.at;
         say(x, String(t.n || start + i + 1), 120, y, (on ? "600" : "400") + " 32px " + SYS, on ? "#fa2d48" : "#8e8e93");
         say(x, one(x, t.name, (on ? "600" : "400") + " 34px " + SYS, 760), 180, y, (on ? "600" : "400") + " 34px " + SYS, "#000");
         x.fillStyle = "rgba(0,0,0,0.08)"; x.fillRect(180, y + 32, 790, 1.5);
@@ -754,7 +741,7 @@
       A.items.slice(0, 9).forEach(function (it, i) { block(it, 70 + (i % 3) * (s + gap), 460 + ((i / 3) | 0) * (s + 70), s, true); });
       return { sticker: 1600, soft: "#999" };
     },
-    // L1 — Apple Books: the cover with its soft shadow, title, author, Get and Sample
+    // L1 — Apple Books: the cover with its soft shadow, title, author, the price
     books: function (x) {
       var B = S.book || {};
       x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
@@ -766,13 +753,13 @@
       say(x, ["Book", B.pages ? B.pages + " pages" : "", B.year].filter(Boolean).join(" · ").toUpperCase(), W / 2, y + 112, "600 24px " + SYS, "#8e8e93", "center", 1);
       var py = y + 160;
       if (B.apple) {
-        var p = B.price && !/^free$|^0/i.test(B.price) ? B.price : "Get";
-        pillBtn(x, 150, py, 370, 86, "#0071e3", p, "600 34px " + SYS, "#fff"); pillBtn(x, 560, py, 370, 86, "#f2f2f7", "Sample", "600 34px " + SYS, "#0071e3");
+        var p = B.price && !/^free$|^0/i.test(B.price) ? B.price : "Free";   // the price as a line, not a Get button
+        say(x, "Apple Books \u00B7 " + p, W / 2, py + 40, "400 30px " + SYS, "#8e8e93", "center");
       } else if (B.pub) say(x, one(x, B.pub, "400 30px " + SYS, 900), W / 2, py + 40, "400 30px " + SYS, "#8e8e93", "center");
       var st = Math.min(1720, Math.max(1600, py + 220));
       return { sticker: st, soft: "#8e8e93" };
     },
-    // Y1 — Apple TV: the still runs into black, a big title, ▶ Play
+    // Y1 — Apple TV: the still runs into black, a big title, its length
     tv: function (x) {
       x.fillStyle = "#000"; x.fillRect(0, 0, W, H);
       if (S.pic) cover(x, S.pic, -280, 0, 1640, 922);
@@ -788,7 +775,7 @@
       var st = Math.min(1680, Math.max(1560, by + 200));
       return { sticker: st, soft: "rgba(255,255,255,0.5)" };
     },
-    // Y2 — QuickTime with a Liquid Glass control bar, on the still blurred
+    // Y2 — the still in a QuickTime window, on the still blurred
     quicktime: function (x) {
       blurPic(x, S.pic, "rgba(0,0,0,0.25)");
       var a = 50, b = 560, w = 980, h = 551;
@@ -797,8 +784,6 @@
       var g = x.createLinearGradient(0, b, 0, b + 140); g.addColorStop(0, "rgba(0,0,0,0.45)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(a, b, w, 140); x.restore();
       [["#ff5f57", 0], ["#febc2e", 32], ["#28c840", 64]].forEach(function (d) { x.beginPath(); x.arc(a + 40 + d[1], b + 40, 11, 0, Math.PI * 2); x.fillStyle = d[0]; x.fill(); });
       x.font = "600 26px " + SYS; say(x, lines(x, S.title || "youtube.com", 560, 1)[0], a + w / 2, b + 50, "600 26px " + SYS, "rgba(255,255,255,0.9)", "center");
-      glassPane(x, a + 150, b + h - 150, w - 300, 110, 32, "rgba(40,40,40,0.45)"); playTri(x, a + 230, b + h - 95, 24, "#fff");
-      rr(x, a + 290, b + h - 99, 500, 8, 4); x.fillStyle = "rgba(255,255,255,0.3)"; x.fill(); rr(x, a + 290, b + h - 99, 150, 8, 4); x.fillStyle = "#fff"; x.fill();
       if (S.kicker.trim()) say(x, one(x, S.kicker.trim(), "500 40px " + SANS, W - 200), W / 2, 440, "500 40px " + SANS, "rgba(255,255,255,0.75)", "center");
       var y = para(x, S.title, W / 2, 1250, "700 48px " + SYS, "#fff", "center", 900, 58, 2);
       if (S.sub.trim()) say(x, one(x, S.sub.trim(), "400 32px " + SYS, 900), W / 2, (S.title ? y : 1190) + 56, "400 32px " + SYS, "rgba(255,255,255,0.65)", "center");
