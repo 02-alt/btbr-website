@@ -589,9 +589,35 @@
   function short(n) { return n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M" : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, "") + "K" : String(n); }
 
   /* ---------- the full-screen styles (each brings its own background) ---------- */
+  /* blur. Chrome blurs a canvas with ctx.filter; Safari ignores it and draws the picture sharp — the hard-edged
+     square behind a cover. Where the filter doesn't work, the drawing is shrunk step by step and grown back:
+     the same soft blur, edges fading out, at any size. draw(ctx) draws in the story's coordinates. */
+  var CAN_FILTER = (function () {
+    try { var c = document.createElement("canvas"); c.width = c.height = 9; var k = c.getContext("2d"); k.filter = "blur(2px)"; k.fillStyle = "#000"; k.fillRect(4, 4, 1, 1); return k.getImageData(1, 4, 1, 1).data[3] > 0; } catch (e) { return false; }
+  })();
+  var softCans = {};
+  function softCan(i, w, h) { var c = softCans[i] || (softCans[i] = document.createElement("canvas")); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } var k = c.getContext("2d"); k.setTransform(1, 0, 0, 1, 0, 0); k.clearRect(0, 0, w, h); k.imageSmoothingQuality = "high"; return c; }
+  function soft(x, px, sat, draw) {   // (Safari also goes without the extra saturation)
+    if (CAN_FILTER) { x.save(); x.filter = "blur(" + px + "px)" + (sat ? " saturate(" + sat + ")" : ""); draw(x); x.restore(); return; }
+    var P = 400, q = 4, fw = W + 2 * P, fh = H + 2 * P, steps = Math.max(1, Math.round(Math.log2(Math.max(2, px * 1.2) / q)));
+    var c = softCan(0, Math.ceil(fw / q), Math.ceil(fh / q)), k = c.getContext("2d");
+    k.setTransform(1 / q, 0, 0, 1 / q, P / q, P / q); draw(k);
+    var cans = [c];
+    for (var i = 1; i <= steps; i++) {   // down, halving…
+      var pc = cans[i - 1], n = softCan(i, Math.max(1, Math.ceil(pc.width / 2)), Math.max(1, Math.ceil(pc.height / 2)));
+      n.getContext("2d").drawImage(pc, 0, 0, n.width, n.height); cans.push(n);
+    }
+    var lo = cans[steps], lk = lo.getContext("2d"), tmp = softCan(99, lo.width, lo.height), tt = tmp.getContext("2d");   // smooth the smallest once more, so nothing blocky grows back
+    for (var r = 0; r < 2; r++) { tt.clearRect(0, 0, lo.width, lo.height); tt.drawImage(lo, 0, 0); lk.clearRect(0, 0, lo.width, lo.height); [[-1, 0], [1, 0], [0, -1], [0, 1], [0, 0]].forEach(function (o) { lk.globalAlpha = 0.2; lk.drawImage(tmp, o[0], o[1]); }); lk.globalAlpha = 1; }
+    for (var j = steps - 1; j >= 1; j--) {   // …and back up, doubling, so it stays smooth
+      var d = cans[j], dk = d.getContext("2d"); dk.clearRect(0, 0, d.width, d.height); dk.drawImage(cans[j + 1], 0, 0, d.width, d.height);
+    }
+    var top = cans[Math.min(1, steps)];
+    x.save(); x.imageSmoothingQuality = "high"; x.drawImage(top, -P, -P, fw, fh); x.restore();
+  }
   function blurPic(x, im, dim, sat) {
     x.fillStyle = "#1c1c1e"; x.fillRect(0, 0, W, H);
-    if (im) { x.save(); x.filter = "blur(90px) saturate(" + (sat || 1.4) + ")"; cover(x, im, -200, -200, W + 400, H + 400); x.restore(); }
+    if (im) soft(x, 90, sat || 1.4, function (k) { cover(k, im, -200, -200, W + 400, H + 400); });
     if (dim) { x.fillStyle = dim; x.fillRect(0, 0, W, H); }
   }
   function glassPane(x, a, b, w, h, r, tint) {
@@ -652,7 +678,7 @@
       var wa = 40, wb = 200, ww = 1000, wh = 1520;
       x.save(); rr(x, wa, wb, ww, wh, 44); x.clip(); x.fillStyle = "#19191b"; x.fillRect(wa, wb, ww, wh);
       var ca = 130, cb = 500, cs = 820;
-      if (S.pic) { x.save(); x.filter = "blur(120px) saturate(1.5)"; x.globalAlpha = 0.75; cover(x, S.pic, ca - 60, cb - 40, cs + 120, cs + 120); x.restore(); }
+      if (S.pic) { x.save(); x.globalAlpha = 0.75; soft(x, 120, 1.5, function (k) { cover(k, S.pic, ca - 60, cb - 40, cs + 120, cs + 120); }); x.restore(); }
       x.restore();
       rr(x, wa + 0.75, wb + 0.75, ww - 1.5, wh - 1.5, 44); x.strokeStyle = "rgba(255,255,255,0.1)"; x.lineWidth = 1.5; x.stroke();
       [["#ff5f57", 0], ["#febc2e", 32], ["#28c840", 64]].forEach(function (d) { x.beginPath(); x.arc(wa + 44 + d[1], wb + 44, 11, 0, Math.PI * 2); x.fillStyle = d[0]; x.fill(); });
@@ -820,7 +846,7 @@
       x.fillStyle = "#000"; x.fillRect(0, 0, W, H);
       var a = 70, b = 640, w = 940, h = 529;
       if (S.pic) {
-        x.save(); x.filter = "blur(100px)"; x.globalAlpha = 0.65; cover(x, S.pic, a, b, w, h); x.restore();
+        x.save(); x.globalAlpha = 0.65; soft(x, 100, 0, function (k) { cover(k, S.pic, a, b, w, h); }); x.restore();
         x.save(); rr(x, a, b, w, h, 28); x.clip(); cover(x, S.pic, a, b, w, h); x.restore();
         x.save(); x.beginPath(); x.rect(0, b + h + 14, W, 260); x.clip(); x.translate(0, 2 * (b + h) + 16); x.scale(1, -1); x.globalAlpha = 0.22;
         rr(x, a, b, w, h, 28); x.clip(); cover(x, S.pic, a, b, w, h); x.restore();
@@ -873,7 +899,7 @@
     icon: function (x) {
       x.fillStyle = "#fbfbfd"; x.fillRect(0, 0, W, H);
       if (S.kicker.trim()) say(x, one(x, S.kicker.trim(), "500 40px " + SANS, 900), W / 2, 400, "500 40px " + SANS, "#6e6e73", "center");
-      x.save(); x.filter = "blur(30px)"; x.fillStyle = "rgba(0,0,0,0.18)"; x.beginPath(); x.ellipse(W / 2, 1080, 250, 40, 0, 0, Math.PI * 2); x.fill(); x.restore();
+      soft(x, 30, 0, function (k) { k.fillStyle = "rgba(0,0,0,0.18)"; k.beginPath(); k.ellipse(W / 2, 1080, 250, 40, 0, 0, Math.PI * 2); k.fill(); });
       if (!(S.app && S.app.mac)) shadowed(x, function () { rr(x, W / 2 - 230, 560, 460, 460, 103); x.fillStyle = "#fff"; x.fill(); }, 0.9);
       iconAt(x, W / 2 - 230, 560, 460);
       var t = S.title || "…", fs = fitSize(x, t, 700, SYS, 76, 48, W - 120);
@@ -1053,7 +1079,7 @@
   // a pane of frosted glass over the window's art: the art again, blurred, tinted, a fine light edge
   function blFrost(x, a, b, w, h, r, art) {
     x.save(); rr(x, a, b, w, h, r); x.clip();
-    x.filter = "blur(36px) saturate(1.7)"; art(); x.filter = "none";
+    soft(x, 36, 1.7, art);
     x.fillStyle = "rgba(30,30,34,0.5)"; x.fillRect(a, b, w, h); x.restore();
     rr(x, a + 0.75, b + 0.75, w - 1.5, h - 1.5, r); x.strokeStyle = "rgba(255,255,255,0.18)"; x.lineWidth = 1.5; x.stroke();
   }
@@ -1100,7 +1126,7 @@
   // C · a glass card floating on the art: the cover, the name, your stars — nothing to press
   BL["bl-glass"] = function (x) {
     var c = blGround(x), g = S.bl.game, a = 80, b = 470, w = W - 160, h = 680;
-    var art = function () { blFit(x, blArt(), a, b, w, h, 0.62, 0.25); };
+    var art = function (k) { blFit(k || x, blArt(), a, b, w, h, 0.62, 0.25); };
     blTop(x, c); blWin(x, a, b, w, h, "#000");
     x.save(); rr(x, a, b, w, h, 28); x.clip(); art();
     var gb = x.createLinearGradient(0, b + h * 0.45, 0, b + h); gb.addColorStop(0, "rgba(0,0,0,0)"); gb.addColorStop(1, "rgba(0,0,0,0.35)"); x.fillStyle = gb; x.fillRect(a, b, w, h);
@@ -1164,7 +1190,7 @@
     x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 78); x.fillStyle = "#1d1d1f"; x.fill(); x.restore();
     x.save(); rr(x, sa, sb, sw, sh, 64); x.clip();
     x.fillStyle = "#1c1c2e"; x.fillRect(sa, sb, sw, sh);
-    x.filter = "blur(30px) saturate(1.4)"; blFit(x, blCover(), sa - 40, sb - 40, sw + 80, sh + 80); x.filter = "none";
+    soft(x, 30, 1.4, function (k) { blFit(k, blCover(), sa - 40, sb - 40, sw + 80, sh + 80); });
     x.fillStyle = "rgba(0,0,0,0.12)"; x.fillRect(sa, sb, sw, sh);
     rr(x, sa + sw / 2 - 65, sb + 20, 130, 38, 19); x.fillStyle = "#000"; x.fill();
     say(x, S.bl.date, sa + sw / 2, sb + 124, "600 22px " + SANS, "#fff", "center");
@@ -1500,7 +1526,7 @@
     var dark, bp = bgPic();
     if (S.bg === "blur" && bp) {
       x.fillStyle = "#222"; x.fillRect(0, 0, W, H);
-      x.save(); x.filter = "blur(70px) saturate(1.25)"; cover(x, bp, -160, -160, W + 320, H + 320); x.restore();
+      soft(x, 70, 1.25, function (k) { cover(k, bp, -160, -160, W + 320, H + 320); });
       x.fillStyle = "rgba(0,0,0,0.3)"; x.fillRect(0, 0, W, H);
       dark = true;
     } else { x.fillStyle = S.bg === "blur" ? "#e6e4e6" : S.bg; x.fillRect(0, 0, W, H); dark = toneDark(S.bg === "blur" ? "#e6e4e6" : S.bg); }
