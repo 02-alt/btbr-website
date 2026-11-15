@@ -42,6 +42,28 @@
     wiki: [["note", "Notes"]],
     backloggd: [["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-phone", "iPhone"], ["bl-notifs", "Notifications"], ["bl-lock", "Lock Screen"], ["bl-top", "Top games"], ["bl-replay", "Replay"], ["bl-grid", "Grid"], ["bl-podium", "Top 5"], ["bl-memory", "Memory"], ["bl-appstore", "Review"], ["bl-books", "Books"]]
   };
+  /* what the Style row shows: a few kinds of story; the looks of one kind are an option under it.
+     A variant is [name, key] — or [name, [keys]] with a second option ("Inside") picking among the keys. */
+  var GROUPS = {
+    youtube: [{ n: "Window", l: "App", v: [["Safari", "window"], ["QuickTime", "quicktime"]] }, { n: "Apple TV", v: [["", "tv"]] }, { n: "Keynote", v: [["", "keynote"]] }],
+    web: [{ n: "Page", l: "On", v: [["Mac", "safari"], ["iPad", "ipad"]] }, { n: "Headline", v: [["", "hero"]] }],
+    backloggd: [
+      { n: "Now playing", l: "Layout", v: [["Card", "bl-tvcard"], ["Full", "bl-tv"], ["Window", ["bl-win", "bl-launch", "bl-glass"]]], l2: "Inside", v2: ["Figures", "Box art", "Glass"] },
+      { n: "Finished", l: "Shown as", v: [["iPhone", "bl-phone"], ["Notifications", "bl-notifs"], ["Lock Screen", "bl-lock"]] },
+      { n: "Year", l: "Layout", v: [["Card", "bl-top"], ["Full", "bl-replay"], ["Grid", "bl-grid"]] },
+      { n: "Top 5", v: [["", "bl-podium"]] },
+      { n: "Review", l: "Layout", v: [["Memory", "bl-memory"], ["App Store", "bl-appstore"], ["Book page", "bl-books"]] }
+    ]
+  };
+  function groupsOf(k) { return GROUPS[k] || (STYLES[k] || []).map(function (o) { return { n: o[1], v: [["", o[0]]] }; }); }
+  function keysOf(v) { return [].concat(v[1]); }
+  function groupOf(k, st) {   // → [group, variant index, key index inside it]
+    var gs = groupsOf(k);
+    for (var i = 0; i < gs.length; i++) for (var j = 0; j < gs[i].v.length; j++) { var ks = keysOf(gs[i].v[j]), q = ks.indexOf(st); if (q >= 0) return [gs[i], j, q]; }
+    return [gs[0], 0, 0];
+  }
+  var lastIn = {};   // the look last used in each kind of story, so going back finds it
+  try { lastIn = JSON.parse(localStorage.getItem("btbr_story_last") || "{}"); } catch (e) {}
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
   S.length = "";
@@ -354,12 +376,16 @@
     $("tTitle").placeholder = k === "web" ? "Optional — the page’s name" : "";
     [].forEach.call($("chrome").children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.chrome); });
     var st = styleOf(), seg = $("style"); seg.innerHTML = "";
-    $("styleRow").hidden = !it || STYLES[k].length < 2;
+    if (it) remember(k, st);   // so coming back to this kind of story finds this look
+    var gs = it ? groupsOf(k) : [], at = it ? groupOf(k, st) : null, grp = at && at[0], vr = grp && grp.v[at[1]];
+    $("styleRow").hidden = gs.length < 2;
     $("kicker").closest(".field").hidden = !!NO_KICKER[st];
-    if (it) STYLES[k].forEach(function (o) {
-      var b = document.createElement("button"); b.type = "button"; b.dataset.v = o[0]; b.textContent = o[1]; b.setAttribute("aria-pressed", o[0] === st);
-      seg.appendChild(b);
-    });
+    function fill(el, names, on, attr) { el.innerHTML = ""; names.forEach(function (n, i) { var b = document.createElement("button"); b.type = "button"; b.dataset[attr] = i; b.textContent = n; b.setAttribute("aria-pressed", i === on); el.appendChild(b); }); }
+    fill(seg, gs.map(function (g) { return g.n; }), gs.indexOf(grp), "g");
+    $("layoutRow").hidden = !grp || grp.v.length < 2;
+    if (grp && grp.v.length > 1) { $("layoutLbl").textContent = grp.l || "Layout"; fill($("layout"), grp.v.map(function (v) { return v[0]; }), at[1], "i"); }
+    $("insideRow").hidden = !(vr && Array.isArray(vr[1]));
+    if (vr && Array.isArray(vr[1])) { $("insideLbl").textContent = grp.l2 || "Inside"; fill($("inside"), grp.v2, at[2], "i"); }
     $("chromeRow").hidden = !(k === "web" && st === "safari");
     $("shotsRow").hidden = !(k === "app" && (st === "card" || st === "glass"));
     $("bgRow").hidden = $("swatches").hidden = !!OWN_BG[st];
@@ -1549,11 +1575,23 @@
   $("kicker").addEventListener("input", function () { S.kicker = this.value; S.kickerSet = true; draw(); });
   $("tDek").addEventListener("input", function () { S.dek = this.value; draw(); });
   $("tLength").addEventListener("input", function () { S.length = this.value; draw(); });
-  $("style").addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b || !S.item) return;
-    S.style[S.item.kind] = b.dataset.v;
-    try { localStorage.setItem("btbr_story_style", JSON.stringify(S.style)); } catch (x) {}
+  function remember(k, key) { var at = groupOf(k, key); lastIn[k + ":" + at[0].n] = key; lastIn[k + ":" + at[0].n + ":" + at[0].v[at[1]][0]] = key; }
+  function pick(key) {
+    var k = S.item.kind; S.style[k] = key; remember(k, key);
+    try { localStorage.setItem("btbr_story_style", JSON.stringify(S.style)); localStorage.setItem("btbr_story_last", JSON.stringify(lastIn)); } catch (x) {}
     panels(); draw();
+  }
+  $("style").addEventListener("click", function (e) {   // a kind of story: its last look, or its first
+    var b = e.target.closest("button"); if (!b || !S.item) return;
+    var k = S.item.kind, g = groupsOf(k)[+b.dataset.g]; pick(lastIn[k + ":" + g.n] || keysOf(g.v[0])[0]);
+  });
+  $("layout").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || !S.item) return;
+    var k = S.item.kind, at = groupOf(k, styleOf()), v = at[0].v[+b.dataset.i]; pick(lastIn[k + ":" + at[0].n + ":" + v[0]] || keysOf(v)[0]);
+  });
+  $("inside").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || !S.item) return;
+    var at = groupOf(S.item.kind, styleOf()); pick(keysOf(at[0].v[at[1]])[+b.dataset.i]);
   });
   $("chrome").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { S.chrome = b.dataset.v; panels(); draw(); } });
   $("shots").addEventListener("change", function () { S.shots = this.checked; draw(); });
