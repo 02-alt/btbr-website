@@ -40,15 +40,16 @@
     book: [["books", "Apple Books"]],
     bandcamp: [["editorial", "Album page"], ["collection", "New in Cabin"]],
     wiki: [["note", "Notes"]],
-    backloggd: [["bl-label", "Label"], ["bl-poster", "Poster"], ["bl-prints", "Prints"], ["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-cart", "Cartridge"], ["bl-case", "Case"], ["bl-hand", "Review"], ["bl-quote", "Quote"]]
+    backloggd: [["bl-tvcard", "Card"], ["bl-tv", "TV"], ["bl-win", "Window"], ["bl-launch", "Launcher"], ["bl-glass", "Glass"], ["bl-phone", "iPhone"], ["bl-notifs", "Notifications"], ["bl-lock", "Lock Screen"], ["bl-top", "Top games"], ["bl-replay", "Replay"], ["bl-grid", "Grid"]]
   };
   var OWN_BG = { tv: 1, quicktime: 1, keynote: 1, hero: 1, icon: 1, glass: 1, playing: 1, album: 1, grid: 1, books: 1, editorial: 1, note: 1, collection: 1 };
   var NO_KICKER = { grid: 1, books: 1 };   // styles that bring their own background
   S.length = "";
-  S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note", backloggd: "bl-label" }; S.dek = "";
-  S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, text: "", best: "", platform: "", hours: "", name: "Isaaaaaaaac", note1: "the start", note2: "the best part", steam: "",
-    cart: "grey", box: "clear", show: "avg" }; S.stickerY = STICKER_Y;
+  S.style = { youtube: "window", web: "safari", app: "card", music: "playing", arena: "grid", book: "books", bandcamp: "editorial", wiki: "note", backloggd: "bl-tvcard" }; S.dek = "";
+  S.bl = { game: { genres: [], platforms: [] }, cover: null, shot: null, hero: null, rating: 4.5, hours: "", platform: "", steam: "",
+    time: "", date: "", next: "", label: "", games: "", total: "", year: [{}, {}, {}, {}] }; S.stickerY = STICKER_Y;
   try { Object.assign(S.style, JSON.parse(localStorage.getItem("btbr_story_style") || "{}")); } catch (e) {}
+  Object.keys(S.style).forEach(function (k) { if (STYLES[k] && !STYLES[k].some(function (o) { return o[0] === S.style[k]; })) S.style[k] = STYLES[k][0][0]; });   // a style that's gone
   function styleOf() { return S.item ? S.style[S.item.kind] : ""; }
   var token = 0;                           // the link being loaded; older answers are dropped
 
@@ -342,7 +343,7 @@
     $("dropImg").hidden = !(mine && S.pic);
     if (mine && S.pic) $("dropImg").src = S.picSrc || S.pic.src;
     $("dropTitle").textContent = k === "backloggd" ? (S.picSrc ? "Drop another to replace it" : "Drop a screenshot of the game") : k === "youtube" || k === "wiki" ? "Use your own picture" : has || (mine && S.pic) ? "Drop another to replace it" : k === "bandcamp" ? "Drop the album cover here" : "Drop a screenshot here";
-    $("dropText").textContent = k === "backloggd" ? "for the prints and the poster — Backloggd only gives one" : k === "youtube" || k === "wiki" ? "drop one here, or press ⌘V" : k === "bandcamp" ? "or on Bandcamp right-click the cover, Copy Image, and press ⌘V here" : "or take one with ⌘⇧⌃4 and press ⌘V";
+    $("dropText").textContent = k === "backloggd" ? "for the big picture, if you don’t like Backloggd’s — or paste a Steam link below" : k === "youtube" || k === "wiki" ? "drop one here, or press ⌘V" : k === "bandcamp" ? "or on Bandcamp right-click the cover, Copy Image, and press ⌘V here" : "or take one with ⌘⇧⌃4 and press ⌘V";
     $("rmPic").hidden = !(mine && S.pic) && !(k === "youtube" && S.own);
     $("picVal").textContent = k === "youtube" ? (S.own ? "Your own" : ["Cover", "\u00BC in", "Halfway", "\u00BE in"][S.still]) : "";
     $("titleLbl").textContent = { app: "Name", arena: "Channel", bandcamp: "Album", backloggd: "Game" }[k] || "Title";
@@ -361,10 +362,10 @@
     $("chromeRow").hidden = !(k === "web" && st === "safari");
     $("shotsRow").hidden = !(k === "app" && (st === "card" || st === "glass"));
     $("bgRow").hidden = $("swatches").hidden = !!OWN_BG[st];
-    $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note" || st === "collection" || st === "bl-label" || st === "bl-poster");
+    $("dekField").hidden = !(st === "hero" || st === "icon" || st === "editorial" || st === "note" || st === "collection" || st === "bl-tvcard");
     $("lengthField").hidden = st !== "collection";
     blFields();
-    $("tDek").placeholder = /^bl-/.test(st) ? "a fallen kingdom of bugs, and you in the dark of it" : st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : st === "collection" ? "New in my collection." : "";
+    $("tDek").placeholder = /^bl-/.test(st) ? "A fallen kingdom of bugs, and you in the dark of it" : st === "note" ? "A line of your own" : st === "editorial" ? "e.g. 14 songs · 2022 · Jazz" : st === "collection" ? "New in my collection." : "";
     swatches();
   }
   function fields() { $("tTitle").value = S.title; $("tSub").value = S.sub; $("kicker").value = S.kicker; $("tDek").value = S.dek; }
@@ -933,7 +934,6 @@
     (list || []).forEach(function (p) { for (var i = 0; i < map.length; i++) if (map[i][0].test(p)) { if (out.indexOf(map[i][1]) < 0) out.push(map[i][1]); return; } if (out.indexOf(p) < 0) out.push(p); });
     return out;
   }
-  function blHand(s) { return String(s || "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-"); }
   // a picture into a box, cropped, aimed at (px, py) in 0–1
   function blFit(x, im, a, b, w, h, px, py) {
     if (!im) { x.fillStyle = "#cfcdd0"; x.fillRect(a, b, w, h); return; }
@@ -954,195 +954,16 @@
       if (f > 0) { x.save(); x.beginPath(); x.rect(cx - r, cy - r, size * f, size); x.clip(); x.fillStyle = on; blStar(x, cx, cy, r); x.fill(); x.restore(); }
     }
   }
-  function blPaper(x, a, b, w, h) {
-    x.save(); x.shadowColor = "rgba(40,30,40,0.18)"; x.shadowBlur = 70; x.shadowOffsetY = 34; x.fillStyle = "#fff"; x.fillRect(a, b, w, h); x.restore();
-    x.save(); x.shadowColor = "rgba(40,30,40,0.06)"; x.shadowBlur = 6; x.shadowOffsetY = 2; x.fillStyle = "#fff"; x.fillRect(a, b, w, h); x.restore();
-  }
-  // a polaroid: the picture, a note in Isaac's hand, a strip of tape → its height
-  function blPrint(x, im, a, b, w, ar, rot, note, ns, px, py) {
-    var pad = Math.round(w * 0.048), iw = w - 2 * pad, ih = Math.round(iw / ar), nh = Math.round((ns || 52) * 1.9), h = pad + ih + nh;
-    x.save(); x.translate(a + w / 2, b + h / 2); x.rotate(rot * Math.PI / 180); x.translate(-w / 2, -h / 2);
-    x.save(); x.shadowColor = "rgba(0,0,0,0.3)"; x.shadowBlur = 60; x.shadowOffsetY = 30; x.fillStyle = "#fdfcf9"; x.fillRect(0, 0, w, h); x.restore();
-    blFit(x, im, pad, pad, iw, ih, px, py);
-    if (note) { x.font = "400 " + (ns || 52) + 'px "My Hand", "Bradley Hand", cursive'; x.fillStyle = "#1f1d20"; x.textAlign = "left"; x.textBaseline = "alphabetic"; var t = blHand(note); while (x.measureText(t).width > iw && t.length > 3) t = t.slice(0, -2); x.fillText(t, pad + 6, pad + ih + nh * 0.62); }
-    x.save(); x.translate(w / 2, 0); x.rotate(-0.035); x.fillStyle = "rgba(235,228,205,0.86)"; var tw = Math.min(180, w * 0.4); x.fillRect(-tw / 2, -24, tw, 48); x.restore();
-    x.restore();
-    return h;
-  }
-  function blMeta() {
-    var g = S.bl.game, out = [];
-    if (g.avg) out.push(g.avg + " ★ on Backloggd"); if (g.plays) out.push(g.plays + " played"); if (g.finishH) out.push("~" + g.finishH + " h to finish");
-    return out;
-  }
   function blCover() { return S.bl.cover; }
   function blShot() { return S.pic || S.bl.shot || S.bl.cover; }
-  var HAND = '"My Hand", "Bradley Hand", cursive';
-  var BL = {
-    // the cover hung in a museum frame, the white label under it
-    "bl-label": function (x) {
-      var g = S.bl.game;
-      x.fillStyle = "#e6e4e6"; x.fillRect(0, 0, W, H);
-      var fw = 600, fx = (W - fw) / 2, fy = 250, inner = fw - 52 - 120, ih = Math.round(inner * 4 / 3), fh = 52 + 120 + ih;
-      x.save(); x.translate(fx + fw / 2, fy + fh / 2); x.rotate(-0.6 * Math.PI / 180); x.translate(-fw / 2, -fh / 2);
-      x.save(); x.shadowColor = "rgba(30,20,30,0.45)"; x.shadowBlur = 90; x.shadowOffsetY = 50; x.fillStyle = "#141414"; x.fillRect(0, 0, fw, fh); x.restore();
-      x.fillStyle = "#faf9f6"; x.fillRect(26, 26, fw - 52, fh - 52);
-      x.save(); x.shadowColor = "rgba(0,0,0,0.25)"; x.shadowBlur = 4; x.shadowOffsetY = 1; blFit(x, blCover(), 26 + 60, 26 + 60, inner, ih); x.restore();
-      x.restore();
-      var lx = 70, lw = W - 140, ly = fy + fh + 64;
-      x.font = "400 58px " + SANS; if ("letterSpacing" in x) x.letterSpacing = "-1.4px";
-      var tl = blWrap(x, [S.sub && S.sub + ",", (S.title || g.title) + ",", [S.dek, g.year].filter(Boolean).join(", ")].filter(Boolean).join("\n"), lw - 100).slice(0, 5);
-      var meta = blMeta(), lh = 64, lhgt = 44 + tl.length * lh + (meta.length ? 66 : 0) + 30;
-      blPaper(x, lx, ly, lw, lhgt);
-      x.fillStyle = "#111"; x.textAlign = "left"; x.textBaseline = "top";
-      tl.forEach(function (l, i) { x.fillText(l, lx + 50, ly + 44 + i * lh); });
-      if ("letterSpacing" in x) x.letterSpacing = "0px";
-      if (meta.length) { x.font = "400 27px " + SANS; x.fillStyle = "#8a888b"; x.fillText(meta.join("   ·   "), lx + 50, ly + 44 + tl.length * lh + 24); }
-      x.textBaseline = "alphabetic";
-      return { sticker: Math.min(1700, ly + lhgt + 110), sign: Math.min(1840, ly + lhgt + 250), soft: "#8a888b" };
-    },
-    // the game's art, its name large, one line, three pictures
-    "bl-poster": function (x) {
-      var g = S.bl.game;
-      x.fillStyle = "#0b0b0d"; x.fillRect(0, 0, W, H);
-      blFit(x, S.bl.hero || blCover(), 0, 0, W, 1060, 0.6, 0.08);
-      var gr = x.createLinearGradient(0, 0, 0, 1080); gr.addColorStop(0, "rgba(11,11,13,0)"); gr.addColorStop(0.55, "rgba(11,11,13,0.1)"); gr.addColorStop(0.85, "rgba(11,11,13,0.88)"); gr.addColorStop(1, "#0b0b0d");
-      x.fillStyle = gr; x.fillRect(0, 0, W, 1080);
-      say(x, [S.sub, g.year].filter(Boolean).join(" · ").toUpperCase(), 80, 990, "400 30px " + SANS, "#9a9aa0", "left", 4);
-      var t = S.title || g.title, fs = fitSize(x, t, 700, SANS, 128, 72, W - 160);
-      say(x, t, 80, 990 + fs * 1.05, "700 " + fs + "px " + SANS, "#fff", "left", -4);
-      var y = 990 + fs * 1.05 + 70;
-      if (S.dek.trim()) y = para(x, S.dek.trim().charAt(0).toUpperCase() + S.dek.trim().slice(1) + ".", 80, y, "400 38px " + SANS, "#c9c9cf", "left", W - 160, 50, 2) + 50;
-      var tw = (W - 160 - 40) / 3, ty = Math.max(y, 1250);
-      [blShot(), S.bl.hero || blCover(), blCover()].forEach(function (im, i) { x.save(); rr(x, 80 + i * (tw + 20), ty, tw, tw * 9 / 16, 12); x.clip(); blFit(x, im, 80 + i * (tw + 20), ty, tw, tw * 9 / 16); x.restore(); });
-      var end = ty + tw * 9 / 16;
-      if (g.avg) say(x, "★ " + g.avg + " on Backloggd", 80, end + 70, "400 28px " + SANS, "#7d7d84");
-      return { sticker: Math.min(1700, end + 170), sign: Math.min(1840, end + 310), soft: "rgba(255,255,255,0.5)" };
-    },
-    // two pictures and the cover as taped prints, notes in your hand
-    "bl-prints": function (x) {
-      var g = S.bl.game;
-      x.fillStyle = "#e6e4e6"; x.fillRect(0, 0, W, H);
-      blPrint(x, blShot(), 70, 230, 480, 4 / 3, -3, S.bl.note1, 50);
-      blPrint(x, S.bl.hero && S.bl.hero !== blCover() ? S.bl.hero : blShot(), 530, 520, 480, 4 / 3, 2.6, S.bl.note2, 50, 0.7);
-      var ch = blPrint(x, blCover(), 100, 880, 340, 3 / 4, -1.4, S.title || g.title, 42);
-      x.textAlign = "left"; x.textBaseline = "top"; x.font = "400 50px " + SANS; x.fillStyle = "#111";
-      var tl = blWrap(x, [S.sub && S.sub + ",", g.year && g.year + "."].filter(Boolean).join("\n"), W - 590);
-      tl.forEach(function (l, i) { x.fillText(l, 520, 1150 + i * 56); });
-      var y = 1150 + tl.length * 56 + 22; x.font = "400 27px " + SANS; x.fillStyle = "#8a888b";
-      [g.genres.slice(0, 3).join(" · "), blPlatforms(g.platforms).join(", ")].filter(Boolean).forEach(function (t) { blWrap(x, t, W - 590).slice(0, 3).forEach(function (l) { x.fillText(l, 520, y); y += 36; }); });
-      x.textBaseline = "alphabetic";
-      var end = Math.max(880 + ch, y);
-      return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "#8a888b" };
-    },
-    // your review, written in your hand, the stars under it
-    "bl-hand": function (x) {
-      var g = S.bl.game, rv = S.bl;
-      x.fillStyle = "#e6e4e6"; x.fillRect(0, 0, W, H);
-      var ph = blPrint(x, blCover(), 350, 230, 380, 3 / 4, -2.5, [S.title || g.title, g.year].filter(Boolean).join(", "), 40);
-      var q = '"' + blHand(rv.text || "Your review, in your hand.") + '"', size = 84, top = 230 + ph + 70;
-      x.font = "400 " + size + "px " + HAND;
-      while (blWrap(x, q, W - 180).length * size * 1.08 > 440 && size > 46) { size -= 4; x.font = "400 " + size + "px " + HAND; }
-      x.fillStyle = "#1f1d20"; x.textAlign = "left"; x.textBaseline = "top";
-      var ql = blWrap(x, q, W - 180); ql.forEach(function (l, i) { x.fillText(l, 90, top + i * size * 1.08); });
-      var sy = top + ql.length * size * 1.08 + 40;
-      blStars(x, rv.rating, 90, sy, 76, "#111", "rgba(0,0,0,0.16)");
-      x.font = "400 30px " + SANS; x.fillStyle = "#8a888b"; x.fillText("— " + [rv.name, "on Backloggd"].filter(Boolean).join(", "), 90, sy + 116);
-      x.textBaseline = "alphabetic";
-      var end = sy + 150;
-      return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "#8a888b" };
-    },
-    // your best line, large, over the game's art
-    "bl-quote": function (x) {
-      var g = S.bl.game, rv = S.bl;
-      x.fillStyle = "#0b0b0d"; x.fillRect(0, 0, W, H);
-      x.save(); x.globalAlpha = 0.4; blFit(x, S.bl.hero || blCover(), 0, 0, W, H, 0.6, 0.35); x.restore();
-      var gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "rgba(11,11,13,0.2)"); gr.addColorStop(0.45, "rgba(11,11,13,0.6)"); gr.addColorStop(0.75, "#0b0b0d"); gr.addColorStop(1, "#0b0b0d");
-      x.fillStyle = gr; x.fillRect(0, 0, W, H);
-      var k = S.kicker.trim(); if (k) say(x, one(x, k.toUpperCase(), "400 30px " + SANS, 920), 80, 290, "400 30px " + SANS, "#b9b9c0", "left", 4);
-      var q = "“" + String(rv.best || rv.text || "Your best line.").replace(/^["“]|["”]$/g, "") + "”", size = 96;
-      x.font = "700 " + size + "px " + SANS;
-      while (blWrap(x, q, W - 160).length * size * 1.04 > 560 && size > 54) { size -= 4; x.font = "700 " + size + "px " + SANS; }
-      var ql = blWrap(x, q, W - 160); ql.forEach(function (l, i) { say(x, l, 80, 350 + size + i * size * 1.04, "700 " + size + "px " + SANS, "#fff", "left", -3); });
-      var sy = 350 + size + (ql.length - 1) * size * 1.04 + 70;
-      blStars(x, rv.rating, 80, sy, 72, "#fff", "rgba(255,255,255,0.22)");
-      var by = sy + 170;
-      x.fillStyle = "rgba(255,255,255,0.18)"; x.fillRect(80, by - 40, W - 160, 1.5);
-      x.save(); x.shadowColor = "rgba(0,0,0,0.5)"; x.shadowBlur = 40; x.shadowOffsetY = 20; rr(x, 80, by, 170, 227, 12); x.fillStyle = "#000"; x.fill(); x.restore();
-      x.save(); rr(x, 80, by, 170, 227, 12); x.clip(); blFit(x, blCover(), 80, by, 170, 227); x.restore();
-      say(x, one(x, S.title || g.title, "400 44px " + SANS, W - 360), 284, by + 70, "400 44px " + SANS, "#fff");
-      var played = [rv.platform && "played on " + rv.platform, rv.hours && rv.hours + " h"].filter(Boolean).join(" · ");
-      say(x, one(x, [S.sub, g.year].filter(Boolean).join(" · "), "400 30px " + SANS, W - 360), 284, by + 122, "400 30px " + SANS, "#9a9aa0");
-      if (played) say(x, one(x, played, "400 30px " + SANS, W - 360), 284, by + 164, "400 30px " + SANS, "#9a9aa0");
-      var end = by + 227;
-      return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: "rgba(255,255,255,0.5)" };
-    }
-  };
-  /* the cartridge and the case: objects on the story's own background (tone or the cover blurred),
-     a colour of your choosing, and the rating you want shown — Backloggd's average, yours, or none */
+  var BL = {};
+  // the story's own background: a tone, or the cover blurred
   function blGround(x) {
     var bp = bgPic(), dark;
     if (S.bg === "blur" && bp) { blurPic(x, bp, "rgba(0,0,0,0.28)", 1.3); dark = true; }
     else { var t = S.bg === "blur" ? "#e6e4e6" : S.bg; x.fillStyle = t; x.fillRect(0, 0, W, H); dark = toneDark(t); }
     return { ink: dark ? "#f5f5f7" : "#111", soft: dark ? "rgba(245,245,247,0.62)" : "#8a888b" };
   }
-  function blRatingText(long) {
-    var g = S.bl.game;
-    if (S.bl.show === "mine") return (long ? "\u2605 " + S.bl.rating + " \u2014 my rating" : String(S.bl.rating));
-    if (S.bl.show === "avg" && g.avg) return long ? "\u2605 " + g.avg + " on Backloggd" : g.avg;
-    return "";
-  }
-  function blKicker(x, y, soft) { var k = S.kicker.trim(); if (k) say(x, one(x, k.toUpperCase(), "400 30px " + SANS, 900), W / 2, y, "400 30px " + SANS, soft, "center", 4); }
-  var CARTS = { grey: ["#d3d1d5", "#b9b7bc", "rgba(255,255,255,0.65)"], black: ["#333336", "#1b1b1d", "rgba(255,255,255,0.12)"], clear: ["rgba(150,120,230,0.62)", "rgba(95,70,180,0.72)", "rgba(255,255,255,0.45)"], white: ["#f6f6f6", "#e2e2e4", "rgba(255,255,255,0.9)"] };
-  var BOXES = { clear: ["rgba(255,255,255,0.55)", "rgba(255,255,255,0.12)"], red: ["#e8332a", "#b81d17"], blue: ["#2f6fd8", "#1a49a3"], black: ["#2a2a2d", "#141416"] };
-  BL["bl-cart"] = function (x) {
-    var c = blGround(x), g = S.bl.game, col = CARTS[S.bl.cart] || CARTS.grey;
-    blKicker(x, 250, c.soft);
-    var a = 190, b = 330, w = 700, h = 860;
-    x.save(); x.shadowColor = "rgba(0,0,0,0.42)"; x.shadowBlur = 90; x.shadowOffsetY = 50; rr(x, a, b, w, h, 34); x.fillStyle = col[1]; x.fill(); x.restore();
-    var gr = x.createLinearGradient(0, b, 0, b + h); gr.addColorStop(0, col[0]); gr.addColorStop(1, col[1]);
-    rr(x, a, b, w, h, 34); x.fillStyle = gr; x.fill();
-    x.fillStyle = col[2]; x.fillRect(a + 30, b + 3, w - 60, 3);                       // the lit top edge
-    x.fillStyle = "rgba(0,0,0,0.08)"; x.fillRect(a, b + 92, w, 3);                     // the ridge
-    for (var i = 0; i < 5; i++) { rr(x, a + w / 2 - 110 + i * 48, b + h - 70, 28, 34, 6); x.fillStyle = "rgba(0,0,0,0.1)"; x.fill(); }   // the grips
-    // the label: the cover, inset, with a fine border
-    x.save(); rr(x, a + 70, b + 130, w - 140, 600, 16); x.clip(); blFit(x, blCover(), a + 70, b + 130, w - 140, 600, 0.5, 0.18); x.restore();
-    rr(x, a + 70, b + 130, w - 140, 600, 16); x.strokeStyle = "rgba(0,0,0,0.18)"; x.lineWidth = 3; x.stroke();
-    var t = S.title || g.title, fs = fitSize(x, t, 400, SANS, 64, 40, W - 160);
-    say(x, t, W / 2, 1290, "400 " + fs + "px " + SANS, c.ink, "center", -1);
-    var line = [S.sub, g.year, blRatingText(true)].filter(Boolean).join(" \u00B7 ");
-    say(x, one(x, line, "400 30px " + SANS, W - 160), W / 2, 1345, "400 30px " + SANS, c.soft, "center");
-    return { sticker: 1470, sign: 1640, soft: c.soft };
-  };
-  BL["bl-case"] = function (x) {
-    var c = blGround(x), g = S.bl.game, col = BOXES[S.bl.box] || BOXES.clear, clear = S.bl.box === "clear";
-    blKicker(x, 250, c.soft);
-    var a = 210, b = 320, w = 660, h = 980;
-    x.save(); x.shadowColor = "rgba(0,0,0,0.4)"; x.shadowBlur = 100; x.shadowOffsetY = 56; rr(x, a, b, w, h, 22); x.fillStyle = clear ? "rgba(255,255,255,0.35)" : col[1]; x.fill(); x.restore();
-    var gr = x.createLinearGradient(a, 0, a + w, 0); gr.addColorStop(0, col[0]); gr.addColorStop(1, col[1]);
-    rr(x, a, b, w, h, 22); x.fillStyle = gr; x.fill();
-    // the insert: the cover under the clear sleeve
-    x.save(); rr(x, a + 50, b + 26, w - 76, h - 52, 6); x.clip(); blFit(x, blCover(), a + 50, b + 26, w - 76, h - 52); x.restore();
-    // the hinge and the sleeve's glare
-    var sp = x.createLinearGradient(a, 0, a + 34, 0); sp.addColorStop(0, "rgba(255,255,255,0.55)"); sp.addColorStop(1, "rgba(255,255,255,0.08)");
-    x.save(); rr(x, a, b, 34, h, 22); x.fillStyle = sp; x.fill(); x.restore();
-    x.save(); rr(x, a, b, w, h, 22); x.clip();
-    var gl = x.createLinearGradient(a, b, a + w, b + h); gl.addColorStop(0.38, "rgba(255,255,255,0)"); gl.addColorStop(0.47, "rgba(255,255,255,0.28)"); gl.addColorStop(0.56, "rgba(255,255,255,0)");
-    x.fillStyle = gl; x.fillRect(a, b, w, h); x.restore();
-    rr(x, a + 0.75, b + 0.75, w - 1.5, h - 1.5, 22); x.strokeStyle = "rgba(255,255,255,0.6)"; x.lineWidth = 1.5; x.stroke();
-    // the price-sticker: the rating, if you want one
-    var rt = blRatingText(false);
-    if (rt) {
-      x.save(); x.translate(a + w - 130, b + 150); x.rotate(12 * Math.PI / 180);
-      x.shadowColor = "rgba(0,0,0,0.25)"; x.shadowBlur = 20; x.shadowOffsetY = 8;
-      x.beginPath(); x.arc(0, 0, 80, 0, Math.PI * 2); x.fillStyle = "#ffd60a"; x.fill(); x.shadowColor = "transparent";
-      say(x, rt, 0, 10, "700 " + (rt.length > 3 ? 50 : 58) + "px " + SANS, "#111", "center", -1);
-      say(x, S.bl.show === "mine" ? "\u2605 mine" : "\u2605 Backloggd", 0, 46, "500 19px " + SANS, "#111", "center");
-      x.restore();
-    }
-    var line = [S.title || g.title, S.sub, S.bl.platform].filter(Boolean).join(" \u00B7 ");
-    say(x, one(x, line, "400 32px " + SANS, W - 160), W / 2, 1380, "400 32px " + SANS, c.ink === "#111" ? "#5d5b5e" : c.soft, "center");
-    return { sticker: 1480, sign: 1650, soft: c.soft };
-  };
   /* Now playing, the Apple way: the game's art and three quiet figures — hours played, your rating,
      Backloggd's average — nothing to press, it's a story */
   function blStatCols() {
@@ -1208,8 +1029,8 @@
     x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 28); x.fillStyle = fill; x.fill(); x.restore();
   }
   function blLights(x, a, b) { ["#ff5f57", "#febc2e", "#28c840"].forEach(function (c, i) { x.beginPath(); x.arc(a + 37 + i * 34, b + 35, 11, 0, Math.PI * 2); x.fillStyle = c; x.fill(); }); }
-  function blUnder(x, c, y, line) {   // the name under the window, and one quiet line
-    var t = S.title || S.bl.game.title, fs = fitSize(x, t, 700, SANS, 46, 34, W - 160);
+  function blUnder(x, c, y, line, name) {   // the name under the window, and one quiet line
+    var t = name || S.title || S.bl.game.title, fs = fitSize(x, t, 700, SANS, 46, 34, W - 160);
     say(x, t, W / 2, y, "700 " + fs + "px " + SANS, c.ink, "center", -0.7);
     if (line) say(x, one(x, line, "400 32px " + SANS, W - 160), W / 2, y + 52, "400 32px " + SANS, c.soft, "center");
     return y + 52;
@@ -1290,8 +1111,154 @@
     var end = blUnder(x, c, b + h + 104, ["Backloggd", S.sub, hrs].filter(Boolean).join(" \u00B7 "));
     return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
   };
-  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (k !== "bl-cart" && k !== "bl-case" && k !== "bl-tvcard" && k !== "bl-win" && k !== "bl-launch" && k !== "bl-glass") OWN_BG[k] = 1; });
-  ["bl-label", "bl-poster", "bl-prints", "bl-hand"].forEach(function (k) { NO_KICKER[k] = 1; });
+  /* Just finished: the moment told by Backloggd's notifications — on a Lock Screen in an iPhone,
+     as a stack on the story's background, or a whole Lock Screen */
+  function blStarStr(r) { r = +r || 0; var f = Math.floor(r), half = r - f >= 0.5 ? "½" : ""; return "★".repeat(f) + half; }
+  function blNotes() {
+    var t = S.title || S.bl.game.title, h = blHoursTxt(), out = [];
+    out.push({ when: "now", body: "Finished " + t + (h ? " — " + h.replace(/ h$/, " hours") : ""), icon: 1 });
+    if (S.bl.rating) out.push({ when: "2m ago", body: "You rated it " + blStarStr(S.bl.rating), icon: 1 });
+    if (S.bl.next.trim()) out.push({ when: "5m ago", body: S.bl.next.trim(), faded: 1 });
+    return out;
+  }
+  function blNotif(x, a, b, w, s, dark, n) {   // one notification, at scale s → its height
+    var pad = 30 * s, ic = 90 * s, r = 44 * s, h = ic + 2 * pad, mid = b + h / 2;
+    x.save();
+    if (n.faded) { x.globalAlpha = 0.78; x.translate(a + w / 2, mid); x.scale(0.95, 0.95); x.translate(-(a + w / 2), -mid); }
+    if (dark) {
+      rr(x, a, b, w, h, r); x.fillStyle = "rgba(40,40,44,0.55)"; x.fill();
+      rr(x, a + 0.75, b + 0.75, w - 1.5, h - 1.5, r); x.strokeStyle = "rgba(255,255,255,0.14)"; x.lineWidth = 1.5; x.stroke();
+    } else {
+      x.save(); x.shadowColor = "rgba(0,0,0,0.14)"; x.shadowBlur = 40 * s; x.shadowOffsetY = 18 * s; rr(x, a, b, w, h, r); x.fillStyle = "rgba(250,250,252,0.94)"; x.fill(); x.restore();
+      rr(x, a + 0.5, b + 0.5, w - 1, h - 1, r); x.strokeStyle = "rgba(0,0,0,0.07)"; x.lineWidth = 1; x.stroke();
+    }
+    var ia = a + pad, ib = b + pad;
+    if (n.icon && blCover()) { x.save(); rr(x, ia, ib, ic, ic, 20 * s); x.clip(); blFit(x, blCover(), ia, ib, ic, ic, 0.5, 0.3); x.restore(); }
+    else { rr(x, ia, ib, ic, ic, 20 * s); x.fillStyle = dark ? "rgba(255,255,255,0.18)" : "#d9d9de"; x.fill(); }
+    var ink = dark ? "#fff" : "#1d1d1f", soft = dark ? "rgba(255,255,255,0.55)" : "#86868b", tx = ia + ic + 24 * s, tw = a + w - pad - tx;
+    say(x, "Backloggd", tx, mid - 6 * s, "700 " + 30 * s + "px " + SANS, ink);
+    say(x, n.when, a + w - pad, mid - 6 * s, "400 " + 26 * s + "px " + SANS, soft, "right");
+    say(x, one(x, n.body, "400 " + 32 * s + "px " + SANS, tw), tx, mid + 36 * s, "400 " + 32 * s + "px " + SANS, ink);
+    x.restore();
+    return h;
+  }
+  function blDoneLine() { return ["Backloggd", S.sub, blStarStr(S.bl.rating)].filter(Boolean).join(" · "); }
+  // the Lock Screen, in an iPhone
+  BL["bl-phone"] = function (x) {
+    var c = blGround(x), a = 300, b = 390, w = 480, h = 980, sa = a + 16, sb = b + 16, sw = w - 32, sh = h - 32;
+    blTop(x, c);
+    x.save(); x.shadowColor = "rgba(0,0,0,0.12)"; x.shadowBlur = 6; x.shadowOffsetY = 2; rr(x, a, b, w, h, 78); x.fillStyle = "#1d1d1f"; x.fill(); x.restore();
+    x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 78); x.fillStyle = "#1d1d1f"; x.fill(); x.restore();
+    x.save(); rr(x, sa, sb, sw, sh, 64); x.clip();
+    x.fillStyle = "#1c1c2e"; x.fillRect(sa, sb, sw, sh);
+    x.filter = "blur(30px) saturate(1.4)"; blFit(x, blCover(), sa - 40, sb - 40, sw + 80, sh + 80); x.filter = "none";
+    x.fillStyle = "rgba(0,0,0,0.12)"; x.fillRect(sa, sb, sw, sh);
+    rr(x, sa + sw / 2 - 65, sb + 20, 130, 38, 19); x.fillStyle = "#000"; x.fill();
+    say(x, S.bl.date, sa + sw / 2, sb + 124, "600 22px " + SANS, "#fff", "center");
+    say(x, S.bl.time, sa + sw / 2, sb + 236, "600 120px " + SANS, "#fff", "center", -3);
+    var y = sb + 520; blNotes().forEach(function (n) { y += blNotif(x, sa + 14, y, sw - 28, 0.48, true, n) + 8; });
+    x.restore();
+    var end = blUnder(x, c, b + h + 104, blDoneLine());
+    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+  };
+  // the notifications alone, on the story's background
+  BL["bl-notifs"] = function (x) {
+    var c = blGround(x), y = 520;
+    blTop(x, c);
+    blNotes().forEach(function (n) { y += blNotif(x, 110, y, W - 220, 0.98, false, n) + 22; });
+    var end = blUnder(x, c, Math.max(y + 140, 1190), ["Backloggd", S.sub].filter(Boolean).join(" · "));
+    return { sticker: Math.min(1700, end + 130), sign: Math.min(1840, end + 300), soft: c.soft };
+  };
+  // the whole story as the Lock Screen
+  BL["bl-lock"] = function (x) {
+    blurPic(x, blCover(), "rgba(0,0,0,0.18)", 1.5);
+    say(x, S.bl.date, W / 2, 300, "600 40px " + SANS, "rgba(255,255,255,0.85)", "center");
+    say(x, S.bl.time, W / 2, 530, "600 250px " + SANS, "#fff", "center", -7);
+    var y = 860; blNotes().forEach(function (n) { y += blNotif(x, 50, y, W - 100, 1, true, n) + 16; });
+    return { sticker: Math.min(1700, Math.max(y + 110, 1480)), sign: 1810, soft: "rgba(255,255,255,0.6)" };
+  };
+  /* My year in games: the game you pasted first, then up to four more by their Backloggd links */
+  function blH(v) { return String(v || "").trim().replace(/\s*h(ours?)?$/i, ""); }
+  function blYearList() {
+    var out = [{ title: S.title || S.bl.game.title, dev: S.sub, cover: blCover(), art: blArt(), hours: blH(S.bl.hours), rating: S.bl.rating }];
+    S.bl.year.forEach(function (y) { if (y.game) out.push({ title: y.game.title, dev: y.game.dev, cover: y.cover, art: y.cover, hours: blH(y.hours), rating: y.rating || 0 }); });
+    return out;
+  }
+  function blYearLine() {
+    var l = blYearList(), sum = l.reduce(function (t, g) { return t + (parseFloat(g.hours) || 0); }, 0), games = blH(S.bl.games), total = blH(S.bl.total) || (sum ? String(Math.round(sum)) : "");
+    return ["Backloggd", games && games + " games", total && total + " hours"].filter(Boolean).join(" · ");
+  }
+  function blGameMeta(g, long) { return [g.hours && g.hours + (long ? " hours" : " h"), blStarStr(g.rating)].filter(Boolean).join(" · "); }
+  // the top games as a white card
+  BL["bl-top"] = function (x) {
+    var c = blGround(x), l = blYearList(), a = 134, w = W - 268, b = 400, p = 48, rh = 128, top = b + 160, h = 160 + l.length * rh + 24;
+    blTop(x, c);
+    x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 70; x.shadowOffsetY = 28; rr(x, a, b, w, h, 56); x.fillStyle = "#fff"; x.fill(); x.restore();
+    say(x, S.bl.label.toUpperCase(), a + p, b + 72, "700 26px " + SANS, "#fa2d48", "left", 0.5);
+    say(x, "Top games", a + p, b + 134, "700 60px " + SANS, "#1d1d1f", "left", -1.2);
+    x.fillStyle = "#e5e5ea"; x.fillRect(a + p, top, w - 2 * p, 1.5);
+    l.forEach(function (g, i) {
+      var y = top + i * rh, ca = a + p + 52, tx = ca + 96 + 22, tw = a + w - p - tx - 90;
+      say(x, String(i + 1), a + p, y + 76, "700 30px " + SANS, "#1d1d1f");
+      x.save(); rr(x, ca, y + 16, 96, 96, 12); x.clip(); blFit(x, g.cover, ca, y + 16, 96, 96, 0.5, 0.3); x.restore();
+      say(x, one(x, g.title || "", "600 32px " + SANS, tw), tx, y + 58, "600 32px " + SANS, "#1d1d1f");
+      if (g.dev) say(x, one(x, g.dev, "400 24px " + SANS, tw), tx, y + 92, "400 24px " + SANS, "#86868b");
+      if (g.hours) say(x, g.hours + " h", a + w - p, y + 74, "400 26px " + SANS, "#86868b", "right");
+      if (i < l.length - 1) { x.fillStyle = "#f0f0f3"; x.fillRect(a + p, y + rh, w - 2 * p, 1.5); }
+    });
+    var end = b + h;
+    return { sticker: Math.min(1700, end + 110), sign: Math.min(1840, end + 250), soft: c.soft };
+  };
+  // Replay: full-bleed red to orange, the year large, the games down the page
+  BL["bl-replay"] = function (x) {
+    var l = blYearList(), gr = x.createLinearGradient(W * 0.35, 0, W * 0.65, H);
+    gr.addColorStop(0, "#fa2d48"); gr.addColorStop(0.5, "#ff6a3d"); gr.addColorStop(1, "#ffae3a"); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    say(x, S.bl.label.toUpperCase(), 80, 280, "700 30px " + SANS, "rgba(255,255,255,0.85)", "left", 0.5);
+    var k = S.kicker.trim() || "My year in games"; x.font = "700 112px " + SANS;
+    var tl = lines(x, k, W - 160, 2);
+    if (tl.length === 2) {   // two lines of even length read better than a long one and an orphan
+      var ws = k.split(/\s+/), best = null;
+      for (var i = 1; i < ws.length; i++) { var l1 = ws.slice(0, i).join(" "), l2 = ws.slice(i).join(" "), m = Math.max(x.measureText(l1).width, x.measureText(l2).width); if (m <= W - 160 && (!best || m < best[2])) best = [l1, l2, m]; }
+      if (best) tl = [best[0], best[1]];
+    }
+    tl.forEach(function (t, i) { say(x, t, 80, 392 + i * 107, "700 112px " + SANS, "#fff", "left", -3.5); });
+    var y0 = 392 + (tl.length - 1) * 107 + 70, rh = Math.min(174, (1640 - y0) / Math.max(1, l.length));
+    l.forEach(function (g, i) {
+      var y = y0 + i * rh, cs = Math.min(150, rh - 24), tw = W - 80 - 340;
+      say(x, String(i + 1), 80, y + cs / 2 + 20, "700 56px " + SANS, "#fff");
+      if (!i) { x.save(); x.shadowColor = "rgba(0,0,0,0.25)"; x.shadowBlur = 40; x.shadowOffsetY = 16; rr(x, 160, y, cs, cs, 18); x.fillStyle = "#000"; x.fill(); x.restore(); }
+      x.save(); rr(x, 160, y, cs, cs, 18); x.clip(); blFit(x, g.cover, 160, y, cs, cs, 0.5, 0.3); x.restore();
+      say(x, one(x, g.title || "", "700 46px " + SANS, tw), 340, y + cs / 2 - 4, "700 46px " + SANS, "#fff", "left", -0.6);
+      var m = blGameMeta(g, true); if (m) say(x, m, 340, y + cs / 2 + 38, "400 28px " + SANS, "rgba(255,255,255,0.85)");
+    });
+    return { sticker: 1700, sign: 1818, soft: "rgba(255,255,255,0.8)" };
+  };
+  // the first game wide, the next two beside each other
+  BL["bl-grid"] = function (x) {
+    var c = blGround(x), l = blYearList(), a = 110, w = W - 220, b = 400, f = l[0];
+    blTop(x, c);
+    function shot(im, px, py, pw, ph, r, ay) {
+      x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 50; x.shadowOffsetY = 20; rr(x, px, py, pw, ph, r); x.fillStyle = "#000"; x.fill(); x.restore();
+      x.save(); rr(x, px, py, pw, ph, r); x.clip(); blFit(x, im, px, py, pw, ph, 0.6, ay); x.restore();
+    }
+    shot(f.art, a, b, w, 440, 24, 0.25);
+    say(x, one(x, "1 · " + f.title, "700 34px " + SANS, w - 220), a, b + 494, "700 34px " + SANS, c.ink, "left", -0.4);
+    say(x, one(x, [f.dev, f.hours && f.hours + " h"].filter(Boolean).join(" · "), "400 26px " + SANS, w - 220), a, b + 530, "400 26px " + SANS, c.soft);
+    if (f.rating) { var sw = 5 * 30 + 4 * 30 * 0.16; blStars(x, f.rating, a + w - sw, b + 470, 30, c.ink, c.ink === "#111" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)"); }
+    var end = b + 540, cw = (w - 28) / 2;
+    l.slice(1, 3).forEach(function (g, i) {
+      var px = a + i * (cw + 28), py = b + 590;
+      shot(g.cover, px, py, cw, 250, 20, 0.3);
+      say(x, one(x, (i + 2) + " · " + g.title, "700 28px " + SANS, cw), px, py + 292, "700 28px " + SANS, c.ink);
+      var m = blGameMeta(g); if (m) say(x, one(x, m, "400 24px " + SANS, cw), px, py + 324, "400 24px " + SANS, c.soft);
+      end = py + 330;
+    });
+    var e2 = blUnder(x, c, end + 110, blYearLine(), S.bl.label);   // under it, the year — not the game
+    return { sticker: Math.min(1700, e2 + 110), sign: Math.min(1840, e2 + 250), soft: c.soft };
+  };
+  var BL_OWN = { "bl-tv": 1, "bl-lock": 1, "bl-replay": 1 };   // the rest sit on the story's background
+  Object.keys(BL).forEach(function (k) { FULL[k] = BL[k]; if (BL_OWN[k]) OWN_BG[k] = 1; });
+  NO_KICKER["bl-lock"] = 1;
   function blLoad(it, my) {
     note("Reading Backloggd…", false);
     return fetch("https://backloggd.com/games/" + it.slug + "/", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).then(function (html) {
@@ -1304,35 +1271,41 @@
       return Promise.all([loadImg(g.cover), loadImg(g.shot)]).then(function (a) { if (my !== token) return; S.bl.cover = a[0]; S.bl.shot = a[1]; S.bl.hero = null; });
     }).catch(function () { if (my === token) note("Couldn’t read that Backloggd page.", true); });
   }
-  // the review fields and the prints' notes
+  // what each kind of story asks for: the figures, the moment you finished, your year
+  var BL_NOW = /^bl-(tvcard|tv|win|launch|glass)$/, BL_DONE = /^bl-(phone|notifs|lock)$/, BL_YEAR = /^bl-(top|replay|grid)$/;
   function blFields() {
     var on = !!(S.item && S.item.kind === "backloggd"), st = styleOf();
     $("blSec").hidden = !on; if (!on) return;
-    $("blReview").hidden = !(st === "bl-hand" || st === "bl-quote");
-    $("blNotes").hidden = st !== "bl-prints";
-    var obj = st === "bl-cart" || st === "bl-case";
-    $("blLook").hidden = !obj; $("blCartRow").hidden = st !== "bl-cart"; $("blBoxRow").hidden = st !== "bl-case"; $("blPlatRow").hidden = st !== "bl-case";
-    $("blMineRow").hidden = !(obj && S.bl.show === "mine");
-    [["blCart", "cart"], ["blBox", "box"], ["blShow", "show"]].forEach(function (p) { [].forEach.call($(p[0]).children, function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.bl[p[1]]); }); });
-    $("blRating2").value = String(S.bl.rating); $("blPlat2").value = S.bl.platform;
-    var tv = /^bl-(tvcard|tv|win|launch|glass)$/.test(st); $("blStats").hidden = !tv;
-    $("blRating3").value = String(S.bl.rating); $("blHours3").value = S.bl.hours;
+    $("blDone").hidden = !BL_DONE.test(st); $("blYear").hidden = !BL_YEAR.test(st);
+    $("blRating3").value = String(S.bl.rating); $("blHours3").value = S.bl.hours; $("blPlat3").value = S.bl.platform; $("blPlat3").closest(".field").hidden = st !== "bl-win";
+    if (!S.bl.time) { var d = new Date(); S.bl.time = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); S.bl.date = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""); }
+    if (!S.bl.label) S.bl.label = "Replay \u2019" + String(new Date().getFullYear()).slice(2);
+    $("blTime").value = S.bl.time; $("blDate").value = S.bl.date; $("blNext").value = S.bl.next;
+    $("blLabel").value = S.bl.label; $("blGames").value = S.bl.games; $("blTotal").value = S.bl.total;
+    $("blFirst").textContent = "1 \u00B7 " + (S.title || S.bl.game.title || "this game") + " — its hours and rating are in the figures above";
     // the line on top follows the style until you write your own
-    if (!S.kickerSet) { S.kicker = { "bl-cart": "Now playing", "bl-case": "In my collection", "bl-tvcard": "Now playing", "bl-tv": "Now playing", "bl-win": "Now playing", "bl-launch": "Now playing", "bl-glass": "Now playing" }[st] || "My review"; $("kicker").value = S.kicker; }
-    $("blRating").value = String(S.bl.rating); $("blText").value = S.bl.text; $("blBest").value = S.bl.best;
-    $("blPlatform").value = S.bl.platform; $("blHours").value = S.bl.hours; $("blName").value = S.bl.name;
-    $("blNote1").value = S.bl.note1; $("blNote2").value = S.bl.note2; $("blSteam").value = S.bl.steam || "";
+    if (!S.kickerSet) { S.kicker = BL_DONE.test(st) ? "Just finished" : BL_YEAR.test(st) ? "My year in games" : "Now playing"; $("kicker").value = S.kicker; }
+    $("blSteam").value = S.bl.steam || "";
   }
-  [["blText", "text"], ["blBest", "best"], ["blPlatform", "platform"], ["blHours", "hours"], ["blName", "name"], ["blNote1", "note1"], ["blNote2", "note2"]].forEach(function (p) {
+  [["blHours3", "hours"], ["blPlat3", "platform"], ["blTime", "time"], ["blDate", "date"], ["blNext", "next"], ["blLabel", "label"], ["blGames", "games"], ["blTotal", "total"]].forEach(function (p) {
     $(p[0]).addEventListener("input", function () { S.bl[p[1]] = this.value; draw(); });
   });
-  $("blRating").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
-  $("blRating2").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
-  $("blPlat2").addEventListener("input", function () { S.bl.platform = this.value; draw(); });
   $("blRating3").addEventListener("change", function () { S.bl.rating = +this.value; draw(); });
-  $("blHours3").addEventListener("input", function () { S.bl.hours = this.value; draw(); });
-  [["blCart", "cart"], ["blBox", "box"], ["blShow", "show"]].forEach(function (p) {
-    $(p[0]).addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; S.bl[p[1]] = b.dataset.v; blFields(); draw(); });
+  // the other four games of the year: a Backloggd link each, read like the first, with your hours and rating
+  [].forEach.call(document.querySelectorAll("#blYearRows .ylink"), function (inp, i) {
+    var row = inp.closest(".yrow"), slot = S.bl.year[i];
+    inp.addEventListener("change", function () {
+      var m = /backloggd\.com\/games\/([^\/?#\s]+)/.exec(this.value);
+      if (!m) { S.bl.year[i] = { hours: slot.hours, rating: slot.rating }; slot = S.bl.year[i]; draw(); return; }
+      var mine = slot.ask = {};
+      fetch("https://backloggd.com/games/" + m[1] + "/", { cache: "no-cache" }).then(function (r) { return r.text(); }).then(function (html) {
+        var g = blParse(html); if (!g || slot.ask !== mine) return;
+        slot.game = g; row.querySelector(".yname").textContent = g.title;
+        return loadImg(g.cover).then(function (im) { if (slot.ask === mine) { slot.cover = im; draw(); } });
+      }).catch(function () { row.querySelector(".yname").textContent = "Couldn\u2019t read that page"; });
+    });
+    row.querySelector(".yhours").addEventListener("input", function () { slot.hours = this.value; draw(); });
+    row.querySelector(".yrate").addEventListener("change", function () { slot.rating = +this.value; draw(); });
   });
   $("blSteam").addEventListener("change", function () {
     var m = /store\.steampowered\.com\/app\/(\d+)/.exec(this.value) || /^(\d{3,8})$/.exec(this.value.trim()); S.bl.steam = this.value;
