@@ -33,7 +33,7 @@
     opts = opts || {};
     opts.headers = Object.assign({ "Authorization": "Bearer " + token(), "Accept": "application/vnd.github+json" }, opts.headers || {});
     return fetch(API + path, opts).then(function (r) {
-      if (!r.ok) { var e = new Error(r.status === 404 || r.status === 403 ? "no-access" : "GitHub " + r.status); e.status = r.status; throw e; }
+      if (!r.ok) { var e = new Error(r.status === 401 ? "refused" : r.status === 404 || r.status === 403 ? "no-access" : "GitHub " + r.status); e.status = r.status; throw e; }
       return r.status === 204 ? null : (opts.raw ? r.blob() : r.json());
     });
   }
@@ -120,15 +120,16 @@
         keep();
       }
       problem = ""; lastSync = Date.now();
-    } catch (e) { problem = e.message === "no-access" ? "access" : "offline"; }
+    } catch (e) { problem = e.message === "no-access" ? "access" : e.message === "refused" ? "refused" : "offline"; }
     syncing = false; status();
     if (syncAgain) { syncAgain = false; soon(500); }
   }
   function status(msg) {
     var el = $("nbState"); if (!el) return;
     if (msg) { el.textContent = msg; el.className = "nb-state"; return; }
-    if (problem === "token") { el.innerHTML = "Saved on this Mac · <button class='linkbtn' id='nbTokenGo'>add your GitHub token to sync</button>"; el.className = "nb-state warn"; }
-    else if (problem === "access") { el.innerHTML = "Saved on this Mac · your token can’t reach <b>btbr-notebook</b> yet — <button class='linkbtn' id='nbHelp'>how to fix</button>"; el.className = "nb-state warn"; }
+    if (problem === "token") { el.innerHTML = "Saved on this Mac · <button class='linkbtn' id='nbHelp'>add your GitHub token to sync</button>"; el.className = "nb-state warn"; }
+    else if (problem === "access") { el.innerHTML = "Saved on this Mac · your token can’t reach <b>btbr-notebook</b> yet — <button class='linkbtn' id='nbHelp'>fix it</button>"; el.className = "nb-state warn"; }
+    else if (problem === "refused") { el.innerHTML = "Saved on this Mac · GitHub refused the token (wrong or expired) — <button class='linkbtn' id='nbHelp'>fix it</button>"; el.className = "nb-state warn"; }
     else if (problem === "offline") { el.textContent = "Saved on this Mac · will sync when GitHub answers"; el.className = "nb-state warn"; }
     else if (Object.keys(db.dirty).length || Object.keys(pending).length) { el.textContent = "Saved on this Mac · syncing soon"; el.className = "nb-state"; }
     else { el.textContent = lastSync ? "Saved · synced " + ago(lastSync) : "Saved"; el.className = "nb-state"; }
@@ -239,6 +240,13 @@
     v.innerHTML =
       '<aside class="nb-side"><div class="nb-side-head"><span class="nb-cap">Notes</span><button class="nb-new" id="nbNew" type="button" title="New note (⌥N)" aria-label="New note">+</button></div><div class="nb-list" id="nbList"></div></aside>' +
       '<div class="nb-main"><div class="nb-top"><span class="nb-state" id="nbState"></span><span class="nb-top-acts"><button class="sbtn quiet" id="nbDel" type="button">Delete</button><button class="sbtn primary" id="nbSend" type="button">Send to a topic</button></span></div>' +
+      '<div class="nb-key" id="nbKey" hidden><b>Let the Notebook sync to your private repo</b><ol>' +
+      '<li>On <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com → Fine-grained tokens</a>, open the token you publish with (or make a new one).</li>' +
+      '<li>Under <i>Repository access</i>, add <b>btbr-notebook</b> (keep btbr-website).</li>' +
+      '<li>Under <i>Permissions → Contents</i>, choose <b>Read and write</b>. Save.</li>' +
+      '<li>If GitHub showed you a new token, paste it here. If you only edited the old one, just press Try again.</li></ol>' +
+      '<div class="nb-key-row"><input class="insp-input" id="nbKeyIn" type="password" placeholder="github_pat_… (optional)" autocomplete="off"><button class="sbtn primary" id="nbKeyGo" type="button">Try again</button><button class="sbtn quiet" id="nbKeyX" type="button">Close</button></div>' +
+      '<p class="nb-key-note" id="nbKeyNote" style="margin-top:8px;color:var(--ink-soft)">The token stays in this browser, like for Publish.</p></div>' +
       '<div class="nb-paper"><input class="nb-title" id="nbTitle" placeholder="Title — or just start writing" aria-label="Title" />' +
       '<div class="nb-doc" id="nbDoc" contenteditable="true" spellcheck="true" data-ph="Write. Paste a link and it becomes a card. Drop a photo in. ⌘⇧H marks an idea."></div>' +
       '<div class="nb-foot" id="nbFoot"></div></div></div>' +
@@ -258,8 +266,16 @@
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "h" || e.key === "H")) { e.preventDefault(); markIdea(); }
     });
     $("nbView").addEventListener("click", function (e) {
-      if (e.target.id === "nbTokenGo") document.getElementById("publishBtn").click();
-      if (e.target.id === "nbHelp") alert("The Notebook saves to the private repo 02-alt/btbr-notebook.\n\nOn github.com → Settings → Developer settings → Fine-grained tokens, open the token you publish with and add the repository “btbr-notebook” with Contents: Read and write. Then come back — it syncs by itself.\n\nUntil then everything is kept in this browser.");
+      if (e.target.id === "nbHelp") { $("nbKey").hidden = false; $("nbKeyIn").focus(); }
+      if (e.target.id === "nbKeyX") $("nbKey").hidden = true;
+      if (e.target.id === "nbKeyGo") {
+        var v = $("nbKeyIn").value.trim(); if (v) localStorage.setItem(TOKEN_KEY, v);
+        $("nbKeyNote").textContent = "Trying…";
+        sync().then(function () {
+          if (!problem) { $("nbKey").hidden = true; $("nbKeyIn").value = ""; }
+          else $("nbKeyNote").textContent = problem === "access" ? "GitHub still says no to btbr-notebook — check steps 2 and 3 (saving the token can take a few seconds)." : problem === "token" ? "Paste a token first." : problem === "refused" ? "GitHub refused that token — copy it again, whole." : "GitHub didn’t answer — try again in a moment.";
+        });
+      }
     });
     document.addEventListener("keydown", function (e) { if (document.body.classList.contains("view-notebook") && e.altKey && (e.key === "n" || e.key === "˜")) { e.preventDefault(); newNote(); } });
     window.addEventListener("beforeunload", function () { if (open) flush(); });

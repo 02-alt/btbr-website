@@ -1001,6 +1001,7 @@ body.view-other .studio-actions { visibility: hidden; }
 .nb-x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 14px; line-height: 22px; cursor: pointer; opacity: 0; transition: opacity .15s; }
 .nb-card:hover .nb-x, .nb-fig:hover .nb-x { opacity: 1; }
 .nb-foot { margin-top: 20px; font-size: 12px; color: var(--ink-soft); }
+.nb-modal[hidden], .nb-key[hidden] { display: none; }
 .nb-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: flex-end; padding: 70px 24px; }
 .nb-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.12); }
 .nb-sheet { position: relative; width: 400px; max-height: calc(100vh - 100px); overflow-y: auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.22); }
@@ -1021,3 +1022,8 @@ body.view-other .studio-actions { visibility: hidden; }
 .nb-keep { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 12px; }
 .nb-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 @media (max-width: 760px) { .nb-side { display: none; } .nb-paper { padding: 20px 18px 100px; } .nb-top { padding: 12px 18px 0; } }
+.nb-key { margin: 12px 24px 0 36px; max-width: 720px; background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 0 0 .5px rgba(0,0,0,.06), 0 6px 20px rgba(0,0,0,.06); font-size: 13px; line-height: 1.5; }
+.nb-key ol { margin: 6px 0 10px 18px; }
+.nb-key-row { display: flex; gap: 8px; }
+.nb-key-row input { flex: 1; }
+.nb-key a { color: var(--accent); text-decoration: none; }
