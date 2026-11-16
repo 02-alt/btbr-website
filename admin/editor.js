@@ -1889,7 +1889,7 @@
   })();
 
   /* ---------- Topics tab: list, edit, delete ---------- */
-  var VIEWS = { topics: "topicsView", calendar: "calView", stats: "statsView" };
+  var VIEWS = { notebook: "nbView", topics: "topicsView", calendar: "calView", stats: "statsView" };
   function switchTab(tab) {
     if (translating && tab !== "write") setTranslating(false);
     Object.keys(VIEWS).forEach(function (k) {
@@ -1901,6 +1901,7 @@
     if (tab === "topics") renderTopicsList();
     if (tab === "calendar") renderCalendar();
     if (tab === "stats") renderStats();
+    if (tab === "notebook" && window.Notebook) window.Notebook.show();
   }
   function niceDate(d) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); if (!m) return "";
@@ -2091,8 +2092,8 @@
     return nb;
   }
   function editTopic(slug) {
-    if (!okToLeave()) return;
-    fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
+    if (!okToLeave()) return Promise.resolve(false);
+    return fetch("/curation/topics/" + slug + ".json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (t) {
       state.title = t.title || "";
       state.fr = { title: (t.fr && t.fr.title) || "" };
       state.author = t.author || "Isaac";
@@ -2111,7 +2112,8 @@
       selectedId = null;
       switchTab("write");
       render(); clean();
-    }).catch(function () { alert("Couldn’t load that topic for editing."); });
+      return true;
+    }).catch(function () { alert("Couldn’t load that topic for editing."); return false; });
   }
   function newTopic(asked) {
     if (asked !== true && !okToLeave()) return;
@@ -2152,6 +2154,45 @@
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || "Delete"; }
     }
   }
+  /* ---------- what the Notebook may do here: start a topic from a note, or add a note's pieces to one ----------
+     blocks come in the Studio's own shape ({type:"text", html} · {type:"image", src (blob URL), caption} · {type:"video", src}) */
+  function takeBlocks(blocks) {
+    return blocks.map(function (b) {
+      var nb = Object.assign({ id: uid() }, b);
+      if (nb.type === "text") { nb.head = false; nb.html = nb.html || ""; }
+      if (nb.type === "image") { nb.alt = nb.alt || ""; nb.caption = nb.caption || ""; nb.note = ""; nb.inset = false; nb.name = nb.name || ""; }
+      if (nb.type === "video") nb.caption = nb.caption || "";
+      return nb;
+    });
+  }
+  function addSources(lines) { if (lines && lines.length) state.inspiration = [state.inspiration, lines.join("\n")].filter(function (x) { return String(x || "").trim(); }).join("\n"); }
+  function landed(added) {
+    switchTab("write"); render(); touch();
+    added.forEach(function (b) { if (b.type === "image") prepImage(b, b.id); });
+    if (added[0]) select(added[0].id);
+  }
+  window.StudioAPI = {
+    current: function () { return { title: state.title, slug: editingSlug, blocks: state.blocks.length }; },
+    newTopicFrom: function (o) {
+      if (!okToLeave()) return false;
+      newTopic(true);
+      state.title = o.title || ""; state.themes = (o.themes || []).slice();
+      var added = takeBlocks(o.blocks || []);
+      state.blocks = added.length ? added : state.blocks;
+      addSources(o.sources); landed(added); return true;
+    },
+    addTo: function (where, o) {
+      var go = where === "current" ? Promise.resolve(true) : editTopic(where);
+      return go.then(function (ok) {
+        if (!ok) return false;
+        var added = takeBlocks(o.blocks || []), end = state.blocks.length;
+        while (end > 0 && /^(hand|sign)$/.test(state.blocks[end - 1].type)) end--;   // before the sign-off
+        if (state.blocks.length === 1 && state.blocks[0].type === "text" && !plain(state.blocks[0].html)) { state.blocks = []; end = 0; }
+        state.blocks.splice.apply(state.blocks, [end, 0].concat(added));
+        addSources(o.sources); landed(added); return true;
+      });
+    }
+  };
   (function () {
     var tabs = document.querySelector(".studio-tabs");
     if (tabs) tabs.addEventListener("click", function (e) { var b = e.target.closest(".studio-tab"); if (b) switchTab(b.dataset.tab); });
