@@ -124,6 +124,27 @@
     syncing = false; status();
     if (syncAgain) { syncAgain = false; soon(500); }
   }
+  // what exactly is wrong with the token: is it a token at all, which kind, can it see each repo
+  async function diagnose() {
+    var t = token(); if (!t) return "Paste a token first.";
+    var h = { "Authorization": "Bearer " + t, "Accept": "application/vnd.github+json" };
+    var hit = function (path) { return fetch(API + path, { headers: h, cache: "no-store" }).then(function (r) { return r; }, function () { return null; }); };
+    var me = await hit("/user");
+    if (!me) return "GitHub didn’t answer — check the connection and try again.";
+    if (me.status === 401) return "GitHub refused this token: it’s wrong, incomplete or expired. Copy it again, whole.";
+    var who = me.ok ? (await me.json()).login : "?", classic = /^ghp_|^gho_/.test(t), scopes = me.headers.get("x-oauth-scopes");
+    var site = await hit("/repos/02-alt/btbr-website"), nb = await hit("/repos/" + REPO);
+    var lines = ["Token for " + who + " · " + (classic ? "classic" : "fine-grained") + " · btbr-website " + (site && site.ok ? "✓" : "✗") + " · btbr-notebook " + (nb && nb.ok ? "✓" : "✗")];
+    if (nb && nb.ok) {
+      var perm = (await nb.json()).permissions || {};
+      if (perm.push === false) lines.push("It can see btbr-notebook but not write: set Contents to “Read and write”.");
+      else lines.push("Access looks right — press Try again once more.");
+    } else if (classic) lines.push(scopes != null && !/\brepo\b/.test(scopes) ? "This classic token only has “" + (scopes || "no") + "” scope — private repos need the “repo” scope. Edit it on github.com/settings/tokens and tick “repo”." : "This classic token can’t see the private repo — give it the “repo” scope.");
+    else if (who !== "02-alt") lines.push("This token belongs to " + who + ", not 02-alt — make it from the 02-alt account.");
+    else lines.push("The fine-grained token doesn’t include btbr-notebook. In Repository access choose “Only select repositories” and tick both btbr-website and btbr-notebook, then Update at the bottom of the page.");
+    return lines.join(" ");
+  }
+  function waitSync() { return new Promise(function (res) { (function w() { if (syncing) setTimeout(w, 200); else res(); })(); }); }
   function status(msg) {
     var el = $("nbState"); if (!el) return;
     if (msg) { el.textContent = msg; el.className = "nb-state"; return; }
@@ -271,9 +292,9 @@
       if (e.target.id === "nbKeyGo") {
         var v = $("nbKeyIn").value.trim(); if (v) localStorage.setItem(TOKEN_KEY, v);
         $("nbKeyNote").textContent = "Trying…";
-        sync().then(function () {
-          if (!problem) { $("nbKey").hidden = true; $("nbKeyIn").value = ""; }
-          else $("nbKeyNote").textContent = problem === "access" ? "GitHub still says no to btbr-notebook — check steps 2 and 3 (saving the token can take a few seconds)." : problem === "token" ? "Paste a token first." : problem === "refused" ? "GitHub refused that token — copy it again, whole." : "GitHub didn’t answer — try again in a moment.";
+        waitSync().then(sync).then(function () {
+          if (!problem) { $("nbKey").hidden = true; $("nbKeyIn").value = ""; return; }
+          return diagnose().then(function (d) { $("nbKeyNote").textContent = d; });
         });
       }
     });
